@@ -1,24 +1,24 @@
-import '@/global.css';
+import "@/global.css";
 
-import { Platform } from 'react-native';
+import { Platform } from "react-native";
 
-export const AccentColor = '#04C1FF';
-export const AppBackground = '#1A120A';
+export const AccentColor = "#04C1FF";
+export const AppBackground = "#150F08";
 
 export const Colors = {
   light: {
-    text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
+    text: "#000000",
+    background: "#ffffff",
+    backgroundElement: "#F0F0F3",
+    backgroundSelected: "#E0E1E6",
+    textSecondary: "#60646C",
   },
   dark: {
-    text: '#ffffff',
+    text: "#ffffff",
     background: AppBackground,
-    backgroundElement: '#2A1F16',
-    backgroundSelected: '#3A2C20',
-    textSecondary: '#A09080',
+    backgroundElement: "#2A1F16",
+    backgroundSelected: "#3A2C20",
+    textSecondary: "#A09080",
   },
 } as const;
 
@@ -26,22 +26,22 @@ export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 
 export const Fonts = Platform.select({
   ios: {
-    sans: 'system-ui',
-    serif: 'ui-serif',
-    rounded: 'ui-rounded',
-    mono: 'ui-monospace',
+    sans: "system-ui",
+    serif: "ui-serif",
+    rounded: "ui-rounded",
+    mono: "ui-monospace",
   },
   default: {
-    sans: 'normal',
-    serif: 'serif',
-    rounded: 'normal',
-    mono: 'monospace',
+    sans: "normal",
+    serif: "serif",
+    rounded: "normal",
+    mono: "monospace",
   },
   web: {
-    sans: 'var(--font-display)',
-    serif: 'var(--font-serif)',
-    rounded: 'var(--font-rounded)',
-    mono: 'var(--font-mono)',
+    sans: "var(--font-display)",
+    serif: "var(--font-serif)",
+    rounded: "var(--font-rounded)",
+    mono: "var(--font-mono)",
   },
 });
 

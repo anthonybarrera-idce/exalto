@@ -1,7 +1,8 @@
 {
   "expo": {
-    "name": "exalto",
-    "slug": "exalto",
+    "name": "Exalto",
+    "owner": "idcelgin",
+    "slug": "IDCHimnos",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -9,12 +10,13 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon",
-      "bundleIdentifier": "com.idcelgin.exalto",
+      "bundleIdentifier": "com.iglesiadecristoenelgin.idchimnos",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
+      "package": "com.iglesiadecristoenelgin.idchimnos",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -53,9 +55,8 @@
       "reactCompiler": true
     },
     "extra": {
-      "router": {},
       "eas": {
-        "projectId": "b2a03744-2e59-49d5-acb3-5a0d75ff509a"
+        "projectId": "36ed0ece-3cf9-487e-9bb8-fa4ddebf466b"
       }
     }
   }

@@ -1,17 +1,32 @@
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { SymbolView } from 'expo-symbols';
+import { Image, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { SymbolView } from "expo-symbols";
+import { useState } from "react";
 
-import { ThemedText } from '@/components/themed-text';
-import { useAudio } from '@/hooks/use-audio';
-import { HYMN_OF_THE_DAY, HYMNS, POPULAR_HYMNS, RECENTLY_PLAYED } from '@/data/hymns';
-import { Hymn } from '@/context/audio-context';
-import { AccentColor, AppBackground, BottomTabInset, MiniPlayerHeight, Spacing } from '@/constants/theme';
+import { ThemedText } from "@/components/themed-text";
+import { SearchModal } from "@/components/SearchModal";
+import { useAudio } from "@/hooks/use-audio";
+import {
+  HYMN_OF_THE_DAY,
+  HYMNS,
+  POPULAR_HYMNS,
+  RECENTLY_PLAYED,
+} from "@/data/hymns";
+import { Hymn } from "@/context/audio-context";
+import {
+  AccentColor,
+  AppBackground,
+  BottomTabInset,
+  MiniPlayerHeight,
+  Spacing,
+} from "@/constants/theme";
 
 export default function HomeScreen() {
   const { loadHymn, isPlayerVisible } = useAudio();
+  const [searchOpen, setSearchOpen] = useState(false);
 
-  const bottomPad = BottomTabInset + (isPlayerVisible ? MiniPlayerHeight : 0) + Spacing.three;
+  const bottomPad =
+    BottomTabInset + (isPlayerVisible ? MiniPlayerHeight : 0) + Spacing.three;
 
   function playHymn(hymn: Hymn) {
     loadHymn(hymn, HYMNS, HYMNS.indexOf(hymn));
@@ -19,13 +34,21 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.root}>
-      <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <SafeAreaView style={styles.safeArea} edges={["top"]}>
         {/* Header */}
         <View style={styles.header}>
-          <ThemedText style={styles.logo}>♪</ThemedText>
+          <Image
+            source={require("@/assets/images/Exalto-Logo.png")}
+            style={styles.logo}
+            resizeMode="contain"
+          />
           <View style={styles.headerRight}>
-            <Pressable hitSlop={8}>
-              <SymbolView name="magnifyingglass" size={22} tintColor="#FFFFFF" />
+            <Pressable hitSlop={8} onPress={() => setSearchOpen(true)}>
+              <SymbolView
+                name="magnifyingglass"
+                size={22}
+                tintColor="#FFFFFF"
+              />
             </Pressable>
             <View style={styles.avatar}>
               <ThemedText style={styles.avatarText}>A</ThemedText>
@@ -35,19 +58,33 @@ export default function HomeScreen() {
 
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPad }]}>
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: bottomPad },
+          ]}
+        >
           {/* Greeting */}
           <ThemedText style={styles.greeting}>Hello, Anthony</ThemedText>
 
           {/* Hymn of the Day */}
           <Pressable
-            style={[styles.featuredCard, { backgroundColor: HYMN_OF_THE_DAY.artworkColor }]}
-            onPress={() => playHymn(HYMN_OF_THE_DAY)}>
+            style={[
+              styles.featuredCard,
+              { backgroundColor: HYMN_OF_THE_DAY.artworkColor },
+            ]}
+            onPress={() => playHymn(HYMN_OF_THE_DAY)}
+          >
             <View style={styles.featuredBadge}>
-              <ThemedText style={styles.featuredBadgeText}>HYMN OF THE DAY</ThemedText>
+              <ThemedText style={styles.featuredBadgeText}>
+                HYMN OF THE DAY
+              </ThemedText>
             </View>
-            <ThemedText style={styles.featuredTitle}>{HYMN_OF_THE_DAY.title}</ThemedText>
-            <ThemedText style={styles.featuredArtist}>{HYMN_OF_THE_DAY.artist}</ThemedText>
+            <ThemedText style={styles.featuredTitle}>
+              {HYMN_OF_THE_DAY.title}
+            </ThemedText>
+            <ThemedText style={styles.featuredArtist}>
+              {HYMN_OF_THE_DAY.artist}
+            </ThemedText>
             <View style={styles.featuredPlayButton}>
               <SymbolView name="play.fill" size={22} tintColor="#FFFFFF" />
             </View>
@@ -58,13 +95,20 @@ export default function HomeScreen() {
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.horizontalList}>
+            contentContainerStyle={styles.horizontalList}
+          >
             {RECENTLY_PLAYED.map((hymn) => (
               <Pressable
                 key={hymn.id}
                 onPress={() => playHymn(hymn)}
-                style={styles.recentCard}>
-                <View style={[styles.recentArtwork, { backgroundColor: hymn.artworkColor }]} />
+                style={styles.recentCard}
+              >
+                <View
+                  style={[
+                    styles.recentArtwork,
+                    { backgroundColor: hymn.artworkColor },
+                  ]}
+                />
                 <ThemedText style={styles.recentTitle} numberOfLines={1}>
                   {hymn.title}
                 </ThemedText>
@@ -80,7 +124,12 @@ export default function HomeScreen() {
           <View style={styles.chartList}>
             {POPULAR_HYMNS.map((hymn, i) => (
               <View key={hymn.id} style={styles.chartRow}>
-                <View style={[styles.chartArtwork, { backgroundColor: hymn.artworkColor }]}>
+                <View
+                  style={[
+                    styles.chartArtwork,
+                    { backgroundColor: hymn.artworkColor },
+                  ]}
+                >
                   <ThemedText style={styles.chartNumber}>{i + 1}</ThemedText>
                 </View>
                 <View style={styles.chartInfo}>
@@ -93,7 +142,8 @@ export default function HomeScreen() {
                 </View>
                 <Pressable
                   onPress={() => playHymn(hymn)}
-                  style={styles.chartPlayButton}>
+                  style={styles.chartPlayButton}
+                >
                   <SymbolView name="play.fill" size={16} tintColor="#FFFFFF" />
                 </Pressable>
               </View>
@@ -101,6 +151,7 @@ export default function HomeScreen() {
           </View>
         </ScrollView>
       </SafeAreaView>
+      <SearchModal visible={searchOpen} onClose={() => setSearchOpen(false)} />
     </View>
   );
 }
@@ -114,20 +165,20 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.four,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingRight: Spacing.four,
+    paddingLeft: 0,
     paddingVertical: Spacing.two,
   },
   logo: {
-    color: '#FFFFFF',
-    fontSize: 24,
-    fontWeight: '700',
+    width: 80,
+    height: 32,
   },
   headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.three,
   },
   avatar: {
@@ -135,12 +186,12 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 16,
     backgroundColor: AccentColor,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   avatarText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
+    color: "#FFFFFF",
+    fontWeight: "700",
     fontSize: 14,
   },
   scrollContent: {
@@ -148,59 +199,59 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
   },
   greeting: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 28,
-    fontWeight: '700',
+    fontWeight: "700",
     marginTop: Spacing.two,
   },
   featuredCard: {
     borderRadius: 16,
     padding: Spacing.four,
     height: 180,
-    justifyContent: 'flex-end',
-    position: 'relative',
-    overflow: 'hidden',
+    justifyContent: "flex-end",
+    position: "relative",
+    overflow: "hidden",
   },
   featuredBadge: {
-    position: 'absolute',
+    position: "absolute",
     top: Spacing.three,
     left: Spacing.three,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: "rgba(255,255,255,0.2)",
     borderRadius: 4,
     paddingHorizontal: Spacing.two,
     paddingVertical: 3,
   },
   featuredBadgeText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: "700",
     letterSpacing: 1,
   },
   featuredTitle: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: "700",
     marginBottom: 4,
   },
   featuredArtist: {
-    color: 'rgba(255,255,255,0.7)',
+    color: "rgba(255,255,255,0.7)",
     fontSize: 13,
   },
   featuredPlayButton: {
-    position: 'absolute',
+    position: "absolute",
     right: Spacing.four,
     bottom: Spacing.four,
     width: 44,
     height: 44,
     borderRadius: 22,
     backgroundColor: AccentColor,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   sectionTitle: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: "700",
     marginTop: Spacing.two,
   },
   horizontalList: {
@@ -218,21 +269,21 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   recentTitle: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   recentArtist: {
-    color: '#A09080',
+    color: "#A09080",
     fontSize: 12,
   },
   chartList: {
     gap: Spacing.two,
   },
   chartRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#2A1F16',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#2A1F16",
     borderRadius: 12,
     padding: Spacing.two,
     gap: Spacing.three,
@@ -241,25 +292,25 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   chartNumber: {
-    color: 'rgba(255,255,255,0.5)',
+    color: "rgba(255,255,255,0.5)",
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   chartInfo: {
     flex: 1,
     gap: 2,
   },
   chartTitle: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   chartArtist: {
-    color: '#A09080',
+    color: "#A09080",
     fontSize: 12,
   },
   chartPlayButton: {
@@ -267,7 +318,7 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 18,
     backgroundColor: AccentColor,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

@@ -1,6 +1,12 @@
 import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import { createContext, useCallback, useContext, useEffect, useReducer } from 'react';
 
+export interface LyricSection {
+  type: 'verse' | 'chorus' | 'bridge';
+  number?: number;
+  lines: string[];
+}
+
 export interface Hymn {
   id: string;
   title: string;
@@ -9,6 +15,7 @@ export interface Hymn {
   artworkColor?: string;
   artworkUri?: string;
   audioUri: string;
+  lyrics?: LyricSection[];
 }
 
 interface AudioState {

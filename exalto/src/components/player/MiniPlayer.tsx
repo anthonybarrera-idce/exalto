@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, View } from "react-native";
 import { SymbolView } from "expo-symbols";
 
 import { useAudio } from "@/hooks/use-audio";
-import { AccentColor, MiniPlayerHeight, Spacing } from "@/constants/theme";
+import { MiniPlayerHeight, Spacing } from "@/constants/theme";
 import { ThemedText } from "@/components/themed-text";
 
 // Pure content — no background or border radius; the parent container handles shape.
@@ -13,12 +13,8 @@ export function MiniPlayer() {
 
   return (
     <View style={styles.row}>
-      <View
-        style={[
-          styles.artwork,
-          { backgroundColor: currentHymn.artworkColor ?? AccentColor },
-        ]}
-      />
+      {/* Transparent placeholder — the floating artwork in PlayerModal covers this */}
+      <View style={styles.artwork} />
 
       <View style={styles.info}>
         <ThemedText numberOfLines={1} style={styles.title}>

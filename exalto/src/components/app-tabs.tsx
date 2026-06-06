@@ -17,7 +17,7 @@ export default function AppTabs() {
     >
       <NativeTabs.Trigger name="index">
         <NativeTabs.Trigger.Icon
-          sf={{ default: "house", selected: "house.fill" }}
+          // sf={{ default: "house", selected: "house.fill" }}
           src={require("@/assets/images/tabIcons/home.png")}
           renderingMode="template"
         />

@@ -1,13 +1,22 @@
-import { Pressable, StyleSheet, View, Dimensions } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  Dimensions,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+} from 'react-native';
 import { SymbolView } from 'expo-symbols';
+import { useState } from 'react';
 
-import { useAudio } from '@/hooks/use-audio';
-import { AccentColor, Spacing } from '@/constants/theme';
 import { ThemedText } from '@/components/themed-text';
+import { ModeSwitcher } from '@/components/ModeSwitcher';
+import { useAudio } from '@/hooks/use-audio';
+import { useViewMode } from '@/context/view-mode-context';
+import { LyricSection } from '@/context/audio-context';
+import { AccentColor, Spacing } from '@/constants/theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const ARTWORK_SIZE = SCREEN_WIDTH - 64;
+const ARTWORK_SIZE = SCREEN_WIDTH - 68; // SCREEN_WIDTH - H_INSET*2 - paddingHorizontal*2
 
 function formatTime(secs: number): string {
   if (!secs || isNaN(secs)) return '0:00';
@@ -20,8 +29,9 @@ interface FullPlayerProps {
   onClose: () => void;
 }
 
-export function FullPlayer({ onClose }: FullPlayerProps) {
-  const insets = useSafeAreaInsets();
+// ─── Audio mode ─────────────────────────────────────────────────────────────
+
+function AudioView({ onClose }: FullPlayerProps) {
   const {
     currentHymn,
     isPlaying,
@@ -50,55 +60,54 @@ export function FullPlayer({ onClose }: FullPlayerProps) {
     else setRepeatMode('off');
   }
 
+  const displayTitle = currentHymn.hymnNumber
+    ? `${currentHymn.hymnNumber} ${currentHymn.title}`
+    : currentHymn.title;
+
   return (
-    <View style={[styles.container, { paddingTop: insets.top + Spacing.two, paddingBottom: insets.bottom + Spacing.three }]}>
-      {/* Drag handle */}
-      <View style={styles.dragHandle} />
+    <ScrollView
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={styles.audioScroll}>
+      {/* Transparent placeholder — floating artwork in PlayerModal covers this */}
+      <View style={styles.artwork} />
 
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerSpacer} />
-        <ThemedText style={styles.headerLabel}>Now Playing</ThemedText>
-        <Pressable onPress={onClose} hitSlop={8} style={styles.headerSpacer}>
-          <SymbolView name="chevron.down" size={20} tintColor="#A09080" />
-        </Pressable>
-      </View>
-
-      {/* Artwork */}
-      <View style={[styles.artwork, { backgroundColor: currentHymn.artworkColor ?? AccentColor }]}>
-        {currentHymn.hymnNumber && (
-          <ThemedText style={styles.hymnNumberText}>#{currentHymn.hymnNumber}</ThemedText>
-        )}
-      </View>
-
-      {/* Title + Like */}
-      <View style={styles.titleRow}>
-        <View style={styles.titleInfo}>
-          <ThemedText style={styles.songTitle} numberOfLines={1}>
-            {currentHymn.title}
+      {/* Title + artist + like */}
+      <View style={styles.titleBlock}>
+        <View style={styles.titleRow}>
+          <ThemedText style={styles.songTitle} numberOfLines={2}>
+            {displayTitle}
           </ThemedText>
-          <ThemedText style={styles.artistName} numberOfLines={1}>
-            {currentHymn.artist}
-          </ThemedText>
+          <Pressable onPress={toggleLike} hitSlop={8}>
+            <SymbolView
+              name={isLiked ? 'heart.fill' : 'heart'}
+              size={22}
+              tintColor={isLiked ? AccentColor : '#A09080'}
+            />
+          </Pressable>
         </View>
-        <Pressable onPress={toggleLike} hitSlop={8}>
-          <SymbolView
-            name={isLiked ? 'heart.fill' : 'heart'}
-            size={22}
-            tintColor={isLiked ? AccentColor : '#A09080'}
-          />
-        </Pressable>
+        <ThemedText style={styles.artistName}>{currentHymn.artist}</ThemedText>
       </View>
+
+      {/* Action pills */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.actionRow}>
+        <ActionPill icon="hand.thumbsup.fill" label="Like" onPress={toggleLike} />
+        <ActionPill icon="square.and.arrow.up" label="Share" />
+        <ActionPill icon="arrow.down.circle.fill" label="Download" />
+        <ActionPill icon="list.bullet" label="Queue" />
+      </ScrollView>
 
       {/* Progress */}
       <View style={styles.progressSection}>
         <Pressable
           style={styles.progressTrack}
           onPress={(e) => {
-            const tapX = e.nativeEvent.locationX;
-            // Use a default width if layout hasn't reported yet
-            const trackWidth = SCREEN_WIDTH - 64;
-            const ratio = Math.min(Math.max(tapX / trackWidth, 0), 1);
+            const ratio = Math.min(
+              Math.max(e.nativeEvent.locationX / (SCREEN_WIDTH - 68), 0),
+              1,
+            );
             seekTo(ratio * durationSecs);
           }}>
           <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
@@ -106,11 +115,11 @@ export function FullPlayer({ onClose }: FullPlayerProps) {
         </Pressable>
         <View style={styles.timeRow}>
           <ThemedText style={styles.timeText}>{formatTime(positionSecs)}</ThemedText>
-          <ThemedText style={styles.timeText}>-{formatTime(durationSecs - positionSecs)}</ThemedText>
+          <ThemedText style={styles.timeText}>{formatTime(durationSecs)}</ThemedText>
         </View>
       </View>
 
-      {/* Controls */}
+      {/* Playback controls */}
       <View style={styles.controls}>
         <Pressable onPress={toggleShuffle} hitSlop={8}>
           <SymbolView
@@ -119,25 +128,19 @@ export function FullPlayer({ onClose }: FullPlayerProps) {
             tintColor={shuffleEnabled ? AccentColor : '#55504A'}
           />
         </Pressable>
-
         <Pressable onPress={skipPrevious} hitSlop={8}>
           <SymbolView name="backward.fill" size={28} tintColor="#FFFFFF" />
         </Pressable>
-
-        <Pressable
-          style={styles.playButton}
-          onPress={isPlaying ? pause : play}>
+        <Pressable style={styles.playButton} onPress={isPlaying ? pause : play}>
           <SymbolView
             name={isPlaying ? 'pause.fill' : 'play.fill'}
             size={30}
             tintColor="#FFFFFF"
           />
         </Pressable>
-
         <Pressable onPress={skipNext} hitSlop={8}>
           <SymbolView name="forward.fill" size={28} tintColor="#FFFFFF" />
         </Pressable>
-
         <Pressable onPress={cycleRepeat} hitSlop={8}>
           <SymbolView
             name={repeatMode === 'one' ? 'repeat.1' : 'repeat'}
@@ -146,62 +149,227 @@ export function FullPlayer({ onClose }: FullPlayerProps) {
           />
         </Pressable>
       </View>
+    </ScrollView>
+  );
+}
+
+function ActionPill({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: string;
+  label: string;
+  onPress?: () => void;
+}) {
+  return (
+    <Pressable onPress={onPress} style={styles.actionPill}>
+      <SymbolView name={icon as any} size={14} tintColor="#FFFFFF" />
+      <ThemedText style={styles.actionPillText}>{label}</ThemedText>
+    </Pressable>
+  );
+}
+
+// ─── Hymnal mode ─────────────────────────────────────────────────────────────
+
+function HymnalView({ onClose }: FullPlayerProps) {
+  const { currentHymn, isLiked, toggleLike } = useAudio();
+  const [fontSize, setFontSize] = useState(15);
+
+  if (!currentHymn) return null;
+
+  const displayTitle = currentHymn.hymnNumber
+    ? `${currentHymn.hymnNumber} ${currentHymn.title}`
+    : currentHymn.title;
+
+  return (
+    <View style={styles.hymnalContainer}>
+      {/* Font size + right icons */}
+      <View style={styles.hymnalTopActions}>
+        <Pressable
+          style={styles.fontBtn}
+          onPress={() => setFontSize((s) => Math.min(s + 2, 24))}
+          hitSlop={6}>
+          <ThemedText style={styles.fontBtnText}>A</ThemedText>
+          <SymbolView name="arrow.up" size={10} tintColor="#A09080" />
+        </Pressable>
+        <Pressable
+          style={styles.fontBtn}
+          onPress={() => setFontSize((s) => Math.max(s - 2, 11))}
+          hitSlop={6}>
+          <ThemedText style={[styles.fontBtnText, { fontSize: 12 }]}>A</ThemedText>
+          <SymbolView name="arrow.down" size={10} tintColor="#A09080" />
+        </Pressable>
+
+        <View style={{ flex: 1 }} />
+
+        <Pressable onPress={toggleLike} hitSlop={8}>
+          <SymbolView
+            name={isLiked ? 'heart.fill' : 'heart'}
+            size={20}
+            tintColor={isLiked ? AccentColor : '#FFFFFF'}
+          />
+        </Pressable>
+        <Pressable hitSlop={8}>
+          <SymbolView name="doc.plaintext" size={20} tintColor="#FFFFFF" />
+        </Pressable>
+      </View>
+
+      {/* Lyrics */}
+      <ScrollView
+        style={styles.lyricsScroll}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.lyricsContent}>
+        {currentHymn.lyrics ? (
+          currentHymn.lyrics.map((section, i) => (
+            <LyricBlock key={i} section={section} fontSize={fontSize} dim={false} />
+          ))
+        ) : (
+          <ThemedText style={[styles.noLyrics, { fontSize }]}>
+            Lyrics not available for this hymn.
+          </ThemedText>
+        )}
+      </ScrollView>
+
+      {/* Bottom mini bar */}
+      <View style={styles.hymnalBottom}>
+        <View
+          style={[
+            styles.hymnalArt,
+            { backgroundColor: currentHymn.artworkColor ?? AccentColor },
+          ]}
+        />
+        <View style={styles.hymnalInfo}>
+          <ThemedText style={styles.hymnalTitle} numberOfLines={1}>
+            {displayTitle}
+          </ThemedText>
+          <ThemedText style={styles.hymnalArtist} numberOfLines={1}>
+            {currentHymn.artist}
+          </ThemedText>
+        </View>
+        <Pressable onPress={onClose} style={styles.closeBtn}>
+          <ThemedText style={styles.closeBtnText}>Close</ThemedText>
+        </Pressable>
+      </View>
     </View>
   );
 }
 
+function LyricBlock({
+  section,
+  fontSize,
+  dim,
+}: {
+  section: LyricSection;
+  fontSize: number;
+  dim: boolean;
+}) {
+  const heading =
+    section.type === 'chorus'
+      ? 'Chorus'
+      : section.type === 'bridge'
+        ? 'Bridge'
+        : `Verse ${section.number ?? ''}`;
+
+  return (
+    <View style={styles.lyricBlock}>
+      <ThemedText style={[styles.lyricHeading, dim && styles.lyricDim]}>
+        {heading}
+      </ThemedText>
+      <View style={styles.lyricLines}>
+        {section.lines.map((line, i) => (
+          <ThemedText
+            key={i}
+            style={[styles.lyricLine, { fontSize, lineHeight: fontSize * 1.6 }, dim && styles.lyricDim]}>
+            {line}
+          </ThemedText>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+// ─── Root FullPlayer ─────────────────────────────────────────────────────────
+
+export function FullPlayer({ onClose }: FullPlayerProps) {
+  const { viewMode } = useViewMode();
+
+  return (
+    <View
+      style={styles.container}>
+      {/* Drag handle */}
+      <View style={styles.dragHandle} />
+
+      {/* Top bar: mode switcher + right icons */}
+      <View style={styles.topBar}>
+        <ModeSwitcher variant="inline" />
+
+        <View style={{ flex: 1 }} />
+
+        {viewMode === 'audio' ? (
+          <>
+            <Pressable hitSlop={8}>
+              <SymbolView name="airplayvideo" size={20} tintColor="#FFFFFF" />
+            </Pressable>
+            <Pressable hitSlop={8}>
+              <SymbolView name="ellipsis" size={20} tintColor="#FFFFFF" />
+            </Pressable>
+          </>
+        ) : null}
+      </View>
+
+      {/* Content */}
+      {viewMode === 'audio' ? (
+        <AudioView onClose={onClose} />
+      ) : (
+        <HymnalView onClose={onClose} />
+      )}
+    </View>
+  );
+}
+
+// ─── Styles ──────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingTop: Spacing.two,
     paddingHorizontal: Spacing.four,
-    alignItems: 'center',
   },
   dragHandle: {
     width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#3A2C20',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignSelf: 'center',
     marginBottom: Spacing.three,
   },
-  header: {
+  topBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    width: '100%',
-    marginBottom: Spacing.four,
+    gap: Spacing.three,
+    marginBottom: Spacing.three,
   },
-  headerSpacer: {
-    flex: 1,
-    alignItems: 'flex-end',
-  },
-  headerLabel: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-    letterSpacing: 0.5,
+
+  // ── Audio ──
+  audioScroll: {
+    gap: Spacing.three,
+    paddingBottom: Spacing.five,
   },
   artwork: {
     width: ARTWORK_SIZE,
     height: ARTWORK_SIZE,
-    borderRadius: 16,
-    marginBottom: Spacing.five,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignSelf: 'center',
   },
-  hymnNumberText: {
-    color: 'rgba(255,255,255,0.5)',
-    fontSize: 48,
-    fontWeight: '700',
+  titleBlock: {
+    gap: 4,
+    marginTop: Spacing.two,
   },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    width: '100%',
-    marginBottom: Spacing.four,
+    justifyContent: 'space-between',
     gap: Spacing.three,
-  },
-  titleInfo: {
-    flex: 1,
-    gap: 4,
   },
   songTitle: {
     color: '#FFFFFF',
@@ -210,17 +378,35 @@ const styles = StyleSheet.create({
   },
   artistName: {
     color: '#A09080',
-    fontSize: 16,
+    fontSize: 15,
+  },
+  actionRow: {
+    gap: Spacing.two,
+    paddingVertical: Spacing.one,
+  },
+  actionPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+  },
+  actionPillText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '500',
   },
   progressSection: {
-    width: '100%',
-    marginBottom: Spacing.five,
+    gap: Spacing.two,
+    marginTop: Spacing.one,
+    marginHorizontal: Spacing.three,
   },
   progressTrack: {
     height: 4,
-    backgroundColor: '#3A2C20',
+    backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 2,
-    marginBottom: Spacing.two,
     position: 'relative',
   },
   progressFill: {
@@ -230,12 +416,12 @@ const styles = StyleSheet.create({
   },
   progressThumb: {
     position: 'absolute',
-    top: -5,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
+    top: -6,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
     backgroundColor: '#FFFFFF',
-    marginLeft: -7,
+    marginLeft: -8,
   },
   timeRow: {
     flexDirection: 'row',
@@ -249,7 +435,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    width: '100%',
+    marginTop: Spacing.two,
   },
   playButton: {
     width: 64,
@@ -258,5 +444,93 @@ const styles = StyleSheet.create({
     backgroundColor: AccentColor,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+
+  // ── Hymnal ──
+  hymnalContainer: {
+    flex: 1,
+  },
+  hymnalTopActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    marginBottom: Spacing.three,
+  },
+  fontBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  fontBtnText: {
+    color: '#A09080',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  lyricsScroll: {
+    flex: 1,
+  },
+  lyricsContent: {
+    gap: Spacing.four,
+    paddingBottom: Spacing.five,
+  },
+  lyricBlock: {
+    gap: Spacing.two,
+  },
+  lyricHeading: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  lyricLines: {
+    gap: 4,
+  },
+  lyricLine: {
+    color: '#D0C0A8',
+  },
+  lyricDim: {
+    opacity: 0.45,
+  },
+  noLyrics: {
+    color: '#A09080',
+    textAlign: 'center',
+    marginTop: Spacing.six,
+  },
+  hymnalBottom: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    paddingVertical: Spacing.three,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(255,255,255,0.1)',
+    marginTop: Spacing.two,
+  },
+  hymnalArt: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+  },
+  hymnalInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  hymnalTitle: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  hymnalArtist: {
+    color: '#A09080',
+    fontSize: 12,
+  },
+  closeBtn: {
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 20,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: 8,
+  },
+  closeBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '500',
   },
 });
