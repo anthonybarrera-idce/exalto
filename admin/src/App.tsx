@@ -9,11 +9,11 @@ import { HymnEditorPage } from "@/pages/hymn-editor"
 import { HymnalsPage } from "@/pages/hymnals"
 import { HymnsPage } from "@/pages/hymns"
 import { LoginPage } from "@/pages/login"
+import { UsersPage } from "@/pages/users"
 
 const LATER: { path: string; group: string; title: string; description: string }[] = [
   { path: "recordings", group: "Content", title: "Recordings", description: "Audio versions of hymns." },
   { path: "featured", group: "Content", title: "Featured", description: "Hymn of the Day and Discover sections." },
-  { path: "users", group: "Community", title: "Users", description: "Everyone with an Exalto account." },
   { path: "composer-requests", group: "Community", title: "Composer requests", description: "People asking to upload hymns." },
   { path: "reports", group: "Community", title: "Reports", description: "Content flagged by people in the app." },
   { path: "settings", group: "System", title: "Settings", description: "Admin team and app settings." },
@@ -36,6 +36,7 @@ export default function App() {
           <Route path="hymnals" element={<HymnalsPage />} />
           <Route path="hymns/:id" element={<HymnEditorPage />} />
           <Route path="audit-log" element={<AuditLogPage />} />
+          <Route path="users" element={<UsersPage />} />
           {LATER.map((p) => (
             <Route key={p.path} path={p.path} element={<ComingSoonPage {...p} />} />
           ))}

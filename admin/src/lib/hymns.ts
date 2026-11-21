@@ -85,7 +85,7 @@ export function useAuditLog(max = 20): Live<AuditEntry[]> {
 }
 
 /** Every admin write goes through a batch that also appends an audit log entry. */
-function batchWithAudit(action: string, target: string) {
+export function batchWithAudit(action: string, target: string) {
   const user = auth.currentUser
   if (!user) throw new Error("Sign in again to make changes.")
   const batch = writeBatch(db)

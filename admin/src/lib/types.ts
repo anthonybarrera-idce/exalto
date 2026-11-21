@@ -48,3 +48,20 @@ export type AuditEntry = {
   target: string
   at?: Timestamp
 }
+
+export type UserRole = "listener" | "composer" | AdminRole
+export type UserStatus = "active" | "warned" | "suspended"
+
+/** Profile written by the mobile app at sign-up (`users/{uid}`). `role` is mirrored from the auth claim by a Cloud Function. */
+export type AppUser = {
+  id: string
+  displayName: string
+  handle: string
+  photoURL?: string
+  church?: string
+  role: UserRole
+  status: UserStatus
+  uploadCount: number
+  createdAt?: Timestamp
+  lastActiveAt?: Timestamp
+}
