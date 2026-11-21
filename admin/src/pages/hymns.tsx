@@ -1,6 +1,6 @@
 import { ChevronLeft, ChevronRight, EyeOff, MoreHorizontal, Pencil, Plus, Search, Trash2, Upload } from "lucide-react"
 import { useMemo, useState } from "react"
-import { Link, useNavigate } from "react-router"
+import { Link, useNavigate, useSearchParams } from "react-router"
 import { toast } from "sonner"
 
 import { Page } from "@/components/admin-layout"
@@ -50,7 +50,10 @@ export function HymnsPage() {
   const { role } = useAuth()
   const canEdit = canEditContent(role)
   const navigate = useNavigate()
-  const [filter, setFilter] = useState<Filter>("all")
+  const [params, setParams] = useSearchParams()
+  const filter: Filter = params.get("hymnal") ?? (params.get("status") === "draft" ? "draft" : "all")
+  const setFilter = (v: string) =>
+    setParams(v === "all" ? {} : v === "draft" ? { status: "draft" } : { hymnal: v }, { replace: true })
   const [q, setQ] = useState("")
   const [page, setPage] = useState(0)
   const [toDelete, setToDelete] = useState<Hymn | null>(null)
