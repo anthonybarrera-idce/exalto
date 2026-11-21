@@ -46,6 +46,75 @@ export function parseLegacyLyrics(body: string): LyricSection[] {
   return sections
 }
 
+/** A block from the legacy app's Realtime Database (Editor.js format). */
+export type LegacyBlock = { type: string; data?: { text?: string } }
+
+function cleanText(html: string) {
+  return html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .trim()
+}
+
+/**
+ * Stanzas in the legacy database are one paragraph with no line breaks.
+ * Split after , ; . ! ? when the next word starts with a capital letter,
+ * which is how the hymnal starts each sung line.
+ */
+export function splitStanza(text: string): string[] {
+  return cleanText(text)
+    .split(/\n|(?<=[,;.!?:])\s+(?=[¡¿"“(]?[A-ZÁÉÍÓÚÑÜ])/u)
+    .map((l) => l.trim())
+    .filter(Boolean)
+}
+
+/**
+ * Converts legacy blocks to sections. The first header is the title; numeric
+ * headers start verses, "Coro…" headers start a chorus, and any other header
+ * (e.g. "Amén.") is kept as a line so no text is lost.
+ */
+export function parseLegacyBlocks(blocks: LegacyBlock[]): { title: string; sections: LyricSection[] } {
+  const sections: LyricSection[] = []
+  let current: LyricSection | null = null
+  let title = ""
+  const push = () => {
+    if (current && current.lines.length) sections.push(current)
+    current = null
+  }
+  for (const b of blocks) {
+    const text = cleanText(b.data?.text ?? "")
+    if (!text) continue
+    if (b.type === "header") {
+      if (!title) {
+        title = text
+      } else if (/^\d+\.?$/.test(text)) {
+        push()
+        current = { type: "verse", number: Number.parseInt(text, 10), lines: [] }
+      } else if (CHORUS.test(text)) {
+        push()
+        current = { type: "chorus", lines: [] }
+      } else if (BRIDGE.test(text)) {
+        push()
+        current = { type: "bridge", lines: [] }
+      } else {
+        if (!current) current = { type: "verse", lines: [] }
+        current.lines.push(text)
+      }
+    } else if (b.type === "paragraph") {
+      if (!current) current = { type: "verse", lines: [] }
+      current.lines.push(...splitStanza(text))
+    }
+  }
+  push()
+  return { title, sections }
+}
+
 export function sectionLabel(s: LyricSection) {
   if (s.type === "verse") return `Verse${s.number ? ` ${s.number}` : ""}`
   return s.type === "chorus" ? "Chorus" : "Bridge"

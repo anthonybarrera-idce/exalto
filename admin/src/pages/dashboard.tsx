@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton"
 import { useAuditLog, useHymns } from "@/lib/hymns"
 import { formatWhen } from "@/lib/format"
+import { isOfficial } from "@/lib/hymnals"
 
 function Stat({ label, value, hint, icon: Icon, loading }: { label: string; value: number; hint: string; icon: typeof BookOpen; loading: boolean }) {
   return (
@@ -27,7 +28,7 @@ export function DashboardPage() {
   const hymns = useHymns()
   const audit = useAuditLog(8)
   const list = hymns.data
-  const official = list.filter((h) => h.hymnalId === "idc-himnario").length
+  const official = list.filter((h) => isOfficial(h.hymnalId)).length
   const published = list.filter((h) => h.status === "published").length
   const drafts = list.filter((h) => h.status === "draft").length
   const review = list.filter((h) => h.status === "review")

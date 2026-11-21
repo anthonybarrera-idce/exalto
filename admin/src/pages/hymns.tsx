@@ -30,11 +30,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { canEditContent, useAuth } from "@/lib/auth"
 import { formatWhen } from "@/lib/format"
-import { hymnalName } from "@/lib/hymnals"
+import { HYMNALS, hymnalName, isOfficial } from "@/lib/hymnals"
 import { deleteHymn, setHymnStatus, useHymns } from "@/lib/hymns"
 import type { Hymn } from "@/lib/types"
 
-type Filter = "all" | "idc-himnario" | "community" | "draft"
+type Filter = "all" | "draft" | string
 const PAGE_SIZE = 20
 
 function matches(h: Hymn, q: string) {
@@ -55,13 +55,12 @@ export function HymnsPage() {
   const [page, setPage] = useState(0)
   const [toDelete, setToDelete] = useState<Hymn | null>(null)
 
-  const counts = useMemo(
-    () => ({
-      all: data.length,
-      "idc-himnario": data.filter((h) => h.hymnalId === "idc-himnario").length,
-      community: data.filter((h) => h.hymnalId === "community").length,
-      draft: data.filter((h) => h.status === "draft").length,
-    }),
+  const tabs = useMemo(
+    () => [
+      { value: "all", label: "All", count: data.length },
+      ...HYMNALS.map((hm) => ({ value: hm.id, label: hm.name, count: data.filter((h) => h.hymnalId === hm.id).length })),
+      { value: "draft", label: "Drafts", count: data.filter((h) => h.status === "draft").length },
+    ],
     [data],
   )
 
@@ -110,18 +109,11 @@ export function HymnsPage() {
       }
     >
       <div className="flex flex-wrap items-center gap-3">
-        <Tabs value={filter} onValueChange={(v) => { setFilter(v as Filter); setPage(0) }}>
+        <Tabs value={filter} onValueChange={(v) => { setFilter(v); setPage(0) }}>
           <TabsList>
-            {(
-              [
-                ["all", "All"],
-                ["idc-himnario", "IDC Himnario"],
-                ["community", "Community"],
-                ["draft", "Drafts"],
-              ] as const
-            ).map(([v, label]) => (
-              <TabsTrigger key={v} value={v}>
-                {label} <span className="text-muted-foreground">{counts[v]}</span>
+            {tabs.map((t) => (
+              <TabsTrigger key={t.value} value={t.value}>
+                {t.label} <span className="text-muted-foreground">{t.count}</span>
               </TabsTrigger>
             ))}
           </TabsList>
@@ -173,7 +165,7 @@ export function HymnsPage() {
                 <TableCell className="font-mono text-sm">{h.label ?? h.number ?? "—"}</TableCell>
                 <TableCell className="font-medium">{h.title}</TableCell>
                 <TableCell>
-                  <Badge variant={h.hymnalId === "community" ? "secondary" : "outline"}>{hymnalName(h.hymnalId)}</Badge>
+                  <Badge variant={isOfficial(h.hymnalId) ? "outline" : "secondary"}>{hymnalName(h.hymnalId)}</Badge>
                 </TableCell>
                 <TableCell>
                   <HymnStatusBadge status={h.status} />

@@ -12,7 +12,8 @@
     "dev:emulated": "VITE_USE_EMULATORS=true vite",
     "set-role": "node scripts/set-role.ts",
     "import-legacy": "node scripts/import-legacy.ts",
-    "typecheck": "tsc -b"
+    "typecheck": "tsc -b",
+    "import-rtdb": "node scripts/import-rtdb.ts"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.3.0",
