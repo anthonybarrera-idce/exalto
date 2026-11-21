@@ -1,0 +1,320 @@
+<title>Exalto Build Roadmap</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: single reading column, sections as chapters; tables scroll inside their own frames. Dark-first, after the app's own palette. */
+:root {
+  --bg: #150F08;
+  --surface: #211810;
+  --surface-2: #2A1F16;
+  --line: #3A2C20;
+  --fg: #F3EDE6;
+  --muted: #A09080;
+  --accent: #04C1FF;
+  --warm: #E7B57A;
+  --ok: #5CCB8F;
+  --warn: #E7B57A;
+  --todo: #F08A6B;
+  --display: "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
+  --body: "Inter", system-ui, -apple-system, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #FBF8F4; --surface: #FFFFFF; --surface-2: #F3EDE6; --line: #E4DACE;
+    --fg: #1E1610; --muted: #6E6052; --accent: #0083B0; --warm: #A86A22;
+    --ok: #1E8A55; --warn: #A86A22; --todo: #C2492A; color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --bg: #FBF8F4; --surface: #FFFFFF; --surface-2: #F3EDE6; --line: #E4DACE;
+  --fg: #1E1610; --muted: #6E6052; --accent: #0083B0; --warm: #A86A22;
+  --ok: #1E8A55; --warn: #A86A22; --todo: #C2492A; color-scheme: light;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg); font: 15px/1.6 var(--body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 40px 80px;
+}
+main { max-width: 820px; margin: 0 auto; display: flex; flex-direction: column; gap: 56px; }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; line-height: 1.2; }
+h1 { font-size: clamp(30px, 6vw, 44px); font-weight: 800; letter-spacing: -0.02em; }
+h2 { font-size: 24px; font-weight: 700; letter-spacing: -0.01em; }
+h3 { font-size: 16px; font-weight: 700; }
+p { margin: 0; max-width: 68ch; }
+a { color: var(--accent); }
+code { font-family: var(--mono); font-size: 0.86em; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+.eyebrow { font: 600 12px/1 var(--body); letter-spacing: 0.12em; text-transform: uppercase; color: var(--warm); }
+section { display: flex; flex-direction: column; gap: 18px; }
+.lede { font-size: 17px; color: var(--muted); }
+.hero { display: flex; flex-direction: column; gap: 14px; padding-bottom: 28px; border-bottom: 1px solid var(--line); }
+.verse { font-family: var(--display); color: var(--muted); font-size: 14px; }
+ul, ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; max-width: 70ch; }
+li::marker { color: var(--muted); }
+.callout { background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 10px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; }
+.callout.warm { border-left-color: var(--warm); }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.card ul { font-size: 14px; }
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
+table { border-collapse: collapse; width: 100%; min-width: 560px; font-size: 14px; }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 600 12px/1.3 var(--body); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); background: var(--surface); }
+tr:last-child td { border-bottom: 0; }
+td.nm { font-weight: 600; white-space: nowrap; }
+.chip { display: inline-block; font: 600 11px/1 var(--body); letter-spacing: 0.04em; padding: 5px 8px; border-radius: 999px; white-space: nowrap; border: 1px solid currentColor; }
+.chip.ok { color: var(--ok); } .chip.part { color: var(--warn); } .chip.todo { color: var(--todo); } .chip.na { color: var(--muted); }
+.phase { display: grid; grid-template-columns: 74px 1fr; gap: 16px; padding: 18px 0; border-top: 1px solid var(--line); }
+.phase:first-of-type { border-top: 0; }
+.phase .tag { font: 700 13px/1.2 var(--display); color: var(--accent); }
+.phase .tag small { display: block; font: 500 12px/1.4 var(--body); color: var(--muted); margin-top: 4px; }
+.phase > div:last-child { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.ship { font-size: 13px; color: var(--warm); font-weight: 600; }
+.decisions { counter-reset: d; list-style: none; padding: 0; gap: 12px; }
+.decisions li { counter-increment: d; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px 14px 52px; position: relative; }
+.decisions li::before { content: counter(d); position: absolute; left: 16px; top: 14px; width: 24px; height: 24px; border-radius: 50%; background: var(--accent); color: var(--bg); font: 700 13px/24px var(--display); text-align: center; }
+.decisions b { display: block; margin-bottom: 2px; }
+.rec { color: var(--muted); font-size: 14px; }
+.muted { color: var(--muted); font-size: 14px; }
+@media (max-width: 520px) { .phase { grid-template-columns: 1fr; gap: 6px; } }
+</style>
+
+<main>
+
+<header class="hero">
+  <span class="eyebrow">IDC Himnos → Exalto · plan as of 13 Nov 2026</span>
+  <h1>Exalto build roadmap</h1>
+  <p class="lede">How to turn the Exalto redesign into a production release on the existing IDC Himnos store listings, which screens still need mockups, and the order to build the composer and social features on top of the hymn book.</p>
+</header>
+
+<section>
+  <span class="eyebrow">Where things stand</span>
+  <h2>Summary</h2>
+  <ul>
+    <li><b>Old app (production):</b> Expo SDK 49, v2.0.5 (Android versionCode 13). 280 Spanish hymns stored locally and in Firebase Realtime Database (<code>himnos</code>, <code>canticos</code>). Favorites and font size are saved on the device. It has an audio player and checks for OTA updates on launch.</li>
+    <li><b>New app (Exalto):</b> Expo SDK 56, Expo Router, native tabs, expo-audio. Home, Hymns, Library, Profile, search, mini player and full player are scaffolded with <b>English mock data</b> and sample MP3s.</li>
+    <li><b>Figma:</b> 14 screens done. Home, the hymn list in book and audio modes, search and results, the lyrics sheet, the player, Library, listener and composer profiles, album detail, New Album and New Audio. Logo and icon explorations are also in the file.</li>
+    <li><b>Good news:</b> the new <code>app.json</code> already uses the same EAS project ID, slug, iOS bundle ID and Android package as production. Builds will land as an <b>update to the existing app</b>, not a new listing.</li>
+  </ul>
+  <div class="callout warm">
+    <h3>Recommendation</h3>
+    <p>Ship <b>Exalto 3.0 as the redesigned hymn book first</b>, with real hymns, guest use and no accounts. That gets production off SDK 49 soon. Then add accounts, the composer studio and social features in 3.x releases. The social backend is the long pole and shouldn't hold up the store update.</p>
+  </div>
+</section>
+
+<section id="release">
+  <span class="eyebrow">Phase 1 blocker list</span>
+  <h2>Publishing to Expo and updating production</h2>
+  <div class="callout">
+    <p><b>This can't go out as an OTA update.</b> The production binary is SDK 49 with <code>runtimeVersion: sdkVersion</code>. Exalto is SDK 56 with different native modules, so it needs new store binaries (<code>eas build</code> + <code>eas submit</code>). Users get it as a normal App Store / Play update. OTA works again for 3.x once <code>expo-updates</code> is set up in 3.0.</p>
+  </div>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Item</th><th>Today</th><th>Change</th></tr></thead>
+    <tbody>
+      <tr><td class="nm">App version</td><td><code>1.0.0</code> (store has 2.0.5)</td><td>Set <code>3.0.0</code>. App Store Connect rejects lower versions.</td></tr>
+      <tr><td class="nm">Android versionCode</td><td><code>appVersionSource: remote</code></td><td>Check with <code>eas build:version:get</code>. If it's not already above 13, set it to 14 or higher.</td></tr>
+      <tr><td class="nm">OTA updates</td><td>no <code>expo-updates</code>, no channels</td><td>Add <code>expo-updates</code>, <code>runtimeVersion: {policy: "fingerprint"}</code>, the updates URL, and <code>development</code>/<code>preview</code>/<code>production</code> channels in <code>eas.json</code>.</td></tr>
+      <tr><td class="nm">Expo owner</td><td><code>owner: "idcelgin"</code></td><td>Confirm this is the account that owns project <code>36ed0ece…</code>, or builds will fail.</td></tr>
+      <tr><td class="nm">Icons and splash</td><td>template placeholders (Expo symbol, <code>#208AEF</code> splash, <code>#E6F4FE</code> adaptive background)</td><td>Export the Exalto mark into <code>expo.icon</code>, the Android adaptive layers, the splash and the favicon.</td></tr>
+      <tr><td class="nm">Permissions</td><td><code>RECORD_AUDIO</code> requested</td><td>Remove it (nothing records audio, and Play review flags it). Turn on background playback in the expo-audio plugin.</td></tr>
+      <tr><td class="nm">Hymn content</td><td>English mock hymns, SoundHelix audio</td><td>Port the 280 Spanish hymns. Parse the old plain-text bodies (I / II / Coro) into structured verse and chorus sections, and point audio at the real files.</td></tr>
+      <tr><td class="nm">Language</td><td>English UI</td><td>Add i18n with Spanish as the default; current users are Spanish-speaking.</td></tr>
+      <tr><td class="nm">Existing user data</td><td>old <code>favs</code> and <code>fontSize</code> in AsyncStorage</td><td>Read them on first launch and migrate into the new store so nobody loses their favorites.</td></tr>
+      <tr><td class="nm">Store listing</td><td>"IDCHimnos"</td><td>Rename to Exalto. Add new screenshots, description and privacy labels.</td></tr>
+      <tr><td class="nm">Repo layout</td><td>app in <code>exalto/</code>, mock PNGs at root</td><td>Run EAS from <code>exalto/</code>. Move the PNGs to <code>docs/</code>.</td></tr>
+    </tbody>
+  </table></div>
+  <p class="muted">Release path: internal build → TestFlight + Play internal testing → staged Play rollout (10% → 100%) → App Store phased release.</p>
+</section>
+
+<section id="screens">
+  <span class="eyebrow">Inventory</span>
+  <h2>Screens designed vs. built</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Screen</th><th>Figma</th><th>Code</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td class="nm">Home</td><td><span class="chip ok">Designed</span></td><td><span class="chip part">Mock data</span></td><td>Hymn of the Day, Recently Played, Popular Chart</td></tr>
+      <tr><td class="nm">Hymns · book mode</td><td><span class="chip ok">Designed</span></td><td><span class="chip part">Mock data</span></td><td>Numbered list, read and play actions</td></tr>
+      <tr><td class="nm">Hymns · audio mode</td><td><span class="chip ok">Designed</span></td><td><span class="chip part">Mock data</span></td><td>Book/headphones toggle</td></tr>
+      <tr><td class="nm">Search</td><td><span class="chip ok">Designed</span></td><td><span class="chip part">Mock data</span></td><td>SearchModal</td></tr>
+      <tr><td class="nm">Search results</td><td><span class="chip ok">Designed</span></td><td><span class="chip todo">Not built</span></td><td>Shows matching lyric snippets, so lyrics need full-text search</td></tr>
+      <tr><td class="nm">Lyrics sheet</td><td><span class="chip ok">Designed</span></td><td><span class="chip part">Partial</span></td><td>Font size controls, favorite, sheet-music icon</td></tr>
+      <tr><td class="nm">Audio player</td><td><span class="chip ok">Designed</span></td><td><span class="chip part">Partial</span></td><td>Like, Share, Download, Queue, Cast</td></tr>
+      <tr><td class="nm">Mini player</td><td><span class="chip ok">Designed</span></td><td><span class="chip ok">Built</span></td><td></td></tr>
+      <tr><td class="nm">Library</td><td><span class="chip ok">Designed</span></td><td><span class="chip part">Mock data</span></td><td>Liked Hymns, playlists, + New</td></tr>
+      <tr><td class="nm">Profile · listener</td><td><span class="chip ok">Designed</span></td><td><span class="chip part">Mock data</span></td><td>Followers, public playlists</td></tr>
+      <tr><td class="nm">Profile · composer</td><td><span class="chip ok">Designed</span></td><td><span class="chip todo">Not built</span></td><td>Albums + New</td></tr>
+      <tr><td class="nm">Album detail</td><td><span class="chip ok">Designed</span></td><td><span class="chip todo">Not built</span></td><td>Track list, + Add Hymn</td></tr>
+      <tr><td class="nm">New album</td><td><span class="chip ok">Designed</span></td><td><span class="chip todo">Not built</span></td><td>Cover, name, description</td></tr>
+      <tr><td class="nm">New audio</td><td><span class="chip ok">Designed</span></td><td><span class="chip todo">Not built</span></td><td>File, name, description, composer. Needs lyrics and rights fields.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="mock">
+  <span class="eyebrow">Design backlog</span>
+  <h2>What's left to mock up</h2>
+  <p>Grouped by the phase that needs them, so design stays one phase ahead of code. Every screen follows the existing style: warm dark base, glass sheets with a cyan-to-amber border, cyan pill buttons.</p>
+  <div class="grid2">
+    <div class="card">
+      <h3>0 · Foundations (first)</h3>
+      <ul>
+        <li>Turn existing layers into Figma components and variables: buttons, hymn row, playlist row, sheet, mini player, tab bar, inputs, upload zone. The file is mostly loose groups right now.</li>
+        <li>Make tab icons, header (logo vs. page title) and avatar consistent across frames</li>
+        <li>Final app icon, splash, Android adaptive icon</li>
+        <li>Empty, loading, offline and error states</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>1 · Hymn book (3.0)</h3>
+      <ul>
+        <li>Hymnal picker: official IDC Himnario vs. community hymns</li>
+        <li>Lyrics view for hymns with no recording</li>
+        <li>Sheet music / PDF viewer (the doc icon on the lyrics sheet)</li>
+        <li>Reading settings: text size, keep screen awake, language</li>
+        <li>Playlist detail, New Playlist sheet, Add to Playlist sheet</li>
+        <li>Queue view and hymn overflow menu</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>2 · Accounts</h3>
+      <ul>
+        <li>Welcome: continue as guest or sign in</li>
+        <li>Sign in / sign up (Apple, Google, email)</li>
+        <li>Profile setup: name, photo, handle</li>
+        <li>Settings, Edit Profile, notification preferences</li>
+        <li>Delete account (required by both stores)</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>3 · Composer studio</h3>
+      <ul>
+        <li>Become a Composer flow, with request and approval</li>
+        <li><b>Lyrics editor</b> with verse, chorus and bridge blocks. This is the bridge between uploads and the hymn book.</li>
+        <li>Expand New Audio: cover, album, language, tags, scripture reference, key, and a rights confirmation</li>
+        <li>Upload progress and processing states; drafts and visibility</li>
+        <li>Edit or delete a hymn or album; creator stats (plays, likes, followers)</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>4 · Social and discovery</h3>
+      <ul>
+        <li>Discover tab: new releases, trending, composers to follow, browse by theme or scripture</li>
+        <li>Composer profile as others see it (Follow, hymns, albums, about)</li>
+        <li>Followers / following lists</li>
+        <li>Activity and notifications</li>
+        <li>Share card and deep-link landing</li>
+        <li>Report content and block user sheets</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Navigation proposal</h3>
+      <ul>
+        <li>Four tabs: <b>Home · Himnario · Discover · Library</b></li>
+        <li>Avatar opens Profile; composers create from Profile → + New</li>
+        <li>Lyrics and player stay as sheets above the tabs, with the mini player docked</li>
+        <li>Moderation and official hymnal editing go in a small web admin, not the app</li>
+      </ul>
+    </div>
+  </div>
+  <p class="muted">Suggested Figma process: add a "Components" page and a "Proposed" page so your current frames stay untouched, then review the proposed screens before code.</p>
+</section>
+
+<section id="backend">
+  <span class="eyebrow">Platform</span>
+  <h2>Backend and data model</h2>
+  <p>The hymn book works offline with no backend. Social features need auth, a database, file storage for audio and images, and moderation. <b>Supabase</b> fits well: Postgres for follows, playlists and albums; row-level security; Apple and Google sign-in; storage; and Spanish full-text search for the lyric-snippet results. Staying on the existing Firebase project is the alternative, since the church already uses it, but lyric search and relational queries are harder there.</p>
+  <div class="callout">
+    <p><b>Key modeling choice:</b> keep the <i>hymn</i> (text, number, lyrics) separate from its <i>recordings</i> (audio). One hymn can have many recordings from different composers or choirs. The hymn book stays text-first, and a composer can upload a recording of an existing hymn or a brand-new hymn.</p>
+  </div>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Table</th><th>Holds</th></tr></thead>
+    <tbody>
+      <tr><td class="nm">profiles</td><td>handle, display name, avatar, bio, role (listener / composer), social links</td></tr>
+      <tr><td class="nm">hymnals</td><td>official IDC Himnario, community, and future church hymnals</td></tr>
+      <tr><td class="nm">hymns</td><td>hymnal, number, title, author, lyrics (JSON sections), language, tags, scripture, visibility, status</td></tr>
+      <tr><td class="nm">recordings</td><td>hymn, uploader, audio path, duration, cover, performer</td></tr>
+      <tr><td class="nm">albums · album_items</td><td>a composer's collections of recordings</td></tr>
+      <tr><td class="nm">playlists · playlist_items</td><td>a user's playlists; Liked Hymns is a system playlist</td></tr>
+      <tr><td class="nm">follows · likes · plays</td><td>social graph, counts, Popular Chart, Recently Played</td></tr>
+      <tr><td class="nm">reports · blocks · notifications</td><td>trust and safety, activity feed</td></tr>
+    </tbody>
+  </table></div>
+  <p class="muted">Audio: transcode uploads to AAC about 128 kbps in a background function and serve through a CDN. Cache the official hymnal on the device so the hymn book works with no signal.</p>
+</section>
+
+<section id="phases">
+  <span class="eyebrow">Sequence</span>
+  <h2>Build phases</h2>
+  <div>
+    <div class="phase">
+      <div class="tag">Phase 1<small>Exalto 3.0</small></div>
+      <div>
+        <h3>Redesigned hymn book on the stores</h3>
+        <p>Finish the design-system tokens and components in code. Bring Home, Himnario (book and audio), search with lyric results, lyrics sheet, player and Library to match Figma. Load the real 280 hymns, add Spanish i18n, migrate favorites, and finish the release checklist above. Library and favorites stay on the device.</p>
+        <span class="ship">Ships: store binary 3.0.0 · OTA enabled from here on</span>
+      </div>
+    </div>
+    <div class="phase">
+      <div class="tag">Phase 2<small>3.1</small></div>
+      <div>
+        <h3>Accounts and cloud library</h3>
+        <p>Set up the backend, sign-in with guest mode kept, profiles, and settings with account deletion. Sync favorites and playlists across devices, move the official hymnal into the database with an on-device cache, and build the web admin for editing hymns.</p>
+        <span class="ship">Ships: store build (native auth modules)</span>
+      </div>
+    </div>
+    <div class="phase">
+      <div class="tag">Phase 3<small>3.2 beta</small></div>
+      <div>
+        <h3>Composer studio</h3>
+        <p>Build the Become a Composer request flow, composer profile, albums, and upload with the lyrics editor and rights confirmation. Add processing states, drafts, and edit and delete. Start with a small group of invited composers.</p>
+        <span class="ship">Ships: OTA where possible; store build if image or file pickers add native code</span>
+      </div>
+    </div>
+    <div class="phase">
+      <div class="tag">Phase 4<small>3.3</small></div>
+      <div>
+        <h3>Social and discovery</h3>
+        <p>Add follow, the Discover tab, public profiles, like counts, the Popular Chart from real plays, share links and deep links, push notifications, report and block, and a moderation queue in the web admin. Open composer sign-ups once moderation is ready.</p>
+        <span class="ship">Ships: store build (push notifications)</span>
+      </div>
+    </div>
+    <div class="phase">
+      <div class="tag">Phase 5<small>later</small></div>
+      <div>
+        <h3>Depth</h3>
+        <p>Offline downloads, a sheet-music viewer, synced lyrics during playback, Cast and CarPlay, more church hymnals, and creator analytics.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="policy">
+  <span class="eyebrow">Before user uploads go live</span>
+  <h2>Store and content requirements</h2>
+  <ul>
+    <li><b>User-generated content (Apple 1.2, Play UGC policy):</b> report content, block users, published community guidelines, a contact method, and a way to remove offending content quickly</li>
+    <li><b>Account deletion</b> inside the app, plus a web URL for Play</li>
+    <li><b>Sign in with Apple</b> is required on iOS if Google sign-in is offered</li>
+    <li><b>Privacy:</b> privacy policy, terms, updated App Privacy labels and the Play Data Safety form</li>
+    <li><b>Rights:</b> uploaders confirm they own or may share the hymn; tag hymns as traditional or public domain; set up a takedown process for copyright claims</li>
+  </ul>
+</section>
+
+<section id="decisions">
+  <span class="eyebrow">Your call</span>
+  <h2>Decisions needed</h2>
+  <ol class="decisions">
+    <li><b>Ship the hymn book (3.0) before the social features?</b><span class="rec">Recommended. It updates production in weeks instead of months.</span></li>
+    <li><b>Backend: Supabase or the existing Firebase project?</b><span class="rec">Recommended: Supabase, for relational social data and lyric search. Worth recording as an ADR.</span></li>
+    <li><b>App language: Spanish first, bilingual, or English?</b><span class="rec">Recommended: Spanish default with English available.</span></li>
+    <li><b>Who can upload at launch: anyone, or approved composers?</b><span class="rec">Recommended: approved composers first, then open up once moderation works.</span></li>
+    <li><b>Hymnals: IDC Himnario only, or room for other churches' hymnals?</b><span class="rec">The data model supports several either way; this mainly changes the hymnal picker design.</span></li>
+  </ol>
+</section>
+
+</main>

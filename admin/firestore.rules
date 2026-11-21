@@ -1,0 +1,33 @@
+rules_version = '2';
+
+// Admin roles live in the Firebase Auth custom claim `role` (set with scripts/set-role.mjs).
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function role() { return request.auth != null ? request.auth.token.role : null; }
+    function isAdmin() { return role() in ['owner', 'editor', 'moderator']; }
+    function canEditContent() { return role() in ['owner', 'editor']; }
+
+    match /hymns/{hymnId} {
+      // The mobile app reads published hymns; admins read everything.
+      allow read: if resource.data.status == 'published' || isAdmin();
+      allow create, update, delete: if canEditContent();
+    }
+
+    match /auditLog/{entryId} {
+      allow read: if isAdmin();
+      // Append-only, and entries must be attributed to the signed-in admin.
+      allow create: if isAdmin() && request.resource.data.actorUid == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    match /users/{uid} {
+      allow read: if request.auth != null && (request.auth.uid == uid || isAdmin());
+      allow write: if request.auth != null && request.auth.uid == uid
+        && !('role' in request.resource.data);
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

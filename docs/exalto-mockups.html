@@ -1,0 +1,210 @@
+<title>Exalto Proposed Screens</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: gallery of 390×844 phone frames grouped by build phase; tokens lifted from the Exalto Figma file. Single dark look by design. */
+:root {
+  --bg: #1A120A; --page: #120C06; --surface: #221A11; --surface2: #2E2419; --line: #3A2C20;
+  --text: #F0E0D1; --muted: #958A7F; --amber: #F5C080; --cyan: #04C1FF; --orange: #EDA145; --danger: #F08A6B;
+  --grad: linear-gradient(135deg, #04C1FF, #EDA145);
+  --font: "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--text); font: 14px/1.5 var(--font);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 40px 80px; }
+.wrap { max-width: 1320px; margin: 0 auto; display: flex; flex-direction: column; gap: 48px; }
+.intro { display: flex; flex-direction: column; gap: 10px; max-width: 70ch; }
+.intro h1 { margin: 0; font-size: clamp(28px, 5vw, 40px); font-weight: 800; letter-spacing: -0.02em; }
+.intro p { margin: 0; color: var(--muted); }
+.phase-h { display: flex; flex-direction: column; gap: 4px; border-top: 1px solid var(--line); padding-top: 22px; }
+.phase-h span { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--amber); font-weight: 700; }
+.phase-h h2 { margin: 0; font-size: 22px; font-weight: 800; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 28px 22px; }
+figure { margin: 0; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+figcaption b { display: block; font-size: 14px; }
+figcaption { font-size: 12.5px; color: var(--muted); }
+
+/* phone */
+.phone { position: relative; width: 100%; max-width: 330px; aspect-ratio: 390/844; background: var(--bg); border-radius: 34px; overflow: hidden;
+  border: 1px solid var(--line); box-shadow: 0 20px 50px -20px #000; display: flex; flex-direction: column; font-size: 12px; }
+.status { height: 34px; flex: none; display: flex; justify-content: space-between; align-items: center; padding: 0 22px; font-size: 11px; font-weight: 700; }
+.hdr { display: flex; align-items: center; gap: 10px; padding: 6px 18px 10px; flex: none; }
+.hdr .logo { width: 26px; height: 30px; flex: none; }
+.hdr h3 { margin: 0; font-size: 17px; font-weight: 800; flex: 1; }
+.av { width: 30px; height: 30px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #F5C080, #C0563A); flex: none; display: grid; place-items: center; font-weight: 800; color: #1A120A; font-size: 12px; }
+.body { flex: 1; overflow: hidden; padding: 0 16px; display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+.ttl { font-size: 15px; font-weight: 800; margin: 2px 0 0; }
+.sub { color: var(--muted); font-size: 11px; }
+.ic { width: 18px; height: 18px; flex: none; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.ic.s { width: 14px; height: 14px; } .ic.l { width: 26px; height: 26px; }
+.row { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.row .grow { flex: 1; min-width: 0; }
+.row .t { font-weight: 600; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.art { width: 40px; height: 40px; border-radius: 9px; flex: none; background: linear-gradient(135deg, #0F6F95, #04C1FF 55%, #EDA145); display: grid; place-items: center; color: #fff; }
+.art.b { width: 54px; height: 54px; border-radius: 12px; }
+.art.w { background: linear-gradient(135deg, #7A2E38, #E0455B 50%, #F5A06B); }
+.art.g { background: linear-gradient(135deg, #3A2C20, #6E5136); }
+.num { width: 22px; font-weight: 800; color: var(--muted); font-size: 12px; text-align: right; flex: none; }
+.amber { color: var(--amber); } .cyan { color: var(--cyan); } .muted { color: var(--muted); }
+.list { display: flex; flex-direction: column; gap: 12px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.gb { border: 1px solid transparent; background: linear-gradient(var(--surface), var(--surface)) padding-box, var(--grad) border-box; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 34px; padding: 0 16px; border-radius: 999px; font-weight: 700; font-size: 12px; background: var(--cyan); color: #04131B; border: 0; font-family: inherit; }
+.btn.sec { background: #8A7E72; color: #1A120A; } .btn.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); }
+.btn.full { width: 100%; height: 40px; } .btn.sm { height: 26px; padding: 0 11px; font-size: 11px; }
+.btn.danger { background: var(--danger); color: #1A120A; }
+.btn.light { background: var(--text); color: #1A120A; }
+.pill { display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; border-radius: 999px; background: #5A4632; color: var(--text); font-size: 11px; font-weight: 600; white-space: nowrap; }
+.pill.on { background: var(--cyan); color: #04131B; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.field { display: flex; flex-direction: column; gap: 5px; }
+.field label { font-size: 11px; font-weight: 600; }
+.input { height: 34px; border-radius: 9px; background: #4A4038; border: 1px solid #8A7E72; padding: 0 10px; display: flex; align-items: center; color: var(--text); font-size: 12px; gap: 6px; }
+.input.area { height: auto; min-height: 64px; align-items: flex-start; padding: 8px 10px; }
+.input.ph { color: #A99D91; }
+.search { height: 34px; border-radius: 999px; background: #0B4E66; display: flex; align-items: center; gap: 8px; padding: 0 12px; color: #7FD3EE; }
+.drop { border: 1.5px dashed #8A7E72; border-radius: 12px; background: #4A4038; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 18px; font-size: 11.5px; }
+.seg { display: flex; background: #5A4632; border-radius: 999px; padding: 3px; gap: 2px; }
+.seg span { flex: 1; text-align: center; padding: 5px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+.seg span.on { background: var(--amber); color: #1A120A; }
+.divider { height: 1px; background: var(--line); flex: none; }
+.toggle { width: 32px; height: 19px; border-radius: 999px; background: #5A4632; position: relative; flex: none; }
+.toggle::after { content: ""; position: absolute; width: 15px; height: 15px; border-radius: 50%; background: var(--text); top: 2px; left: 2px; }
+.toggle.on { background: var(--cyan); } .toggle.on::after { left: 15px; }
+.mini { margin: 0 12px 8px; flex: none; border-radius: 16px; padding: 8px 10px; display: flex; align-items: center; gap: 10px; }
+.tabs { margin: 0 12px 14px; flex: none; height: 46px; border-radius: 16px; background: #1F1710; border: 1px solid #2E2419; display: flex; justify-content: space-around; align-items: center; color: var(--amber); }
+.tabs .on { color: var(--cyan); }
+.sheet { flex: 1; margin: 4px 10px 10px; border-radius: 22px; padding: 10px 14px 14px; display: flex; flex-direction: column; gap: 12px; min-height: 0;
+  background: linear-gradient(180deg, #241B12, #3C2E1E) padding-box, var(--grad) border-box; border: 1px solid transparent; }
+.grab { width: 34px; height: 4px; border-radius: 4px; background: #8A7E72; margin: 0 auto; flex: none; }
+.dim { position: absolute; inset: 0; background: rgba(10,6,3,.62); }
+.modal { position: absolute; left: 10px; right: 10px; bottom: 10px; border-radius: 22px; padding: 12px 14px 16px; display: flex; flex-direction: column; gap: 10px;
+  background: linear-gradient(180deg, #2A2016, #3C2E1E) padding-box, var(--grad) border-box; border: 1px solid transparent; }
+.lyr { font-size: 12.5px; line-height: 1.65; }
+.lyr .h { color: var(--amber); font-weight: 700; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; margin-top: 8px; }
+.block { border-radius: 12px; background: #2A2016; border: 1px solid var(--line); padding: 9px 10px; display: flex; flex-direction: column; gap: 4px; }
+.block .bh { display: flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+.block p { margin: 0; font-size: 11.5px; line-height: 1.55; }
+.stat { flex: 1; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 9px; }
+.stat b { display: block; font-size: 17px; font-weight: 800; }
+.bars { display: flex; align-items: flex-end; gap: 5px; height: 70px; }
+.bars i { flex: 1; border-radius: 4px 4px 0 0; background: var(--grad); }
+.hero { border-radius: 16px; padding: 14px; min-height: 120px; display: flex; flex-direction: column; justify-content: flex-end; gap: 4px;
+  background: linear-gradient(160deg, #0F6F95 0%, #0A3A4E 50%, #3A2010 100%); border: 1px solid #04C1FF55; }
+.tag { align-self: flex-start; font-size: 9.5px; font-weight: 800; letter-spacing: .08em; padding: 4px 8px; border-radius: 999px; background: var(--grad); color: #1A120A; }
+.hscroll { display: flex; gap: 10px; overflow: hidden; }
+.tile { width: 92px; flex: none; display: flex; flex-direction: column; gap: 4px; }
+.tile .art { width: 92px; height: 92px; border-radius: 14px; }
+.circle { width: 64px; flex: none; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; font-size: 10.5px; font-weight: 600; }
+.circle .av { width: 56px; height: 56px; font-size: 18px; }
+.note { position: absolute; left: 0; right: 0; bottom: 0; }
+.unread { width: 7px; height: 7px; border-radius: 50%; background: var(--cyan); flex: none; }
+.sheetmusic { flex: 1; background: #F3EDE4; border-radius: 10px; padding: 14px 12px; display: flex; flex-direction: column; gap: 16px; color: #2A2016; }
+.staff { height: 34px; background: repeating-linear-gradient(#2A2016 0 1px, transparent 1px 8px); position: relative; }
+.staff i { position: absolute; width: 8px; height: 6px; border-radius: 50%; background: #2A2016; transform: rotate(-20deg); }
+@media (max-width: 400px) { .phone { max-width: 100%; } }
+</style>
+
+<div class="wrap">
+  <header class="intro">
+    <h1>Exalto proposed screens</h1>
+    <p>Mockups for the screens the Figma file doesn't have yet, grouped by build phase. They use the file's palette, Plus Jakarta Sans, the glass sheet with a cyan-to-amber border, and cyan pill buttons. Hymn titles come from the IDC Himnario. People, numbers and composer names are placeholders.</p>
+  </header>
+  <div id="app"></div>
+</div>
+
+<script>
+const P = {
+  home:'<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/>',
+  book:'<path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5zM4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>',
+  lib:'<path d="M21 15V6M18.5 18a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM12 12H3M16 6H3M12 18H3"/>',
+  compass:'<circle cx="12" cy="12" r="10"/><path d="m16.2 7.8-2.1 6.3-6.3 2.1 2.1-6.3z"/>',
+  search:'<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
+  play:'<path d="M7 4l13 8-13 8z" fill="currentColor"/>',
+  heart:'<path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7z"/>',
+  heartf:'<path fill="currentColor" d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7z"/>',
+  more:'<circle cx="12" cy="5" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="12" cy="19" r="1.2" fill="currentColor"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  upload:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>',
+  back:'<path d="m15 18-6-6 6-6"/>', next:'<path d="m9 18 6-6-6-6"/>',
+  bell:'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0"/>',
+  gear:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1"/>',
+  share:'<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/>',
+  flag:'<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7"/>',
+  check:'<path d="M20 6 9 17l-5-5"/>', x:'<path d="M18 6 6 18M6 6l12 12"/>',
+  mail:'<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/>',
+  user:'<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+  file:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M16 13H8M16 17H8"/>',
+  globe:'<circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20z"/>',
+  music:'<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
+  dl:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>',
+  grip:'<path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01" stroke-width="3"/>',
+  phones:'<path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3"/>',
+  text:'<path d="M4 7V4h16v3M9 20h6M12 4v16"/>', sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  trash:'<path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+  lock:'<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+  image:'<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3-3a2 2 0 0 0-3 0L6 21"/>',
+  edit:'<path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+  shield:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>', mic:'<rect x="9" y="2" width="6" height="12" rx="3"/><path d="M19 10a7 7 0 0 1-14 0M12 19v3"/>',
+  apple:'<path fill="currentColor" stroke="none" d="M16.4 12.6c0-2.4 2-3.6 2.1-3.7-1.1-1.7-2.9-1.9-3.5-1.9-1.5-.2-2.9.9-3.7.9-.8 0-1.9-.9-3.2-.8-1.6 0-3.1 1-4 2.4-1.7 3-.4 7.4 1.2 9.8.8 1.2 1.8 2.5 3 2.4 1.2 0 1.7-.8 3.2-.8s1.9.8 3.2.8c1.3 0 2.1-1.2 2.9-2.4.9-1.3 1.3-2.6 1.3-2.7 0 0-2.5-1-2.5-4zM14 5.5c.7-.8 1.1-1.9 1-3-1 0-2.1.7-2.8 1.5-.6.7-1.2 1.8-1 2.9 1 .1 2.1-.6 2.8-1.4z"/>',
+  wifi:'<path d="M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M12 19.5h.01"/>'
+};
+const I = (n, c='') => `<svg class="ic ${c}" viewBox="0 0 24 24">${P[n]}</svg>`;
+const LOGO = `<svg class="logo" viewBox="0 0 46 55"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#04C1FF"/><stop offset="1" stop-color="#EDA145"/></linearGradient></defs><path d="M14 52c-5-1-7-6-4-10 3-3 8-2 9 2 1 3-1 6-4 6M19 44V20C19 10 28 4 42 2c-10 5-16 9-17 15 6-4 12-6 18-6-8 4-14 8-17 13 4-2 9-3 13-2-7 3-12 6-14 11" fill="none" stroke="url(#lg)" stroke-width="2.6" stroke-linecap="round"/></svg>`;
+const status = `<div class="status"><span>9:41</span><span class="row" style="gap:4px">${I('wifi','s')}<svg width="20" height="10" viewBox="0 0 20 10"><rect x=".5" y=".5" width="17" height="9" rx="2" fill="none" stroke="#F0E0D1"/><rect x="2" y="2" width="12" height="6" rx="1" fill="#F0E0D1"/></svg></span></div>`;
+const hdr = (title, right = `${I('search')}<div class="av">A</div>`) => `<div class="hdr">${LOGO}<h3>${title}</h3><div class="row" style="gap:14px">${right}</div></div>`;
+const back = (title, right='') => `<div class="hdr"><span class="row" style="gap:6px">${I('back')}</span><h3>${title}</h3><div class="row" style="gap:14px">${right}</div></div>`;
+const tabs = (on) => `<div class="tabs">${['home','book','compass','lib'].map((t,i)=>`<span class="${i===on?'on':''}">${I(t)}</span>`).join('')}</div>`;
+const mini = `<div class="mini gb"><div class="art w"></div><div class="grow"><div class="t" style="font-weight:700">Porque vive él</div><div class="sub">IDC Coro · Himno 1</div></div><span class="cyan">${I('play','l')}</span></div>`;
+const phone = (inner) => `<div class="phone">${status}${inner}</div>`;
+const hymnRow = (n, t, sub) => `<div class="row"><span class="num">${n}</span><div class="grow"><div class="t">${t}</div>${sub?`<div class="sub">${sub}</div>`:''}</div><span class="amber">${I('book')}</span><span class="amber">${I('play')}</span></div>`;
+const listRow = (t, sub, art='', right=I('more')) => `<div class="row"><div class="art ${art}">${I('music','s')}</div><div class="grow"><div class="t">${t}</div><div class="sub">${sub}</div></div><span>${right}</span></div>`;
+const toggleRow = (icon, t, on, sub='') => `<div class="row"><span class="amber">${I(icon)}</span><div class="grow"><div class="t">${t}</div>${sub?`<div class="sub">${sub}</div>`:''}</div><span class="toggle ${on?'on':''}"></span></div>`;
+const navRow = (icon, t, val='', cls='') => `<div class="row ${cls}"><span class="${cls?'':'amber'}">${I(icon)}</span><div class="grow t">${t}</div><span class="sub">${val}</span><span class="muted">${I('next','s')}</span></div>`;
+
+const phases = [
+ { k:'Phase 1 · Exalto 3.0', h:'Hymn book', screens:[
+  ['Hymnal picker','Switch between the official IDC Himnario and community hymns. Opens from the Himnario tab title.', phone(`${hdr('Himnario ▾')}<div class="body"><div class="search">${I('search')}<span>Buscar por número, título o letra</span></div><div class="list">${[1,2,3,4,5,6].map(i=>hymnRow(i,['Himno de Bienvenida','Porque vive él','Cuán grande es Él','Sublime gracia','Santo, santo, santo','A Dios sea la gloria'][i-1])).join('')}</div></div><div class="dim"></div><div class="modal"><div class="grab"></div><div class="ttl">Choose a hymnal</div>
+  <div class="card gb" style="flex-direction:row;align-items:center"><div class="art b">${I('book')}</div><div class="grow"><div class="t" style="font-weight:700">IDC Himnario</div><div class="sub">Official · 280 hymns · available offline</div></div><span class="cyan">${I('check')}</span></div>
+  <div class="card" style="flex-direction:row;align-items:center"><div class="art b w">${I('music')}</div><div class="grow"><div class="t" style="font-weight:700">Community</div><div class="sub">New hymns from Exalto composers</div></div></div>
+  <div class="card" style="flex-direction:row;align-items:center"><div class="art b g">${I('heart')}</div><div class="grow"><div class="t" style="font-weight:700">My favorites</div><div class="sub">24 hymns</div></div></div></div>`)],
+  ['Lyrics · reading settings','Text-only hymn with no recording. The Aa button opens text size, line spacing and keep-screen-awake.', phone(`${hdr('')}<div class="sheet"><div class="grab"></div><div class="row"><div class="seg" style="width:90px"><span class="on">${I('book','s')}</span><span>${I('phones','s')}</span></div><div class="grow"></div><span class="cyan">${I('heartf')}</span><span>${I('file')}</span><span>${I('share')}</span></div>
+  <div><div class="sub">Himno 1 · IDC Himnario</div><div class="ttl" style="font-size:18px">Porque vive él</div></div>
+  <div class="lyr"><div class="h">Estrofa I</div>Dios dio a Jesús, su hijo amado.<br>El vino amar y a perdonar,<br>Vivió y murió, por redimirme.<br>La tumba vacía la prueba es de que vive él.<div class="h">Coro</div>Porque vive él, enfrentaré el mañana<br>Porque vive él, mi temor se va.</div></div>
+  <div class="modal" style="gap:12px"><div class="grab"></div><div class="row"><span class="ttl grow">Reading</span><span class="muted">${I('x')}</span></div><div class="row"><span>${I('text','s')}</span><div class="grow" style="height:4px;border-radius:4px;background:linear-gradient(90deg,var(--cyan) 60%,#5A4632 60%)"></div><span>${I('text')}</span></div>
+  <div class="seg"><span>Compact</span><span class="on">Normal</span><span>Relaxed</span></div>${toggleRow('sun','Keep screen on',true,'While a hymn is open')}${toggleRow('book','Show verse labels',true)}</div>`)],
+  ['Sheet music viewer','Opens from the document icon on the lyrics sheet. Pinch to zoom, swipe between pages.', phone(`${back('Porque vive él', `${I('share')}${I('dl')}`)}<div class="body" style="padding-bottom:12px"><div class="row"><span class="pill on">Melodía</span><span class="pill">Coro SATB</span><span class="pill">Acordes</span></div><div class="sheetmusic">${[0,1,2,3].map(r=>`<div class="staff">${[8,22,36,50,64,78].map((x,i)=>`<i style="left:${x}%;top:${[12,4,16,8,20,0][(i+r)%6]}px"></i>`).join('')}</div>`).join('')}<div style="font-size:9px;text-align:center;opacity:.6">Página 1 de 2</div></div></div>`)],
+  ['Playlist detail','A user playlist with play and shuffle. Rows can be dragged to reorder.', phone(`${back('', `${I('share')}${I('more')}`)}<div class="body"><div class="row" style="gap:14px"><div class="art" style="width:96px;height:96px;border-radius:16px">${I('music','l')}</div><div class="grow"><div class="ttl" style="font-size:18px">Servicio domingo</div><div class="sub">Anthony Barrera · 8 hymns · 31 min</div><div class="row" style="margin-top:8px"><button class="btn sm">${I('play','s')} Play</button><button class="btn sm ghost">Shuffle</button></div></div></div><div class="divider"></div><div class="list">${[['Himno de Bienvenida','Himno 0'],['Porque vive él','IDC Coro'],['Sublime gracia','Himno 47'],['Cuán grande es Él','Himno 12'],['A Dios sea la gloria','Himno 88']].map(([t,s],i)=>`<div class="row"><span class="muted">${I('grip','s')}</span><div class="art ${i%2?'w':''}">${I('music','s')}</div><div class="grow"><div class="t">${t}</div><div class="sub">${s}</div></div>${I('more')}</div>`).join('')}</div></div>${mini}${tabs(3)}`)],
+  ['Add to playlist','From any hymn overflow menu or the player. Creating a playlist stays inside the sheet.', phone(`${hdr('Library')}<div class="body"><div class="list">${listRow('Liked Hymns','24 hymns')}${listRow('Servicio domingo','8 hymns','w')}</div></div><div class="dim"></div><div class="modal"><div class="grab"></div><div class="row"><div class="art w"></div><div class="grow"><div class="t" style="font-weight:700">Porque vive él</div><div class="sub">Add to playlist</div></div></div><div class="divider"></div><div class="row cyan">${I('plus')}<span class="t">New playlist</span></div>
+  ${[['Liked Hymns','24',1],['Servicio domingo','8',1],['Ensayo del coro','12',0],['Navidad','6',0]].map(([t,n,on])=>`<div class="row"><div class="art ${on?'':'g'}">${I('music','s')}</div><div class="grow"><div class="t">${t}</div><div class="sub">${n} hymns</div></div><span class="${on?'cyan':'muted'}">${on?I('check'):I('plus')}</span></div>`).join('')}<button class="btn full">Done</button></div>`)],
+  ['Queue','Opens from the Queue chip in the player. Shows what plays next and lets you reorder or clear it.', phone(`${hdr('')}<div class="sheet"><div class="grab"></div><div class="row"><span class="ttl grow">Up next</span><button class="btn sm ghost">Clear</button></div><div class="sub">NOW PLAYING</div><div class="row"><div class="art w b"></div><div class="grow"><div class="t cyan">Porque vive él</div><div class="sub">IDC Coro</div></div><span class="cyan">${I('lib')}</span></div><div class="sub">NEXT FROM: SERVICIO DOMINGO</div><div class="list">${['Sublime gracia','Cuán grande es Él','A Dios sea la gloria','Santo, santo, santo','Himno de Bienvenida'].map((t,i)=>`<div class="row"><span class="muted">${I('grip','s')}</span><div class="art ${i%2?'w':''}"></div><div class="grow"><div class="t">${t}</div><div class="sub">Himno ${[47,12,88,3,0][i]}</div></div><span class="muted">${I('x','s')}</span></div>`).join('')}</div></div>`)],
+  ['Empty and offline states','Library before anything is saved, with the offline banner. The same pattern covers no results, no albums and failed loads.', phone(`${hdr('Library')}<div class="body"><div class="card" style="flex-direction:row;align-items:center;border-color:#EDA14566"><span class="amber">${I('wifi')}</span><div class="grow"><div class="t">You're offline</div><div class="sub">The IDC Himnario still works. Recordings play once you're back online.</div></div></div><div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center"><div class="art" style="width:72px;height:72px;border-radius:20px">${I('heart','l')}</div><div class="ttl">Save hymns you love</div><div class="sub" style="max-width:220px">Tap the heart on any hymn and it shows up here. You can also make playlists for services and practice.</div><button class="btn">${I('book','s')} Browse the Himnario</button></div></div>${tabs(3)}`)],
+ ]},
+ { k:'Phase 2 · 3.1', h:'Accounts', screens:[
+  ['Welcome','First launch. Guest mode keeps the hymn book fully usable without an account.', phone(`<div class="body" style="justify-content:flex-end;gap:16px;padding:0 22px 26px;background:radial-gradient(120% 60% at 50% 20%, #0F6F9566, transparent 60%)"><div style="flex:1;display:grid;place-items:center"><div style="transform:scale(2.6)">${LOGO}</div></div><div style="font-size:26px;font-weight:800;line-height:1.15;letter-spacing:-.02em">Sing, share and discover hymns</div><div class="sub" style="font-size:12.5px">The IDC Himnario in your pocket, plus new hymns from composers in our community.</div><div class="list" style="gap:8px"><button class="btn full light">${I('apple')} Continue with Apple</button><button class="btn full ghost"><b style="font-size:14px">G</b> Continue with Google</button><button class="btn full ghost">${I('mail','s')} Continue with email</button></div><div style="text-align:center;font-weight:700" class="cyan">Continue as guest</div><div class="sub" style="text-align:center;font-size:10px">By continuing you agree to the Terms and Community Guidelines.</div></div>`)],
+  ['Sign in with email','Passwordless: the user enters an email and gets a 6-digit code.', phone(`${back('')}<div class="body" style="gap:16px;padding:0 22px"><div style="font-size:22px;font-weight:800">Check your email</div><div class="sub" style="font-size:12px">We sent a 6-digit code to a••••@gmail.com</div><div class="row" style="gap:8px">${['4','8','1','','',''].map((d,i)=>`<div class="input" style="flex:1;height:46px;justify-content:center;font-size:18px;font-weight:800;${i===3?'border-color:var(--cyan)':''}">${d}</div>`).join('')}</div><div class="sub">Didn't get it? <span class="cyan" style="font-weight:700">Resend in 0:42</span></div><div style="flex:1"></div><button class="btn full" style="margin-bottom:26px">Verify</button></div>`)],
+  ['Profile setup','After first sign-in. Name and handle are required; photo and church are optional.', phone(`<div class="hdr"><h3>Set up your profile</h3><span class="sub">1 of 2</span></div><div class="body" style="gap:14px"><div style="display:flex;flex-direction:column;align-items:center;gap:8px"><div class="av" style="width:84px;height:84px;font-size:28px">A</div><span class="cyan" style="font-weight:700;font-size:11.5px">Change photo</span></div><div class="field"><label>Display name</label><div class="input">Anthony Barrera</div></div><div class="field"><label>Username</label><div class="input"><span class="muted">@</span>anthonyb<span class="grow"></span><span class="cyan">${I('check','s')}</span></div></div><div class="field"><label>Church <span class="muted">(optional)</span></label><div class="input">Iglesia de Cristo, Elgin</div></div><div class="field"><label>Language</label><div class="seg"><span class="on">Español</span><span>English</span></div></div><div style="flex:1"></div><button class="btn full" style="margin-bottom:22px">Continue</button></div>`)],
+  ['Settings','Opens from the gear on Profile. Groups account, playback, notifications and safety.', phone(`${back('Settings')}<div class="body" style="gap:10px"><div class="card" style="flex-direction:row;align-items:center"><div class="av" style="width:44px;height:44px">A</div><div class="grow"><div class="t">Anthony Barrera</div><div class="sub">@anthonyb · Listener</div></div><button class="btn sm ghost">Edit</button></div><div class="sub">GENERAL</div><div class="card">${navRow('globe','Language','Español')}${navRow('text','Reading','Normal')}${navRow('dl','Downloads','280 hymns')}</div><div class="sub">NOTIFICATIONS</div><div class="card">${toggleRow('bell','New hymns from people I follow',true)}${toggleRow('heart','Likes and follows',false)}</div><div class="sub">PRIVACY AND SAFETY</div><div class="card">${navRow('lock','Privacy')}${navRow('shield','Blocked accounts','2')}${navRow('file','Terms and guidelines')}</div></div>`)],
+  ['Delete account','Required by both app stores. Explains what is removed and asks for a typed confirmation.', phone(`${back('Delete account')}<div class="body" style="gap:14px"><div style="display:grid;place-items:center;padding-top:6px"><div class="art" style="width:60px;height:60px;border-radius:18px;background:#F08A6B33;color:var(--danger)">${I('trash','l')}</div></div><div class="ttl" style="text-align:center;font-size:17px">Delete your Exalto account?</div><div class="card"><div class="sub" style="color:var(--text)">This permanently removes:</div>${['Your profile and username','Playlists and liked hymns','Hymns and recordings you uploaded','Followers and following'].map(t=>`<div class="row"><span style="color:var(--danger)">${I('x','s')}</span><span>${t}</span></div>`).join('')}<div class="sub">The IDC Himnario stays available in guest mode.</div></div><div class="field"><label>Type DELETE to confirm</label><div class="input ph">DELETE</div></div><div style="flex:1"></div><button class="btn full danger">Delete account</button><button class="btn full ghost" style="margin-bottom:20px">Cancel</button></div>`)],
+ ]},
+ { k:'Phase 3 · 3.2 beta', h:'Composer studio', screens:[
+  ['Become a composer','Request flow from Profile. An admin approves composers while uploads are invite-only.', phone(`${back('')}<div class="body" style="gap:14px"><div class="hero" style="min-height:130px"><span class="tag">FOR COMPOSERS</span><div style="font-size:18px;font-weight:800">Share your hymns with the church</div></div><div class="list">${[['upload','Upload recordings and lyrics'],['book','New hymns can join the Community hymnal'],['user','A composer profile people can follow']].map(([i,t])=>`<div class="row"><span class="cyan">${I(i)}</span><span>${t}</span></div>`).join('')}</div><div class="field"><label>Tell us about your music</label><div class="input area ph">I've written hymns for our choir since 2018…</div></div><div class="field"><label>Link to a sample <span class="muted">(optional)</span></label><div class="input ph">YouTube, SoundCloud or Drive link</div></div><div style="flex:1"></div><button class="btn full" style="margin-bottom:20px">Request composer access</button></div>`)],
+  ['Lyrics editor','Structured verse, chorus and bridge blocks, so community uploads display like the hymn book. Paste plain text and it splits into blocks.', phone(`${back('Lyrics', `<span class="cyan" style="font-weight:700">Save</span>`)}<div class="body" style="gap:9px"><div class="row"><span class="pill on">Estrofa</span><span class="pill">Coro</span><span class="pill">Puente</span><span class="grow"></span><span class="sub">Paste text</span></div>
+  ${[['Estrofa 1','Luz de mi alma, guía mi andar,<br>en la tormenta tú eres mi paz.'],['Coro','Te exaltaré, mi Rey y Señor,<br>canto a ti con todo mi corazón.'],['Estrofa 2','Cuando la noche quiera vencer,<br>tu fiel promesa me hará crecer.']].map(([h,b],i)=>`<div class="block" ${i===1?'style="border-color:var(--cyan)"':''}><div class="bh"><span class="muted">${I('grip','s')}</span><span class="${i===1?'cyan':'amber'}">${h}</span><span class="grow"></span><span class="muted">${I('more','s')}</span></div><p>${b}</p></div>`).join('')}
+  <div class="block" style="border-style:dashed;align-items:center;flex-direction:row;justify-content:center;gap:6px" ><span class="cyan">${I('plus','s')}</span><span class="cyan" style="font-weight:700;font-size:11.5px">Add block</span></div><div class="row"><span class="sub grow">Repeat chorus after each verse</span><span class="toggle on"></span></div></div>`)],
+  ['Upload details','Expands the Figma "New Audio" sheet with cover art, lyrics, tags, scripture and a rights confirmation.', phone(`${hdr('Profile')}<div class="sheet" style="gap:9px"><div class="grab"></div><div class="ttl" style="text-align:center">New hymn</div><div class="row"><div class="drop" style="width:74px;height:74px;padding:0">${I('image')}</div><div class="grow card" style="padding:9px;gap:4px"><div class="row"><span class="cyan">${I('music','s')}</span><span class="t grow">te-exaltare-final.m4a</span><span class="sub">3:42</span></div><div style="height:4px;border-radius:4px;background:linear-gradient(90deg,var(--cyan) 72%,#5A4632 72%)"></div><div class="sub">Uploading 72%</div></div></div>
+  <div class="field"><label>Title</label><div class="input">Te exaltaré</div></div><div class="row"><span class="grow t">Lyrics</span><span class="sub">3 blocks</span><span class="muted">${I('next','s')}</span></div><div class="row"><span class="grow t">Album</span><span class="sub">God is Love</span><span class="muted">${I('next','s')}</span></div><div class="field"><label>Tags and scripture</label><div class="chips"><span class="pill">Adoración</span><span class="pill">Salmo 145</span><span class="pill">+ Add</span></div></div>
+  <div class="row" style="align-items:flex-start"><span class="cyan">${I('check','s')}</span><span class="sub" style="color:var(--text)">I wrote this hymn or have permission to share it.</span></div><div class="row"><button class="btn sec" style="flex:1">Save draft</button><button class="btn" style="flex:1">Publish</button></div></div>`)],
+  ['Creator stats','Composer view of how their hymns are doing. Opens from the composer profile.', phone(`${back('Your stats', `<span class="pill">28 days ▾</span>`)}<div class="body"><div class="row" style="gap:8px"><div class="stat"><span class="sub">Plays</span><b>1,284</b><span class="cyan" style="font-size:10px">+18%</span></div><div class="stat"><span class="sub">Likes</span><b>212</b><span class="cyan" style="font-size:10px">+9%</span></div><div class="stat"><span class="sub">Followers</span><b>100</b><span class="cyan" style="font-size:10px">+6</span></div></div><div class="card"><div class="sub">Plays per week</div><div class="bars">${[38,52,44,70,61,85,78].map(h=>`<i style="height:${h}%"></i>`).join('')}</div></div><div class="ttl" style="font-size:13px">Top hymns</div><div class="list">${[['Te exaltaré','612 plays'],['God is Love','401 plays'],['Luz de mi alma','188 plays']].map(([t,s],i)=>`<div class="row"><span class="num">${i+1}</span><div class="art ${i%2?'w':''}"></div><div class="grow"><div class="t">${t}</div><div class="sub">${s}</div></div></div>`).join('')}</div></div>${tabs(-1)}`)],
+ ]},
+ { k:'Phase 4 · 3.3', h:'Social and discovery', screens:[
+  ['Discover','New fourth tab. New releases, composers to follow, and browsing by theme or scripture.', phone(`${hdr('Discover')}<div class="body"><div class="chips"><span class="pill on">For you</span><span class="pill">Adoración</span><span class="pill">Navidad</span><span class="pill">Salmos</span></div><div class="hero"><span class="tag">NEW THIS WEEK</span><div style="font-size:15px;font-weight:800">Te exaltaré</div><div class="sub" style="color:#cfe">Anthony Barrera · Album God is Love</div></div><div class="ttl" style="font-size:13px">Composers to follow</div><div class="hscroll">${['Coro IDC','Marta R.','Daniel P.','Ruth L.'].map(n=>`<div class="circle"><div class="av">${n[0]}</div>${n}<span class="btn sm" style="height:20px;font-size:9.5px;padding:0 8px">Follow</span></div>`).join('')}</div><div class="ttl" style="font-size:13px">Trending in Community</div><div class="list">${listRow('Luz de mi alma','Marta R. · 2.1k plays','w',I('play'))}${listRow('Bendito Redentor','Coro IDC · 1.4k plays','',I('play'))}</div></div>${tabs(2)}`)],
+  ['Composer profile (public)','How others see a composer, with Follow, popular hymns and albums. Extends the Figma composer profile.', phone(`${back('', `${I('share')}${I('more')}`)}<div class="body"><div class="card gb" style="align-items:center;text-align:center"><div class="av" style="width:72px;height:72px;font-size:24px">M</div><div><div class="ttl">Marta Rivera <span class="cyan">${I('music','s')}</span></div><div class="sub">@martar · 1.2k followers · 14 hymns</div></div><div class="row"><button class="btn sm">Follow</button><button class="btn sm ghost">${I('share','s')} Share</button></div></div><div class="ttl" style="font-size:13px">Popular</div><div class="list">${listRow('Luz de mi alma','2.1k plays','w',I('play'))}${listRow('Cerca de ti','860 plays','',I('play'))}</div><div class="ttl" style="font-size:13px">Albums</div><div class="hscroll">${['Luz','Himnos de paz','En vivo'].map((t,i)=>`<div class="tile"><div class="art ${i===1?'w':''}">${I('music')}</div><div class="t">${t}</div><div class="sub">${2026-i}</div></div>`).join('')}</div></div>${mini}`)],
+  ['Activity','Notifications for new hymns from people you follow, likes, follows and moderation updates.', phone(`${hdr('Activity', I('gear'))}<div class="body"><div class="chips"><span class="pill on">All</span><span class="pill">New hymns</span><span class="pill">Follows</span></div><div class="sub">TODAY</div><div class="list" style="gap:14px">${[['M','<b>Marta Rivera</b> released <b>Luz de mi alma</b>','2h',1,'play'],['D','<b>Daniel P.</b> started following you','5h',1,''],['C','<b>Coro IDC</b> and 12 others liked <b>Te exaltaré</b>','8h',0,'']].map(([a,t,tm,u,act])=>`<div class="row" style="align-items:flex-start">${u?'<span class="unread" style="margin-top:12px"></span>':'<span style="width:7px"></span>'}<div class="av" style="width:36px;height:36px">${a}</div><div class="grow"><div style="font-size:11.5px">${t}</div><div class="sub">${tm}</div></div>${act?`<span class="cyan">${I(act)}</span>`:''}</div>`).join('')}</div><div class="sub">THIS WEEK</div><div class="row" style="align-items:flex-start"><span style="width:7px"></span><div class="art" style="width:36px;height:36px;border-radius:50%">${I('check','s')}</div><div class="grow"><div style="font-size:11.5px">Your composer request was <b>approved</b>. Upload your first hymn.</div><div class="sub">Mon</div></div></div><div class="row" style="align-items:flex-start"><span style="width:7px"></span><div class="av" style="width:36px;height:36px">R</div><div class="grow"><div style="font-size:11.5px"><b>Ruth L.</b> added <b>Te exaltaré</b> to <b>Ensayo</b></div><div class="sub">Sun</div></div></div></div>${tabs(-1)}`)],
+  ['Report and block','From any hymn, comment or profile overflow menu. Required for user uploads on both app stores.', phone(`${back('', `${I('share')}${I('more')}`)}<div class="body"><div class="card gb" style="align-items:center"><div class="av" style="width:64px;height:64px">D</div><div class="ttl">Daniel P.</div></div></div><div class="dim"></div><div class="modal"><div class="grab"></div><div class="row"><span class="ttl grow">Report Luz de mi alma</span><span class="muted">${I('x')}</span></div><div class="sub">What's wrong with it? Reports are private.</div>${['Copyright: I own this hymn','Offensive or hateful','Spam or misleading','Not a hymn or worship music'].map((t,i)=>`<div class="row" style="padding:4px 0"><span style="width:16px;height:16px;border-radius:50%;border:1.5px solid ${i===0?'var(--cyan)':'#8A7E72'};display:grid;place-items:center;flex:none">${i===0?'<span style="width:8px;height:8px;border-radius:50%;background:var(--cyan)"></span>':''}</span><span class="grow">${t}</span></div>`).join('')}<div class="row"><span class="amber">${I('shield','s')}</span><span class="grow">Also block Daniel P.</span><span class="toggle on"></span></div><button class="btn full">Send report</button></div>`)],
+ ]},
+];
+
+document.getElementById('app').innerHTML = phases.map(p => `<section style="display:flex;flex-direction:column;gap:22px;margin-bottom:48px"><div class="phase-h"><span>${p.k}</span><h2>${p.h}</h2></div><div class="grid">${p.screens.map(([t,d,html])=>`<figure>${html}<figcaption><b>${t}</b>${d}</figcaption></figure>`).join('')}</div></section>`).join('');
+</script>

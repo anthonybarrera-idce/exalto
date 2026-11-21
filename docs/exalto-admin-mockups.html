@@ -1,0 +1,234 @@
+<title>Exalto Admin Mockups</title>
+<style>
+/* shadcn/ui (zinc, light) look-alike for Figma import. 1440x900 desktop screens. */
+:root{--bg:#fff;--fg:#09090b;--muted:#f4f4f5;--mfg:#71717a;--border:#e4e4e7;--primary:#18181b;--pfg:#fafafa;--dest:#dc2626;--side:#fafafa;--ring:#a1a1aa;--cyan:#04C1FF;--amber:#EEA246;--green:#16a34a;--yellow:#ca8a04}
+*{box-sizing:border-box}
+body{margin:0;background:#e9e9ec;font:14px/1.45 Inter,system-ui,sans-serif;color:var(--fg);padding:40px;display:flex;flex-direction:column;gap:60px}
+.screen{width:1440px;height:900px;background:var(--bg);display:flex;overflow:hidden;position:relative;border-radius:12px}
+.side{width:248px;flex:none;background:var(--side);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:12px}
+.brand{display:flex;align-items:center;gap:10px;padding:8px;margin-bottom:8px}
+.logo-slot{width:24px;height:28px;flex:none}
+.brand b{font-size:14px;font-weight:600;display:block}.brand small{font-size:12px;color:var(--mfg)}
+.grp{font-size:12px;color:var(--mfg);font-weight:500;padding:12px 8px 4px}
+.nav{display:flex;align-items:center;gap:8px;height:32px;padding:0 8px;border-radius:6px;font-size:14px;color:#3f3f46}
+.nav.on{background:#ececee;color:var(--fg);font-weight:500}
+.nav .ct{margin-left:auto;font-size:11px;font-weight:600;background:var(--primary);color:#fff;border-radius:6px;padding:1px 6px}
+.side .foot{margin-top:auto;display:flex;align-items:center;gap:10px;padding:8px;border-radius:8px}
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.top{height:56px;flex:none;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;padding:0 24px}
+.crumb{display:flex;gap:8px;align-items:center;color:var(--mfg);font-size:14px}.crumb b{color:var(--fg);font-weight:500}
+.vsep{width:1px;height:16px;background:var(--border)}
+.content{flex:1;padding:24px;display:flex;flex-direction:column;gap:20px;overflow:hidden;min-height:0}
+h1{margin:0;font-size:24px;font-weight:600;letter-spacing:-.02em}
+.desc{color:var(--mfg);font-size:14px;margin:2px 0 0}
+.ph{display:flex;align-items:flex-end;gap:12px}.ph .sp{flex:1}
+.ic{width:16px;height:16px;flex:none;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ic.s{width:14px;height:14px}.ic.l{width:20px;height:20px}
+.btn{display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 16px;border-radius:6px;font-size:14px;font-weight:500;background:var(--primary);color:var(--pfg);border:1px solid var(--primary);white-space:nowrap}
+.btn.o{background:#fff;color:var(--fg);border-color:var(--border);box-shadow:0 1px 2px rgba(0,0,0,.05)}
+.btn.g{background:transparent;color:var(--fg);border-color:transparent}
+.btn.d{background:var(--dest);border-color:var(--dest)}
+.btn.sm{height:32px;padding:0 12px;font-size:13px}.btn.icon{width:32px;padding:0;justify-content:center;height:32px}
+.input{height:36px;border:1px solid var(--border);border-radius:6px;display:flex;align-items:center;gap:8px;padding:0 12px;color:var(--mfg);font-size:14px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.input.v{color:var(--fg)}.input.area{height:auto;align-items:flex-start;padding:8px 12px;min-height:80px}
+.label{font-size:14px;font-weight:500}
+.field{display:flex;flex-direction:column;gap:8px}
+.hint{font-size:13px;color:var(--mfg)}
+.card{border:1px solid var(--border);border-radius:12px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.04);display:flex;flex-direction:column}
+.ch{padding:20px 20px 0;display:flex;flex-direction:column;gap:4px}.ch h3{margin:0;font-size:16px;font-weight:600}.ch p{margin:0;color:var(--mfg);font-size:14px}
+.cb{padding:20px;display:flex;flex-direction:column;gap:14px}
+.row{display:flex;align-items:center;gap:12px;min-width:0}.grow{flex:1;min-width:0}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.stat .cb{gap:4px}.stat .k{display:flex;justify-content:space-between;color:var(--mfg);font-size:14px;font-weight:500}.stat .v{font-size:26px;font-weight:700;letter-spacing:-.02em}.stat .d{font-size:12px;color:var(--mfg)}
+.badge{display:inline-flex;align-items:center;gap:4px;border-radius:6px;padding:2px 8px;font-size:12px;font-weight:500;border:1px solid transparent;white-space:nowrap;background:var(--primary);color:#fff}
+.badge.s{background:var(--muted);color:var(--fg)}.badge.o{background:#fff;color:var(--fg);border-color:var(--border)}
+.badge.ok{background:#dcfce7;color:#166534}.badge.warn{background:#fef9c3;color:#854d0e}.badge.bad{background:#fee2e2;color:#991b1b}.badge.info{background:#e0f7ff;color:#075985}
+.dot{width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;font-weight:500;color:var(--mfg);height:40px;padding:0 12px;border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:0 12px;height:52px;border-bottom:1px solid var(--border);white-space:nowrap}
+tr.sel td{background:#f4f4f5}
+.tw{border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.cbx{width:16px;height:16px;border:1px solid #a1a1aa;border-radius:4px;display:inline-grid;place-items:center;flex:none}.cbx.on{background:var(--primary);border-color:var(--primary);color:#fff}
+.av{width:32px;height:32px;border-radius:50%;background:#e4e4e7;display:grid;place-items:center;font-size:12px;font-weight:600;color:#3f3f46;flex:none}
+.av.c{background:linear-gradient(135deg,#04C1FF,#EEA246);color:#fff}
+.tabs{display:inline-flex;background:var(--muted);border-radius:8px;padding:3px;gap:2px}
+.tabs span{padding:5px 12px;border-radius:6px;font-size:14px;font-weight:500;color:var(--mfg)}.tabs span.on{background:#fff;color:var(--fg);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.sw{width:36px;height:20px;border-radius:999px;background:#e4e4e7;position:relative;flex:none}.sw::after{content:"";position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;top:2px;left:2px;box-shadow:0 1px 2px rgba(0,0,0,.2)}.sw.on{background:var(--primary)}.sw.on::after{left:18px}
+.sel-f{justify-content:space-between;color:var(--fg)}
+.pag{display:flex;align-items:center;justify-content:space-between;color:var(--mfg);font-size:14px}
+.menu{position:absolute;background:#fff;border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.12);padding:4px;width:220px;display:flex;flex-direction:column;font-size:14px;z-index:5}
+.menu .mi{display:flex;align-items:center;gap:8px;height:32px;padding:0 8px;border-radius:4px}.menu .mi.h{background:var(--muted)}.menu .lbl{font-size:12px;color:var(--mfg);font-weight:500;padding:6px 8px}.menu .sepm{height:1px;background:var(--border);margin:4px -4px}.menu .red{color:var(--dest)}
+.overlay{position:absolute;inset:0;background:rgba(0,0,0,.5);z-index:4}
+.dialog{position:absolute;z-index:5;left:50%;top:50%;transform:translate(-50%,-50%);width:520px;background:#fff;border-radius:12px;border:1px solid var(--border);padding:24px;display:flex;flex-direction:column;gap:16px;box-shadow:0 20px 50px rgba(0,0,0,.25)}
+.dialog h3{margin:0;font-size:18px;font-weight:600}
+.sheet{position:absolute;z-index:5;right:0;top:0;bottom:0;width:480px;background:#fff;border-left:1px solid var(--border);padding:24px;display:flex;flex-direction:column;gap:18px;box-shadow:-10px 0 40px rgba(0,0,0,.15)}
+.sep{height:1px;background:var(--border);flex:none}
+.kv{display:grid;grid-template-columns:140px 1fr;gap:10px 16px;font-size:14px}.kv span:nth-child(odd){color:var(--mfg)}
+.chart{display:flex;align-items:flex-end;gap:10px;height:150px;padding-top:10px;border-bottom:1px solid var(--border)}
+.chart i{flex:1;border-radius:4px 4px 0 0;background:var(--primary)}.chart i.b{background:#d4d4d8}
+.xl{display:flex;gap:10px;font-size:12px;color:var(--mfg)}.xl span{flex:1;text-align:center}
+.blk{border:1px solid var(--border);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:6px}
+.blk .bh{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500}
+.blk p{margin:0;font-size:14px;line-height:1.6;color:#27272a}
+.alert{border:1px solid var(--border);border-radius:8px;padding:12px 14px;display:flex;gap:10px;font-size:14px}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.cal .d{border:1px solid var(--border);border-radius:8px;min-height:86px;padding:8px;display:flex;flex-direction:column;gap:6px;font-size:12px}
+.cal .d .n{color:var(--mfg);font-weight:500}.cal .d.today{border-color:var(--primary);box-shadow:inset 0 0 0 1px var(--primary)}
+.cal .ev{background:var(--muted);border-radius:4px;padding:3px 6px;font-weight:500;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cal .ev.c{background:#e0f7ff;color:#075985}
+.prog{height:8px;background:var(--muted);border-radius:999px;overflow:hidden}.prog i{display:block;height:100%;background:var(--primary)}
+.muted{color:var(--mfg)}.mono{font-family:ui-monospace,Menlo,monospace;font-size:13px}
+.title-cap{font:600 18px Inter,sans-serif;color:#3f3f46;margin-bottom:-44px}
+</style>
+<div id="app"></div>
+<script>
+const P={
+dash:'<rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>',
+book:'<path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5zM4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>',
+layers:'<path d="m12 2 10 5-10 5L2 7z"/><path d="m2 17 10 5 10-5M2 12l10 5 10-5"/>',
+mic:'<rect x="9" y="2" width="6" height="12" rx="3"/><path d="M19 10a7 7 0 0 1-14 0M12 19v3"/>',
+star:'<path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/>',
+users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/>',
+inbox:'<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.7 1.1z"/>',
+flag:'<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7"/>',
+scroll:'<path d="M8 21h12a2 2 0 0 0 2-2v-2H10v2a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v3h4"/><path d="M19 17V5a2 2 0 0 0-2-2H4"/>',
+gear:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9 7 7M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1"/>',
+panel:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/>',
+search:'<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
+plus:'<path d="M12 5v14M5 12h14"/>', more:'<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>',
+chev:'<path d="m6 9 6 6 6-6"/>', chevr:'<path d="m9 18 6-6-6-6"/>', chevl:'<path d="m15 18-6-6 6-6"/>', updown:'<path d="m7 15 5 5 5-5M7 9l5-5 5 5"/>',
+filter:'<path d="M22 3H2l8 9.5V19l4 2v-8.5z"/>', dl:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>', up:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>',
+check:'<path d="M20 6 9 17l-5-5"/>', x:'<path d="M18 6 6 18M6 6l12 12"/>', eye:'<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+ban:'<circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/>', trash:'<path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+edit:'<path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>', copy:'<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+mail:'<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/>', shield:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+music:'<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>', file:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6"/>',
+grip:'<circle cx="9" cy="6" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="18" r="1"/>',
+cal:'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>', arrowu:'<path d="M7 17 17 7M7 7h10v10"/>', play:'<path d="m6 3 14 9-14 9z"/>',
+alert:'<circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/>', db:'<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/>',
+key:'<circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6M15.5 7.5l3 3L22 7l-3-3"/>', globe:'<circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20z"/>'
+};
+const I=(n,c='')=>`<svg class="ic ${c}" viewBox="0 0 24 24">${P[n]}</svg>`;
+const NAV=[['Overview',[['dash','Dashboard']]],['Content',[['book','Hymns'],['layers','Hymnals'],['mic','Recordings'],['star','Featured']]],['Community',[['users','Users'],['inbox','Composer requests','4'],['flag','Reports','7']]],['System',[['scroll','Audit log'],['gear','Settings']]]];
+const side=on=>`<aside class="side"><div class="brand"><div class="logo-slot"></div><div><b>Exalto Admin</b><small>IDC Elgin</small></div><span style="margin-left:auto" class="muted">${I('updown','s')}</span></div>${NAV.map(([g,items])=>`<div class="grp">${g}</div>${items.map(([i,t,c])=>`<div class="nav ${t===on?'on':''}">${I(i)}<span>${t}</span>${c?`<span class="ct">${c}</span>`:''}</div>`).join('')}`).join('')}<div class="foot"><div class="av c">AB</div><div class="grow"><div style="font-size:14px;font-weight:600">Anthony Barrera</div><div class="muted" style="font-size:12px">Owner</div></div><span class="muted">${I('updown','s')}</span></div></aside>`;
+const top=(...c)=>`<div class="top"><span class="muted">${I('panel')}</span><div class="vsep"></div><div class="crumb">${c.map((x,i)=>i===c.length-1?`<b>${x}</b>`:`<span>${x}</span>${I('chevr','s')}`).join('')}</div><div style="flex:1"></div><div class="input" style="width:260px">${I('search')}<span>Search…</span><span style="margin-left:auto" class="badge o mono">⌘K</span></div></div>`;
+const screen=(name,on,crumbs,content,extra='')=>`<div class="title-cap">${name}</div><div class="screen" data-name="${name}">${side(on)}<div class="main">${top(...crumbs)}<div class="content">${content}</div></div>${extra}</div>`;
+const stat=(k,ic,v,d)=>`<div class="card stat"><div class="cb"><div class="k"><span>${k}</span>${I(ic)}</div><div class="v">${v}</div><div class="d">${d}</div></div></div>`;
+const status={Published:'ok',Draft:'s',Review:'warn',Hidden:'bad'};
+const B=(t,c)=>`<span class="badge ${c}">${t}</span>`;
+
+const hymns=[[0,'Himno de Bienvenida','IDC Himnario','Published',1,'Nov 2'],[1,'Porque vive él','IDC Himnario','Published',3,'Nov 10'],[2,'Cuán grande es Él','IDC Himnario','Published',2,'Oct 28'],[3,'Santo, santo, santo','IDC Himnario','Published',1,'Oct 21'],[12,'Sublime gracia','IDC Himnario','Draft',0,'Nov 12'],['—','Te exaltaré','Community','Published',1,'Nov 11'],['—','Luz de mi alma','Community','Review',1,'Nov 13'],[47,'A Dios sea la gloria','IDC Himnario','Published',2,'Sep 30'],[88,'Bendito Redentor','IDC Himnario','Hidden',1,'Sep 14'],['—','Cerca de ti','Community','Published',2,'Nov 4']];
+
+const S=[];
+// 1 Dashboard
+S.push(screen('01 · Dashboard','Dashboard',['Overview','Dashboard'],`
+<div class="ph"><div><h1>Dashboard</h1><p class="desc">What's happening in Exalto this week.</p></div><div class="sp"></div><div class="tabs"><span>7 days</span><span class="on">28 days</span><span>90 days</span></div><button class="btn o sm">${I('dl')} Export</button></div>
+<div class="grid4">${stat('Active listeners','users','3,482','+12.4% from last period')}${stat('Hymn plays','play','41,209','+8.1% from last period')}${stat('Published hymns','book','318','280 official · 38 community')}${stat('Needs review','alert','11','4 composer requests · 7 reports')}</div>
+<div style="display:grid;grid-template-columns:1.6fr 1fr;gap:16px">
+<div class="card"><div class="ch"><h3>Plays per week</h3><p>Hymn book reads and audio plays combined</p></div><div class="cb"><div class="chart">${[42,55,48,60,58,72,66,80,74,88,84,96].map((h,i)=>`<i style="height:${h}%" class="${i<6?'b':''}"></i>`).join('')}</div><div class="xl">${['Aug 24','','Sep 7','','Sep 21','','Oct 5','','Oct 19','','Nov 2',''].map(x=>`<span>${x}</span>`).join('')}</div></div></div>
+<div class="card"><div class="ch"><h3>Needs your attention</h3><p>Oldest first</p></div><div class="cb" style="gap:12px">
+${[['flag','Copyright report on "Luz de mi alma"','2 reports · 3h ago','bad','Report'],['inbox','Marta Rivera wants composer access','Requested yesterday','warn','Request'],['book','"Luz de mi alma" waiting for review','Submitted 1h ago','warn','Review'],['inbox','Daniel Peña wants composer access','Requested 2d ago','warn','Request']].map(([i,t,s,c,b])=>`<div class="row"><span class="muted">${I(i)}</span><div class="grow"><div style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t}</div><div class="muted" style="font-size:13px">${s}</div></div>${B(b,c)}</div>`).join('')}
+<button class="btn o sm" style="align-self:flex-start">View queue ${I('chevr','s')}</button></div></div></div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+<div class="card"><div class="ch"><h3>Top hymns</h3></div><div class="cb" style="gap:10px">${[['Porque vive él',2410],['Cuán grande es Él',1980],['Te exaltaré',1203]].map(([t,n],i)=>`<div class="row"><span class="muted mono" style="width:16px">${i+1}</span><span class="grow" style="font-weight:500">${t}</span><div class="prog" style="width:180px"><i style="width:${n/24.1}%"></i></div><span class="mono" style="width:48px;text-align:right">${n.toLocaleString()}</span></div>`).join('')}</div></div>
+<div class="card"><div class="ch"><h3>New sign-ups</h3></div><div class="cb" style="gap:10px">${[['RL','Ruth López','Listener','12m ago'],['JM','José Martínez','Listener','1h ago'],['MR','Marta Rivera','Composer (pending)','1d ago']].map(([a,n,r,t])=>`<div class="row"><div class="av">${a}</div><div class="grow"><div style="font-weight:500">${n}</div><div class="muted" style="font-size:13px">${r}</div></div><span class="muted" style="font-size:13px">${t}</span></div>`).join('')}</div></div></div>`));
+
+// 2 Hymns
+S.push(screen('02 · Hymns','Hymns',['Content','Hymns'],`
+<div class="ph"><div><h1>Hymns</h1><p class="desc">Every hymn in the app: the official IDC Himnario and community uploads.</p></div><div class="sp"></div><button class="btn o">${I('up')} Import</button><button class="btn">${I('plus')} New hymn</button></div>
+<div class="row"><div class="tabs"><span class="on">All <span class="muted">318</span></span><span>IDC Himnario <span class="muted">280</span></span><span>Community <span class="muted">38</span></span><span>Drafts <span class="muted">6</span></span></div><div class="grow"></div><div class="input" style="width:280px">${I('search')}<span>Filter by number, title or lyrics…</span></div><button class="btn o sm">${I('filter','s')} Status</button><button class="btn o sm">${I('filter','s')} Language</button></div>
+<div class="tw"><table><thead><tr><th style="width:40px"><span class="cbx"></span></th><th style="width:60px">No.</th><th>Title</th><th>Hymnal</th><th>Status</th><th>Recordings</th><th>Language</th><th>Updated</th><th style="width:48px"></th></tr></thead><tbody>
+${hymns.map((h,i)=>`<tr class="${i===1?'sel':''}"><td><span class="cbx ${i===1?'on':''}">${i===1?I('check','s'):''}</span></td><td class="mono">${h[0]}</td><td style="font-weight:500">${h[1]}</td><td>${B(h[2],h[2]==='Community'?'info':'o')}</td><td>${B(`<span class="dot"></span>${h[3]}`,status[h[3]])}</td><td>${h[4]}</td><td class="muted">Español</td><td class="muted">${h[5]}</td><td><span class="btn g icon">${I('more')}</span></td></tr>`).join('')}
+</tbody></table></div>
+<div class="pag"><span>1 of 318 row(s) selected.</span><div class="row"><span>Rows per page</span><div class="input v sel-f" style="width:70px;height:32px">10 ${I('chev','s')}</div><span style="color:var(--fg);font-weight:500">Page 1 of 32</span><span class="btn o icon">${I('chevl')}</span><span class="btn o icon">${I('chevr')}</span></div></div>`,
+`<div class="menu" style="left:1310px;top:330px"><div class="lbl">Porque vive él</div><div class="mi h">${I('edit')} Edit</div><div class="mi">${I('eye')} Preview in app</div><div class="mi">${I('copy')} Duplicate</div><div class="mi">${I('star')} Make Hymn of the Day</div><div class="sepm"></div><div class="mi">${I('ban')} Hide from app</div><div class="mi red">${I('trash')} Delete</div></div>`));
+
+// 3 Hymn editor
+S.push(screen('03 · Hymn editor','Hymns',['Content','Hymns','Porque vive él'],`
+<div class="ph"><div><h1>Porque vive él</h1><p class="desc">Hymn 1 · IDC Himnario · last edited by Anthony Barrera on Nov 10</p></div><div class="sp"></div>${B('<span class="dot"></span>Published','ok')}<button class="btn o">${I('eye')} Preview</button><button class="btn">Save changes</button></div>
+<div style="display:grid;grid-template-columns:1.5fr 1fr;gap:16px;flex:1;min-height:0">
+<div class="card"><div class="ch"><h3>Lyrics</h3><p>Blocks show in the app in this order. Drag to reorder.</p></div><div class="cb">
+<div class="row"><div class="tabs"><span class="on">Blocks</span><span>Plain text</span></div><div class="grow"></div><button class="btn o sm">${I('plus','s')} Verse</button><button class="btn o sm">${I('plus','s')} Chorus</button><button class="btn o sm">${I('plus','s')} Bridge</button></div>
+${[['Verse 1','Dios dio a Jesús, su hijo amado. El vino amar y a perdonar,<br>Vivió y murió, por redimirme. La tumba vacía la prueba es de que vive él.'],['Chorus','Porque vive él, enfrentaré el mañana. Porque vive él, mi temor se va.<br>Y porque sé que dirige el futuro, puedo vivir confiando porque vive él.'],['Verse 2','Que dulce es, abrazar a un niño. Sentir su amor, su suavidad,<br>Pero es mejor, la paz que siento, al saber que en Cristo seguro estoy.']].map(([h,t],i)=>`<div class="blk" ${i===1?'style="border-color:var(--primary)"':''}><div class="bh"><span class="muted">${I('grip','s')}</span>${B(h,i===1?'':'s')}<span class="grow"></span><span class="muted">${I('copy','s')}</span><span class="muted">${I('trash','s')}</span></div><p>${t}</p></div>`).join('')}
+<div class="row"><span class="sw on"></span><span>Repeat chorus after each verse</span></div></div></div>
+<div style="display:flex;flex-direction:column;gap:16px;min-height:0">
+<div class="card"><div class="ch"><h3>Details</h3></div><div class="cb">
+<div class="row" style="align-items:flex-start"><div class="field" style="width:90px"><span class="label">Number</span><div class="input v">1</div></div><div class="field grow"><span class="label">Title</span><div class="input v">Porque vive él</div></div></div>
+<div class="row"><div class="field grow"><span class="label">Hymnal</span><div class="input v sel-f">IDC Himnario ${I('chev','s')}</div></div><div class="field grow"><span class="label">Language</span><div class="input v sel-f">Español ${I('chev','s')}</div></div></div>
+<div class="field"><span class="label">Author / composer</span><div class="input v">William J. Gaither · trad. español</div></div>
+<div class="field"><span class="label">Tags</span><div class="row" style="gap:6px;flex-wrap:wrap">${['Resurrección','Esperanza','Pascua'].map(t=>B(t+' ×','s')).join('')}<span class="badge o">+ Add</span></div></div>
+<div class="row"><div class="grow"><div class="label">Show in app</div><div class="hint">Turn off to hide without deleting</div></div><span class="sw on"></span></div></div></div>
+<div class="card"><div class="ch"><h3>Recordings</h3><p>Audio versions people can play</p></div><div class="cb" style="gap:10px">
+${[['IDC Coro','3:42','Default'],['Anthony Barrera','3:50',''],['Piano only','3:12','']].map(([n,d,b])=>`<div class="row"><span class="btn o icon">${I('play','s')}</span><div class="grow"><div style="font-weight:500">${n}</div><div class="muted" style="font-size:13px">${d} · AAC 128 kbps</div></div>${b?B(b,'s'):''}<span class="btn g icon">${I('more')}</span></div>`).join('')}
+<button class="btn o sm" style="align-self:flex-start">${I('up','s')} Upload recording</button></div></div>
+<div class="card"><div class="cb" style="flex-direction:row;align-items:center"><span class="muted">${I('file','l')}</span><div class="grow"><div style="font-weight:500">porque-vive-el.pdf</div><div class="muted" style="font-size:13px">Sheet music · 2 pages</div></div><button class="btn o sm">Replace</button></div></div>
+</div></div>`));
+
+// 4 Hymnals + import dialog
+S.push(screen('04 · Hymnals and import','Hymnals',['Content','Hymnals'],`
+<div class="ph"><div><h1>Hymnals</h1><p class="desc">Collections shown in the Himnario picker. Official hymnals are cached offline in the app.</p></div><div class="sp"></div><button class="btn o">${I('up')} Import hymns</button><button class="btn">${I('plus')} New hymnal</button></div>
+<div class="grid4" style="grid-template-columns:repeat(3,1fr)">${[['IDC Himnario','Official · 280 hymns','Offline','ok','Iglesia de Cristo, Elgin'],['Community','Composer uploads · 38 hymns','Online only','s','Moderated'],['Coritos','Draft · 0 hymns','Hidden','bad','Not visible in app']].map(([t,s,b,c,o])=>`<div class="card"><div class="cb"><div class="row"><div class="av c" style="border-radius:8px">${I('book')}</div><div class="grow"><div style="font-weight:600">${t}</div><div class="muted" style="font-size:13px">${s}</div></div><span class="btn g icon">${I('more')}</span></div><div class="row">${B(b,c)}<span class="muted" style="font-size:13px">${o}</span></div></div></div>`).join('')}</div>
+<div class="card"><div class="ch"><h3>Import history</h3></div><div class="cb" style="padding-top:12px"><table><thead><tr><th>Source</th><th>Hymnal</th><th>Rows</th><th>Result</th><th>By</th><th>Date</th></tr></thead><tbody>
+<tr><td style="font-weight:500">Firebase · himnos (legacy app)</td><td>IDC Himnario</td><td>280</td><td>${B('280 imported','ok')}</td><td>Anthony Barrera</td><td class="muted">Nov 1</td></tr>
+<tr><td style="font-weight:500">himnos.csv</td><td>IDC Himnario</td><td>12</td><td>${B('3 need fixes','warn')}</td><td>Anthony Barrera</td><td class="muted">Nov 3</td></tr></tbody></table></div></div>`,
+`<div class="overlay"></div><div class="dialog"><div class="row"><h3 class="grow">Import hymns</h3><span class="muted">${I('x')}</span></div><p class="desc" style="margin-top:-8px">Bring in hymns from the legacy IDC Himnos app or a CSV file. Plain-text lyrics are split into verse and chorus blocks automatically.</p>
+<div class="field"><span class="label">Source</span><div class="row" style="gap:8px"><div class="card grow" style="border-color:var(--primary);box-shadow:inset 0 0 0 1px var(--primary)"><div class="cb" style="padding:12px;gap:4px">${I('db')}<b style="font-size:14px">Legacy app</b><span class="hint">Firebase himnos and canticos</span></div></div><div class="card grow"><div class="cb" style="padding:12px;gap:4px">${I('file')}<b style="font-size:14px">CSV file</b><span class="hint">number, title, lyrics</span></div></div></div></div>
+<div class="field"><span class="label">Into hymnal</span><div class="input v sel-f">IDC Himnario ${I('chev','s')}</div></div>
+<div class="alert">${I('alert')}<div><b style="font-weight:500">Existing numbers will be updated, not duplicated.</b><div class="hint">You can review every change before it goes live.</div></div></div>
+<div class="row" style="justify-content:flex-end"><button class="btn o">Cancel</button><button class="btn">Preview import</button></div></div>`));
+
+// 5 Composer requests
+S.push(screen('05 · Composer requests','Composer requests',['Community','Composer requests'],`
+<div class="ph"><div><h1>Composer requests</h1><p class="desc">People asking to upload hymns. Approved composers get the studio in the app.</p></div><div class="sp"></div><div class="tabs"><span class="on">Pending <span class="muted">4</span></span><span>Approved</span><span>Declined</span></div></div>
+<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px">
+${[['MR','Marta Rivera','@martar','Requested yesterday','I direct the choir at our church in Aurora and have written about 20 hymns since 2018. Several are already sung on Sundays.','youtube.com/@martarivera','Iglesia de Cristo, Aurora'],['DP','Daniel Peña','@danielp','Requested 2 days ago','Piano player and songwriter. I want to share arrangements of IDC hymns and a few originals.','soundcloud.com/danielpena','Iglesia de Cristo, Elgin'],['RL','Ruth López','@ruthl','Requested 3 days ago','Youth leader. We record our youth choir and would love to share the recordings.','—','Iglesia de Cristo, Chicago'],['CI','Coro IDC','@coroidc','Requested 4 days ago','Official account for the IDC Elgin choir recordings.','drive.google.com/…','Iglesia de Cristo, Elgin']].map(([a,n,h,t,m,l,c])=>`<div class="card"><div class="cb"><div class="row"><div class="av" style="width:40px;height:40px">${a}</div><div class="grow"><div style="font-weight:600">${n} <span class="muted" style="font-weight:400">${h}</span></div><div class="muted" style="font-size:13px">${t}</div></div>${B('Pending','warn')}</div><p style="margin:0;font-size:14px;line-height:1.55">${m}</p><div class="kv"><span>Church</span><span>${c}</span><span>Sample</span><span class="mono" style="color:#0369a1">${l}</span></div><div class="sep"></div><div class="row"><button class="btn g sm">${I('mail','s')} Message</button><div class="grow"></div><button class="btn o sm">${I('x','s')} Decline</button><button class="btn sm">${I('check','s')} Approve</button></div></div></div>`).join('')}
+</div>`));
+
+// 6 Reports
+S.push(screen('06 · Reports','Reports',['Community','Reports'],`
+<div class="ph"><div><h1>Reports</h1><p class="desc">Content and accounts flagged by people in the app. Resolve within 24 hours.</p></div><div class="sp"></div><div class="tabs"><span class="on">Open <span class="muted">7</span></span><span>Resolved</span></div></div>
+<div class="tw" style="margin-right:480px"><table><thead><tr><th>Content</th><th>Reason</th><th>Reports</th><th>Opened</th></tr></thead><tbody>
+${[['Luz de mi alma','Hymn · Marta Rivera','Copyright',2,'3h ago','bad',1],['@promo_music','Account','Spam',1,'2d ago','warn',0],['Cerca de ti','Hymn · Daniel Peña','Not worship music',1,'2d ago','s',0],['Comment on "Te exaltaré"','Comment · @jgarcia','Offensive',3,'3d ago','bad',0],['Bendito Redentor (cover)','Recording · @ruthl','Copyright',1,'4d ago','bad',0],['@juan_beats','Account','Impersonation',2,'5d ago','warn',0]].map(([t,s,r,n,o,c,sel])=>`<tr class="${sel?'sel':''}"><td><div style="font-weight:500">${t}</div><div class="muted" style="font-size:12.5px">${s}</div></td><td>${B(r,c)}</td><td>${n}</td><td class="muted">${o}</td></tr>`).join('')}
+</tbody></table></div>`,
+`<div class="sheet" style="top:56px;box-shadow:none"><div class="row"><div class="grow"><h3 style="margin:0;font-size:18px;font-weight:600">Luz de mi alma</h3><div class="muted" style="font-size:13px">Hymn by Marta Rivera · published Nov 13</div></div>${B('Copyright','bad')}</div>
+<div class="card"><div class="cb" style="flex-direction:row;align-items:center;padding:12px"><span class="btn o icon">${I('play','s')}</span><div class="grow"><div style="font-weight:500">Recording · 3:58</div><div class="muted" style="font-size:13px">214 plays · 31 likes</div></div><button class="btn g sm">Open ${I('arrowu','s')}</button></div></div>
+<div class="label">Reports (2)</div>
+${[['JM','José Martínez','"This is my arrangement from 2021, published without permission."','3h ago'],['AN','Anonymous','"Same melody as a hymn from our church hymnal."','5h ago']].map(([a,n,q,t])=>`<div class="row" style="align-items:flex-start"><div class="av">${a}</div><div class="grow"><div style="font-weight:500">${n} <span class="muted" style="font-weight:400;font-size:13px">· ${t}</span></div><div style="font-size:14px;color:#3f3f46">${q}</div></div></div>`).join('')}
+<div class="sep"></div><div class="kv"><span>Uploader</span><span>Marta Rivera · composer since Nov 12</span><span>Rights confirmed</span><span>Yes, at upload</span><span>Past reports</span><span>None</span></div>
+<div class="field"><span class="label">Note to uploader</span><div class="input area">Optional. Sent with the decision.</div></div>
+<div style="margin-top:auto;display:flex;flex-direction:column;gap:8px"><div class="row"><button class="btn o grow" style="justify-content:center">Dismiss</button><button class="btn o grow" style="justify-content:center">${I('eye','s')} Hide pending review</button></div><button class="btn d" style="justify-content:center">${I('trash','s')} Remove hymn</button></div></div>`));
+
+// 7 Users
+S.push(screen('07 · Users','Users',['Community','Users'],`
+<div class="ph"><div><h1>Users</h1><p class="desc">Everyone with an Exalto account. Guests aren't listed.</p></div><div class="sp"></div><button class="btn o">${I('dl')} Export</button></div>
+<div class="row"><div class="input" style="width:300px">${I('search')}<span>Search by name or username…</span></div><button class="btn o sm">${I('filter','s')} Role</button><button class="btn o sm">${I('filter','s')} Status</button><div class="grow"></div><span class="muted">3,482 users</span></div>
+<div class="tw"><table><thead><tr><th>User</th><th>Role</th><th>Status</th><th>Church</th><th>Uploads</th><th>Joined</th><th>Last active</th><th style="width:48px"></th></tr></thead><tbody>
+${[['AB','Anthony Barrera','@anthonyb','Owner','','Active','Elgin',4,'Mar 2026','Now'],['MR','Marta Rivera','@martar','Composer','info','Active','Aurora',14,'Nov 2026','2h ago'],['CI','Coro IDC','@coroidc','Composer','info','Active','Elgin',22,'Apr 2026','1d ago'],['DP','Daniel Peña','@danielp','Listener','s','Active','Elgin',0,'Oct 2026','3h ago'],['RL','Ruth López','@ruthl','Listener','s','Active','Chicago',0,'Nov 2026','12m ago'],['JG','Juan García','@jgarcia','Listener','s','Warned','—',0,'Aug 2026','5d ago'],['PM','Promo Music','@promo_music','Listener','s','Suspended','—',0,'Nov 2026','2d ago'],['SM','Sara Méndez','@saram','Moderator','o','Active','Elgin',0,'May 2026','1h ago']].map(([a,n,h,r,rc,s,c,u,j,l],i)=>`<tr class="${i===3?'sel':''}"><td><div class="row"><div class="av ${r==='Composer'||r==='Owner'?'c':''}">${a}</div><div><div style="font-weight:500">${n}</div><div class="muted" style="font-size:12.5px">${h}</div></div></div></td><td>${B(r,rc)}</td><td>${B(`<span class="dot"></span>${s}`,s==='Active'?'ok':s==='Warned'?'warn':'bad')}</td><td class="muted">${c}</td><td>${u}</td><td class="muted">${j}</td><td class="muted">${l}</td><td><span class="btn g icon">${I('more')}</span></td></tr>`).join('')}
+</tbody></table></div>`,
+`<div class="menu" style="left:1310px;top:445px"><div class="lbl">Daniel Peña</div><div class="mi h">${I('eye')} View profile</div><div class="mi">${I('mic')} Make composer</div><div class="mi">${I('shield')} Make moderator</div><div class="mi">${I('mail')} Send message</div><div class="sepm"></div><div class="mi">${I('alert')} Warn</div><div class="mi">${I('ban')} Suspend</div><div class="mi red">${I('trash')} Delete account</div></div>`));
+
+// 8 Featured
+S.push(screen('08 · Featured','Featured',['Content','Featured'],`
+<div class="ph"><div><h1>Featured</h1><p class="desc">Hymn of the Day on Home, and the sections on the Discover tab.</p></div><div class="sp"></div><div class="tabs"><span class="on">Hymn of the Day</span><span>Discover sections</span></div></div>
+<div class="row"><span class="btn o icon">${I('chevl')}</span><span class="btn o icon">${I('chevr')}</span><b style="font-size:16px">November 2026</b><div class="grow"></div><div class="row"><span class="sw on"></span><span>Auto-fill empty days from popular hymns</span></div><button class="btn sm">${I('plus','s')} Schedule</button></div>
+<div class="cal">${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d=>`<div class="muted" style="font-size:12px;font-weight:500;padding:0 4px">${d}</div>`).join('')}
+${Array.from({length:35},(_,i)=>{const n=i-0+1;const titles={1:'Santo, santo, santo',2:'Himno de Bienvenida',8:'Sublime gracia',9:'Cuán grande es Él',13:'Porque vive él',14:'Te exaltaré',15:'A Dios sea la gloria',16:'Himno de Bienvenida',20:'Cerca de ti',22:'Bendito Redentor',27:'Acción de gracias'};const t=titles[n];return n<=30?`<div class="d ${n===13?'today':''}"><span class="n">${n}</span>${t?`<span class="ev ${t==='Te exaltaré'||t==='Cerca de ti'?'c':''}">${t}</span>`:n<13?'<span class="ev" style="background:transparent;color:#a1a1aa">Auto</span>':''}</div>`:'<div></div>'}).join('')}</div>
+<div class="row muted" style="font-size:13px;gap:16px"><span class="row" style="gap:6px"><span class="badge s">Hymn</span>IDC Himnario</span><span class="row" style="gap:6px"><span class="badge info">Hymn</span>Community</span></div>`));
+
+// 9 Settings / team & audit
+S.push(screen('09 · Team and audit log','Settings',['System','Settings'],`
+<div class="ph"><div><h1>Settings</h1><p class="desc">Who can manage Exalto and what they changed.</p></div></div>
+<div class="tabs" style="align-self:flex-start"><span>General</span><span class="on">Team</span><span>App content</span><span>Notifications</span></div>
+<div style="display:grid;grid-template-columns:1fr 1.2fr;gap:16px;flex:1;min-height:0">
+<div class="card"><div class="ch"><div class="row"><h3 class="grow">Admin team</h3><button class="btn sm">${I('plus','s')} Invite</button></div><p>Roles control what each person can change.</p></div><div class="cb" style="gap:14px">
+${[['AB','Anthony Barrera','Owner','Everything, including billing and roles'],['SM','Sara Méndez','Moderator','Reports, users and composer requests'],['LT','Luis Torres','Editor','Hymns, hymnals and featured content']].map(([a,n,r,d])=>`<div class="row"><div class="av ${r==='Owner'?'c':''}">${a}</div><div class="grow"><div style="font-weight:500">${n}</div><div class="muted" style="font-size:13px">${d}</div></div><div class="input v sel-f" style="width:130px;height:32px">${r} ${I('chev','s')}</div></div>`).join('')}
+<div class="sep"></div><div class="label">Security</div>
+<div class="row"><div class="grow"><div style="font-weight:500">Require two-factor sign-in</div><div class="hint">For everyone on the admin team</div></div><span class="sw on"></span></div>
+<div class="row"><div class="grow"><div style="font-weight:500">Moderators can delete accounts</div><div class="hint">Otherwise only the owner can</div></div><span class="sw"></span></div></div></div>
+<div class="card"><div class="ch"><div class="row"><h3 class="grow">Audit log</h3><button class="btn o sm">${I('dl','s')} Export</button></div><p>Every admin action, newest first.</p></div><div class="cb" style="padding-top:12px"><table><thead><tr><th>Who</th><th>Action</th><th>When</th></tr></thead><tbody>
+${[['Sara Méndez','Suspended @promo_music (spam)','2d ago'],['Anthony Barrera','Approved composer Marta Rivera','Nov 12'],['Luis Torres','Edited lyrics of Hymn 1 "Porque vive él"','Nov 10'],['Anthony Barrera','Scheduled Hymn of the Day for Nov 14','Nov 9'],['Sara Méndez','Removed comment on "Te exaltaré"','Nov 8'],['Anthony Barrera','Imported 280 hymns from legacy app','Nov 1'],['Anthony Barrera','Invited Luis Torres as Editor','Oct 30']].map(([w,a,t])=>`<tr><td style="font-weight:500">${w}</td><td>${a}</td><td class="muted">${t}</td></tr>`).join('')}
+</tbody></table></div></div></div>`));
+
+document.getElementById('app').innerHTML=S.join('');
+</script>
