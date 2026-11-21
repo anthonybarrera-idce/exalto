@@ -1,12 +1,10 @@
-import { Tabs, TabList, TabTrigger, TabSlot, TabTriggerSlotProps, TabListProps } from 'expo-router/ui';
-import { SymbolView } from 'expo-symbols';
-import { Pressable, View, StyleSheet } from 'react-native';
+import { BookOpen, House, ListMusic, type LucideIcon } from 'lucide-react-native';
+import { Tabs, TabList, TabTrigger, TabSlot, type TabTriggerSlotProps, type TabListProps } from 'expo-router/ui';
+import { Pressable, StyleSheet, View } from 'react-native';
 
-import { AppBackground, Spacing } from '@/constants/theme';
+import { Palette, Spacing } from '@/constants/theme';
 
-const ACTIVE_TINT = '#FFFFFF';
-const INACTIVE_TINT = '#55504A';
-
+// Web stand-in for the native tab bar: the floating bar from the Figma screens.
 export default function AppTabs() {
   return (
     <Tabs>
@@ -14,16 +12,13 @@ export default function AppTabs() {
       <TabList asChild>
         <CustomTabList>
           <TabTrigger name="home" href="/" asChild>
-            <IconTabButton icon="house.fill" />
+            <IconTabButton Icon={House} label="Home" />
           </TabTrigger>
           <TabTrigger name="hymns" href="/hymns" asChild>
-            <IconTabButton icon="music.note.list" />
+            <IconTabButton Icon={BookOpen} label="Himnario" />
           </TabTrigger>
           <TabTrigger name="library" href="/library" asChild>
-            <IconTabButton icon="books.vertical.fill" />
-          </TabTrigger>
-          <TabTrigger name="profile" href="/profile" asChild>
-            <IconTabButton icon="person.circle.fill" />
+            <IconTabButton Icon={ListMusic} label="Library" />
           </TabTrigger>
         </CustomTabList>
       </TabList>
@@ -31,47 +26,35 @@ export default function AppTabs() {
   );
 }
 
-function IconTabButton({ icon, isFocused, ...props }: TabTriggerSlotProps & { icon: string }) {
+function IconTabButton({ Icon, label, isFocused, ...props }: TabTriggerSlotProps & { Icon: LucideIcon; label: string }) {
   return (
-    <Pressable {...props} style={({ pressed }) => [styles.tabButton, pressed && styles.pressed]}>
-      <SymbolView
-        name={icon as any}
-        size={22}
-        tintColor={isFocused ? ACTIVE_TINT : INACTIVE_TINT}
-      />
+    <Pressable {...props} accessibilityLabel={label} style={({ pressed }) => [styles.tabButton, pressed && styles.pressed]}>
+      <Icon size={24} color={isFocused ? Palette.cyan : Palette.amber} strokeWidth={1.8} />
     </Pressable>
   );
 }
 
 function CustomTabList(props: TabListProps) {
   return (
-    <View {...props} style={styles.tabListContainer}>
-      <View style={styles.innerContainer}>{props.children}</View>
+    <View {...props} style={styles.container}>
+      <View style={styles.bar}>{props.children}</View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  tabListContainer: {
-    position: 'absolute',
-    bottom: 0,
-    width: '100%',
-    backgroundColor: AppBackground,
-    paddingBottom: Spacing.three,
-    paddingTop: Spacing.two,
-  },
-  innerContainer: {
+  container: { position: 'absolute', bottom: 0, width: '100%', paddingHorizontal: Spacing.four, paddingBottom: Spacing.three },
+  bar: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
+    height: 56,
+    borderRadius: 18,
+    backgroundColor: '#1F1710',
+    borderWidth: 1,
+    borderColor: Palette.surface2,
     paddingHorizontal: Spacing.five,
   },
-  tabButton: {
-    padding: Spacing.two,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pressed: {
-    opacity: 0.6,
-  },
+  tabButton: { padding: Spacing.two, alignItems: 'center', justifyContent: 'center' },
+  pressed: { opacity: 0.6 },
 });

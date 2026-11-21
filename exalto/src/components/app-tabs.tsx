@@ -2,13 +2,15 @@ import { NativeTabs } from "expo-router/unstable-native-tabs";
 
 import { AppBackground } from "@/constants/theme";
 
-const ACTIVE_TINT = "#FFFFFF";
-const INACTIVE_TINT = "#55504A";
+const ACTIVE_TINT = "#04C1FF"; // Figma: cyan when selected
+const INACTIVE_TINT = "#F5C080"; // amber otherwise
 
 export default function AppTabs() {
   return (
     <NativeTabs
       backgroundColor={AppBackground}
+      tintColor={ACTIVE_TINT}
+      iconColor={{ default: INACTIVE_TINT, selected: ACTIVE_TINT }}
       indicatorColor="transparent"
       labelStyle={{
         default: { color: INACTIVE_TINT },
@@ -17,7 +19,7 @@ export default function AppTabs() {
     >
       <NativeTabs.Trigger name="index">
         <NativeTabs.Trigger.Icon
-          // sf={{ default: "house", selected: "house.fill" }}
+          sf={{ default: "house", selected: "house" }}
           src={require("@/assets/images/tabIcons/home.png")}
           renderingMode="template"
         />
@@ -25,7 +27,7 @@ export default function AppTabs() {
 
       <NativeTabs.Trigger name="hymns">
         <NativeTabs.Trigger.Icon
-          sf={{ default: "music.note.list", selected: "music.note.list" }}
+          sf={{ default: "book", selected: "book" }}
           src={require("@/assets/images/tabIcons/home.png")}
           renderingMode="template"
         />
@@ -33,7 +35,7 @@ export default function AppTabs() {
 
       <NativeTabs.Trigger name="library">
         <NativeTabs.Trigger.Icon
-          sf={{ default: "books.vertical", selected: "books.vertical.fill" }}
+          sf={{ default: "music.note.list", selected: "music.note.list" }}
           src={require("@/assets/images/tabIcons/home.png")}
           renderingMode="template"
         />

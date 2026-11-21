@@ -1,6 +1,6 @@
-import { Platform, StyleSheet, Text, type TextProps } from 'react-native';
+import { Platform, StyleSheet, Text, type TextProps, type TextStyle } from 'react-native';
 
-import { Fonts, ThemeColor } from '@/constants/theme';
+import { Fonts, fontForWeight, ThemeColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 export type ThemedTextProps = TextProps & {
@@ -10,6 +10,9 @@ export type ThemedTextProps = TextProps & {
 
 export function ThemedText({ style, type = 'default', themeColor, ...rest }: ThemedTextProps) {
   const theme = useTheme();
+  const flat: TextStyle = StyleSheet.flatten([type !== 'code' && styles[type], style]) ?? {};
+  // Custom fonts ignore fontWeight on Android, so pick the matching Plus Jakarta Sans face.
+  const fontFamily = type === 'code' || flat.fontFamily ? undefined : fontForWeight(flat.fontWeight);
 
   return (
     <Text
@@ -24,6 +27,7 @@ export function ThemedText({ style, type = 'default', themeColor, ...rest }: The
         type === 'linkPrimary' && styles.linkPrimary,
         type === 'code' && styles.code,
         style,
+        fontFamily ? { fontFamily, fontWeight: undefined } : null,
       ]}
       {...rest}
     />

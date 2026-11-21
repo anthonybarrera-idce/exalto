@@ -201,7 +201,7 @@ export function PlayerModal() {
       {/* Gradient for full-player state */}
       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, gradientStyle]}>
         <LinearGradient
-          colors={["#100c08ff", "#100c08ff", "#221A11", "#342718ff"]}
+          colors={["#241B12", "#241B12", "#2E2318", "#3C2E1E"]}
           style={StyleSheet.absoluteFill}
         />
       </Animated.View>

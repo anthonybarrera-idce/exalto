@@ -1,74 +1,75 @@
+import { LinearGradient } from 'expo-linear-gradient';
+import { Heart, ThumbsUp } from 'lucide-react-native';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { SymbolView } from 'expo-symbols';
-import { useState } from 'react';
 
 import { ThemedText } from '@/components/themed-text';
-import { useAudio } from '@/hooks/use-audio';
+import { AppHeader } from '@/components/ui/app-header';
+import { HymnArt } from '@/components/ui/hymn-art';
+import { BottomTabInset, MiniPlayerHeight, Palette, Spacing } from '@/constants/theme';
+import type { Hymn } from '@/context/audio-context';
+import { useFavorites } from '@/context/favorites-context';
 import { useHymns } from '@/context/hymns-context';
-import { Hymn } from '@/context/audio-context';
-import { AccentColor, AppBackground, BottomTabInset, MiniPlayerHeight, Spacing } from '@/constants/theme';
-
+import { useViewMode } from '@/context/view-mode-context';
+import { useAudio } from '@/hooks/use-audio';
 
 export default function LibraryScreen() {
-  const { hymns: HYMNS } = useHymns();
-  // Placeholder until favorites and downloads are stored.
-  const SAVED = HYMNS.slice(0, 5);
-  const DOWNLOADED = HYMNS.slice(5, 10);
-  const { loadHymn, isPlayerVisible } = useAudio();
-  const [tab, setTab] = useState<'saved' | 'downloaded'>('saved');
+  const { hymns } = useHymns();
+  const { ids, toggle } = useFavorites();
+  const { loadHymn, expandPlayer, isPlayerVisible } = useAudio();
+  const { setViewMode } = useViewMode();
 
-  const hymns = tab === 'saved' ? SAVED : DOWNLOADED;
-  const bottomPad = BottomTabInset + (isPlayerVisible ? MiniPlayerHeight : 0) + Spacing.three;
+  const byId = new Map(hymns.map((h) => [h.id, h]));
+  const liked = ids.map((id) => byId.get(id)).filter((h): h is Hymn => Boolean(h));
+  const bottomPad = BottomTabInset + (isPlayerVisible ? MiniPlayerHeight + Spacing.three : 0) + Spacing.four;
 
-  function playHymn(hymn: Hymn) {
-    loadHymn(hymn, hymns, hymns.indexOf(hymn));
+  function open(hymn: Hymn) {
+    if (!hymn.audioUri) setViewMode('hymnal');
+    loadHymn(hymn, liked, liked.indexOf(hymn));
+    if (!hymn.audioUri) expandPlayer();
   }
 
   return (
     <View style={styles.root}>
-      <SafeAreaView style={styles.safeArea} edges={['top']}>
-        <ThemedText style={styles.screenTitle}>Library</ThemedText>
-
-        {/* Segmented control */}
-        <View style={styles.segmented}>
-          <Pressable
-            style={[styles.segment, tab === 'saved' && styles.segmentActive]}
-            onPress={() => setTab('saved')}>
-            <ThemedText style={[styles.segmentText, tab === 'saved' && styles.segmentTextActive]}>
-              Saved
-            </ThemedText>
-          </Pressable>
-          <Pressable
-            style={[styles.segment, tab === 'downloaded' && styles.segmentActive]}
-            onPress={() => setTab('downloaded')}>
-            <ThemedText style={[styles.segmentText, tab === 'downloaded' && styles.segmentTextActive]}>
-              Downloaded
-            </ThemedText>
-          </Pressable>
-        </View>
-
+      <SafeAreaView style={styles.flex} edges={['top']}>
+        <AppHeader title="Library" />
         <FlatList
-          data={hymns}
+          data={liked}
           keyExtractor={(h) => h.id}
-          contentContainerStyle={{ paddingBottom: bottomPad }}
-          numColumns={2}
-          columnWrapperStyle={styles.columnWrapper}
-          renderItem={({ item }) => (
-            <Pressable style={styles.gridCard} onPress={() => playHymn(item)}>
-              <View style={[styles.gridArtwork, { backgroundColor: item.artworkColor }]}>
-                <Pressable
-                  onPress={() => playHymn(item)}
-                  style={styles.gridPlayButton}>
-                  <SymbolView name="play.fill" size={16} tintColor="#FFFFFF" />
-                </Pressable>
+          contentContainerStyle={[styles.content, { paddingBottom: bottomPad }]}
+          ListHeaderComponent={
+            <View style={styles.collection}>
+              <LinearGradient colors={['#0F6F95', '#04C1FF', '#EDA145']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.collectionArt}>
+                <ThumbsUp size={24} color="#FFFFFF" strokeWidth={1.8} />
+              </LinearGradient>
+              <View style={styles.flex}>
+                <ThemedText style={styles.rowTitle}>Liked Hymns</ThemedText>
+                <ThemedText style={styles.rowSub}>
+                  {liked.length} hymn{liked.length === 1 ? '' : 's'}
+                </ThemedText>
               </View>
-              <ThemedText style={styles.gridTitle} numberOfLines={2}>
-                {item.title}
-              </ThemedText>
-              <ThemedText style={styles.gridArtist} numberOfLines={1}>
-                {item.artist}
-              </ThemedText>
+            </View>
+          }
+          ListEmptyComponent={
+            <View style={styles.empty}>
+              <ThemedText style={styles.emptyTitle}>Save hymns you love</ThemedText>
+              <ThemedText style={styles.rowSub}>Tap the heart on any hymn and it shows up here.</ThemedText>
+            </View>
+          }
+          renderItem={({ item }) => (
+            <Pressable style={styles.row} onPress={() => open(item)} accessibilityRole="button" accessibilityLabel={item.title}>
+              <HymnArt seed={item.id} size={48} radius={12} label={item.label} />
+              <View style={styles.flex}>
+                <ThemedText style={styles.rowTitle} numberOfLines={1}>
+                  {item.title}
+                </ThemedText>
+                <ThemedText style={styles.rowSub} numberOfLines={1}>
+                  {item.artist}
+                </ThemedText>
+              </View>
+              <Pressable onPress={() => toggle(item.id)} hitSlop={10} accessibilityLabel={`Remove ${item.title} from liked hymns`}>
+                <Heart size={22} color={Palette.cyan} fill={Palette.cyan} />
+              </Pressable>
             </Pressable>
           )}
         />
@@ -78,76 +79,14 @@ export default function LibraryScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: AppBackground,
-  },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-  },
-  screenTitle: {
-    color: '#FFFFFF',
-    fontSize: 28,
-    fontWeight: '700',
-    marginTop: Spacing.two,
-    marginBottom: Spacing.three,
-  },
-  segmented: {
-    flexDirection: 'row',
-    backgroundColor: '#2A1F16',
-    borderRadius: 10,
-    padding: 3,
-    marginBottom: Spacing.four,
-  },
-  segment: {
-    flex: 1,
-    paddingVertical: Spacing.two,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  segmentActive: {
-    backgroundColor: '#3A2C20',
-  },
-  segmentText: {
-    color: '#55504A',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  segmentTextActive: {
-    color: '#FFFFFF',
-  },
-  columnWrapper: {
-    gap: Spacing.three,
-  },
-  gridCard: {
-    flex: 1,
-    marginBottom: Spacing.three,
-    gap: Spacing.one,
-  },
-  gridArtwork: {
-    aspectRatio: 1,
-    borderRadius: 12,
-    marginBottom: Spacing.two,
-    alignItems: 'flex-end',
-    justifyContent: 'flex-end',
-    padding: Spacing.two,
-  },
-  gridPlayButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: AccentColor,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  gridTitle: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  gridArtist: {
-    color: '#A09080',
-    fontSize: 12,
-  },
+  root: { flex: 1, backgroundColor: Palette.bg },
+  flex: { flex: 1 },
+  content: { paddingHorizontal: Spacing.four + 4, gap: Spacing.three },
+  collection: { flexDirection: 'row', alignItems: 'center', gap: Spacing.four, marginBottom: Spacing.three },
+  collectionArt: { width: 56, height: 56, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three + 4 },
+  rowTitle: { color: Palette.text, fontSize: 16, lineHeight: 21, fontWeight: '500' },
+  rowSub: { color: Palette.muted, fontSize: 12, lineHeight: 17, fontWeight: '500' },
+  empty: { paddingVertical: Spacing.five, gap: Spacing.one, alignItems: 'center' },
+  emptyTitle: { color: Palette.text, fontSize: 16, lineHeight: 22, fontWeight: '700' },
 });

@@ -1,6 +1,6 @@
 import { Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { SymbolView } from 'expo-symbols';
+import { Bell, ChevronRight, Download, Info, Music, Trash2, type LucideIcon } from 'lucide-react-native';
 import { useState } from 'react';
 
 import { ThemedText } from '@/components/themed-text';
@@ -26,14 +26,14 @@ export default function ProfileScreen() {
             </View>
             <View>
               <ThemedText style={styles.displayName}>Anthony Barrera</ThemedText>
-              <ThemedText style={styles.email}>ozzy.barrera@cityofchildren.com</ThemedText>
+              <ThemedText style={styles.email}>@anthonyb</ThemedText>
             </View>
           </View>
 
           {/* Settings */}
           <ThemedText style={styles.sectionLabel}>Preferences</ThemedText>
           <View style={styles.settingsGroup}>
-            <SettingRow icon="bell.fill" label="Notifications">
+            <SettingRow Icon={Bell} label="Notifications">
               <Switch
                 value={notifications}
                 onValueChange={setNotifications}
@@ -42,7 +42,7 @@ export default function ProfileScreen() {
               />
             </SettingRow>
             <View style={styles.divider} />
-            <SettingRow icon="hifispeaker.fill" label="High Quality Audio">
+            <SettingRow Icon={Music} label="High Quality Audio">
               <Switch
                 value={highQuality}
                 onValueChange={setHighQuality}
@@ -54,14 +54,14 @@ export default function ProfileScreen() {
 
           <ThemedText style={styles.sectionLabel}>Account</ThemedText>
           <View style={styles.settingsGroup}>
-            <SettingRow icon="square.and.arrow.down" label="Downloads" chevron />
+            <SettingRow Icon={Download} label="Downloads" chevron />
             <View style={styles.divider} />
-            <SettingRow icon="trash.fill" label="Clear Cache" chevron />
+            <SettingRow Icon={Trash2} label="Clear Cache" chevron />
           </View>
 
           <ThemedText style={styles.sectionLabel}>About</ThemedText>
           <View style={styles.settingsGroup}>
-            <SettingRow icon="info.circle.fill" label="Version 1.0.0" />
+            <SettingRow Icon={Info} label="Version 1.0.0" />
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -70,21 +70,21 @@ export default function ProfileScreen() {
 }
 
 function SettingRow({
-  icon,
+  Icon,
   label,
   chevron,
   children,
 }: {
-  icon: string;
+  Icon: LucideIcon;
   label: string;
   chevron?: boolean;
   children?: React.ReactNode;
 }) {
   return (
     <Pressable style={styles.settingRow}>
-      <SymbolView name={icon as any} size={18} tintColor={AccentColor} />
+      <Icon size={18} color={AccentColor} />
       <ThemedText style={styles.settingLabel}>{label}</ThemedText>
-      {children ?? (chevron && <SymbolView name="chevron.right" size={14} tintColor="#55504A" />)}
+      {children ?? (chevron && <ChevronRight size={16} color="#958A7F" />)}
     </Pressable>
   );
 }

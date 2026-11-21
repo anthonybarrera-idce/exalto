@@ -1,154 +1,104 @@
-import { Image, Pressable, ScrollView, StyleSheet, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { SymbolView } from "expo-symbols";
+import { LinearGradient } from "expo-linear-gradient";
+import { Heart, Play } from "lucide-react-native";
 import { useState } from "react";
+import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import { ThemedText } from "@/components/themed-text";
 import { SearchModal } from "@/components/SearchModal";
-import { useAudio } from "@/hooks/use-audio";
+import { ThemedText } from "@/components/themed-text";
+import { AppHeader } from "@/components/ui/app-header";
+import { GradientBorder } from "@/components/ui/gradient-border";
+import { HymnArt } from "@/components/ui/hymn-art";
+import { BottomTabInset, BrandGradient, MiniPlayerHeight, Palette, Spacing } from "@/constants/theme";
+import type { Hymn } from "@/context/audio-context";
+import { useFavorites } from "@/context/favorites-context";
 import { pickHymnOfTheDay, useHymns } from "@/context/hymns-context";
-import { Hymn } from "@/context/audio-context";
-import {
-  AccentColor,
-  AppBackground,
-  BottomTabInset,
-  MiniPlayerHeight,
-  Spacing,
-} from "@/constants/theme";
+import { useAudio } from "@/hooks/use-audio";
 
 export default function HomeScreen() {
   const { loadHymn, isPlayerVisible } = useAudio();
   const [searchOpen, setSearchOpen] = useState(false);
-  const { hymns: HYMNS, byHymnal } = useHymns();
-  const HYMN_OF_THE_DAY = pickHymnOfTheDay(byHymnal("idc-himnario"));
-  // Placeholders until play history exists.
-  const RECENTLY_PLAYED = HYMNS.slice(1, 5);
-  const POPULAR_HYMNS = HYMNS.slice(0, 5);
+  const { hymns, byHymnal, loading } = useHymns();
+  const { isFavorite, toggle } = useFavorites();
+  const hymnOfTheDay = pickHymnOfTheDay(byHymnal("idc-himnario"));
+  // Placeholders until play history and play counts are recorded.
+  const recentlyPlayed = hymns.slice(1, 7);
+  const popular = byHymnal("canticos-espirituales").slice(0, 6);
 
-  const bottomPad =
-    BottomTabInset + (isPlayerVisible ? MiniPlayerHeight : 0) + Spacing.three;
+  const bottomPad = BottomTabInset + (isPlayerVisible ? MiniPlayerHeight + Spacing.three : 0) + Spacing.four;
 
-  function playHymn(hymn: Hymn) {
-    loadHymn(hymn, HYMNS, HYMNS.indexOf(hymn));
+  function open(hymn: Hymn, list: Hymn[]) {
+    loadHymn(hymn, list, Math.max(0, list.indexOf(hymn)));
   }
 
   return (
     <View style={styles.root}>
-      <SafeAreaView style={styles.safeArea} edges={["top"]}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Image
-            source={require("@/assets/images/Exalto-Logo.png")}
-            style={styles.logo}
-            resizeMode="contain"
-          />
-          <View style={styles.headerRight}>
-            <Pressable hitSlop={8} onPress={() => setSearchOpen(true)}>
-              <SymbolView
-                name="magnifyingglass"
-                size={22}
-                tintColor="#FFFFFF"
-              />
-            </Pressable>
-            <View style={styles.avatar}>
-              <ThemedText style={styles.avatarText}>A</ThemedText>
-            </View>
-          </View>
-        </View>
-
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={[
-            styles.scrollContent,
-            { paddingBottom: bottomPad },
-          ]}
-        >
-          {/* Greeting */}
+      <SafeAreaView style={styles.flex} edges={["top"]}>
+        <AppHeader onSearch={() => setSearchOpen(true)} />
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.content, { paddingBottom: bottomPad }]}>
           <ThemedText style={styles.greeting}>Hello, Anthony</ThemedText>
 
-          {/* Hymn of the Day */}
-          {HYMN_OF_THE_DAY && (
-          <Pressable
-            style={[
-              styles.featuredCard,
-              { backgroundColor: HYMN_OF_THE_DAY.artworkColor },
-            ]}
-            onPress={() => playHymn(HYMN_OF_THE_DAY)}
-          >
-            <View style={styles.featuredBadge}>
-              <ThemedText style={styles.featuredBadgeText}>
-                HYMN OF THE DAY
-              </ThemedText>
+          {hymnOfTheDay ? (
+            <Pressable onPress={() => open(hymnOfTheDay, [hymnOfTheDay])} accessibilityRole="button" accessibilityLabel={`Hymn of the day: ${hymnOfTheDay.title}`}>
+              <GradientBorder radius={18} fill={Palette.bg} style={styles.featured}>
+                <HymnArt seed={hymnOfTheDay.id} size={1000} radius={0} style={StyleSheet.absoluteFill} />
+                <LinearGradient colors={BrandGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.badge}>
+                  <ThemedText style={styles.badgeText}>HYMN OF THE DAY</ThemedText>
+                </LinearGradient>
+                <View style={styles.featuredFooter}>
+                  <View style={styles.flex}>
+                    <ThemedText style={styles.featuredTitle} numberOfLines={1}>
+                      {hymnOfTheDay.title}
+                    </ThemedText>
+                    <ThemedText style={styles.featuredSub} numberOfLines={1}>
+                      {hymnOfTheDay.label ? `Himno ${hymnOfTheDay.label} · ` : ""}
+                      {hymnOfTheDay.artist}
+                    </ThemedText>
+                  </View>
+                  <Play size={30} color="#FFFFFF" fill="#FFFFFF" />
+                </View>
+              </GradientBorder>
+            </Pressable>
+          ) : (
+            <View style={[styles.featured, styles.placeholder]}>
+              <ThemedText style={styles.muted}>{loading ? "Loading today's hymn…" : "No hymns yet."}</ThemedText>
             </View>
-            <ThemedText style={styles.featuredTitle}>
-              {HYMN_OF_THE_DAY.title}
-            </ThemedText>
-            <ThemedText style={styles.featuredArtist}>
-              {HYMN_OF_THE_DAY.artist}
-            </ThemedText>
-            <View style={styles.featuredPlayButton}>
-              <SymbolView name="play.fill" size={22} tintColor="#FFFFFF" />
-            </View>
-          </Pressable>
           )}
 
-          {/* Recently Played */}
           <ThemedText style={styles.sectionTitle}>Recently Played</ThemedText>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.horizontalList}
-          >
-            {RECENTLY_PLAYED.map((hymn) => (
-              <Pressable
-                key={hymn.id}
-                onPress={() => playHymn(hymn)}
-                style={styles.recentCard}
-              >
-                <View
-                  style={[
-                    styles.recentArtwork,
-                    { backgroundColor: hymn.artworkColor },
-                  ]}
-                />
-                <ThemedText style={styles.recentTitle} numberOfLines={1}>
-                  {hymn.title}
-                </ThemedText>
-                <ThemedText style={styles.recentArtist} numberOfLines={1}>
-                  {hymn.artist}
-                </ThemedText>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tiles}>
+            {recentlyPlayed.map((h) => (
+              <Pressable key={h.id} onPress={() => open(h, recentlyPlayed)} style={styles.tile}>
+                <HymnArt seed={h.id} size={140} radius={16} />
+                <View style={styles.tileText}>
+                  <ThemedText style={styles.tileTitle} numberOfLines={1}>
+                    {h.title}
+                  </ThemedText>
+                  <ThemedText style={styles.tileSub} numberOfLines={1}>
+                    {h.artist}
+                  </ThemedText>
+                </View>
               </Pressable>
             ))}
           </ScrollView>
 
-          {/* Popular Chart */}
           <ThemedText style={styles.sectionTitle}>Popular Chart</ThemedText>
-          <View style={styles.chartList}>
-            {POPULAR_HYMNS.map((hymn, i) => (
-              <View key={hymn.id} style={styles.chartRow}>
-                <View
-                  style={[
-                    styles.chartArtwork,
-                    { backgroundColor: hymn.artworkColor },
-                  ]}
-                >
-                  <ThemedText style={styles.chartNumber}>{i + 1}</ThemedText>
-                </View>
-                <View style={styles.chartInfo}>
+          <View style={styles.chart}>
+            {popular.map((h) => (
+              <Pressable key={h.id} onPress={() => open(h, popular)} style={styles.chartRow}>
+                <HymnArt seed={h.id} size={56} radius={12} />
+                <View style={styles.flex}>
                   <ThemedText style={styles.chartTitle} numberOfLines={1}>
-                    {hymn.title}
+                    {h.title}
                   </ThemedText>
-                  <ThemedText style={styles.chartArtist} numberOfLines={1}>
-                    {hymn.artist}
+                  <ThemedText style={styles.tileSub} numberOfLines={1}>
+                    {h.artist}
                   </ThemedText>
                 </View>
-                <Pressable
-                  onPress={() => playHymn(hymn)}
-                  style={styles.chartPlayButton}
-                >
-                  <SymbolView name="play.fill" size={16} tintColor="#FFFFFF" />
+                <Pressable onPress={() => toggle(h.id)} hitSlop={10} accessibilityLabel={isFavorite(h.id) ? `Unlike ${h.title}` : `Like ${h.title}`}>
+                  <Heart size={24} color={Palette.cyan} fill={isFavorite(h.id) ? Palette.cyan : "transparent"} />
                 </Pressable>
-              </View>
+              </Pressable>
             ))}
           </View>
         </ScrollView>
@@ -159,168 +109,36 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: AppBackground,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingRight: Spacing.four,
-    paddingLeft: 0,
-    paddingVertical: Spacing.two,
-  },
-  logo: {
-    width: 80,
-    height: 32,
-  },
-  headerRight: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.three,
-  },
-  avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: AccentColor,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarText: {
-    color: "#FFFFFF",
-    fontWeight: "700",
-    fontSize: 14,
-  },
-  scrollContent: {
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.three,
-  },
-  greeting: {
-    color: "#FFFFFF",
-    fontSize: 28,
-    fontWeight: "700",
-    marginTop: Spacing.two,
-  },
-  featuredCard: {
-    borderRadius: 16,
-    padding: Spacing.four,
-    height: 180,
-    justifyContent: "flex-end",
-    position: "relative",
-    overflow: "hidden",
-  },
-  featuredBadge: {
+  root: { flex: 1, backgroundColor: Palette.bg },
+  flex: { flex: 1 },
+  content: { paddingHorizontal: Spacing.four + 4, gap: Spacing.three },
+  greeting: { color: Palette.text, fontSize: 28, lineHeight: 36, fontWeight: "800", marginBottom: Spacing.one },
+  featured: { height: 182, overflow: "hidden" },
+  placeholder: { borderRadius: 18, backgroundColor: Palette.surface, alignItems: "center", justifyContent: "center" },
+  badge: { position: "absolute", top: 12, left: 12, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },
+  badgeText: { color: "#FFFFFF", fontSize: 10, lineHeight: 14, fontWeight: "800", letterSpacing: 0.6 },
+  featuredFooter: {
     position: "absolute",
-    top: Spacing.three,
-    left: Spacing.three,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    borderRadius: 4,
-    paddingHorizontal: Spacing.two,
-    paddingVertical: 3,
-  },
-  featuredBadgeText: {
-    color: "#FFFFFF",
-    fontSize: 10,
-    fontWeight: "700",
-    letterSpacing: 1,
-  },
-  featuredTitle: {
-    color: "#FFFFFF",
-    fontSize: 18,
-    fontWeight: "700",
-    marginBottom: 4,
-  },
-  featuredArtist: {
-    color: "rgba(255,255,255,0.7)",
-    fontSize: 13,
-  },
-  featuredPlayButton: {
-    position: "absolute",
-    right: Spacing.four,
-    bottom: Spacing.four,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: AccentColor,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  sectionTitle: {
-    color: "#FFFFFF",
-    fontSize: 18,
-    fontWeight: "700",
-    marginTop: Spacing.two,
-  },
-  horizontalList: {
-    gap: Spacing.three,
-    paddingBottom: Spacing.two,
-  },
-  recentCard: {
-    width: 120,
-    gap: Spacing.one,
-  },
-  recentArtwork: {
-    width: 120,
-    height: 120,
-    borderRadius: 12,
-    marginBottom: 4,
-  },
-  recentTitle: {
-    color: "#FFFFFF",
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  recentArtist: {
-    color: "#A09080",
-    fontSize: 12,
-  },
-  chartList: {
-    gap: Spacing.two,
-  },
-  chartRow: {
+    left: 0,
+    right: 0,
+    bottom: 0,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#2A1F16",
-    borderRadius: 12,
-    padding: Spacing.two,
     gap: Spacing.three,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.three,
+    backgroundColor: "rgba(26,18,10,0.35)",
   },
-  chartArtwork: {
-    width: 48,
-    height: 48,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  chartNumber: {
-    color: "rgba(255,255,255,0.5)",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  chartInfo: {
-    flex: 1,
-    gap: 2,
-  },
-  chartTitle: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  chartArtist: {
-    color: "#A09080",
-    fontSize: 12,
-  },
-  chartPlayButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: AccentColor,
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  featuredTitle: { color: "#FFFFFF", fontSize: 18, lineHeight: 24, fontWeight: "800" },
+  featuredSub: { color: "rgba(255,255,255,0.8)", fontSize: 11, lineHeight: 15, fontWeight: "500" },
+  sectionTitle: { color: Palette.text, fontSize: 20, lineHeight: 26, fontWeight: "800", marginTop: Spacing.two },
+  tiles: { gap: Spacing.three + 4 },
+  tile: { width: 140, gap: Spacing.two },
+  tileText: { paddingHorizontal: Spacing.two },
+  tileTitle: { color: Palette.text, fontSize: 16, lineHeight: 21, fontWeight: "500" },
+  tileSub: { color: Palette.muted, fontSize: 12, lineHeight: 16, fontWeight: "500" },
+  chart: { gap: Spacing.three },
+  chartRow: { flexDirection: "row", alignItems: "center", gap: Spacing.three + 4 },
+  chartTitle: { color: Palette.text, fontSize: 16, lineHeight: 21, fontWeight: "500" },
+  muted: { color: Palette.muted, fontSize: 13, lineHeight: 18 },
 });

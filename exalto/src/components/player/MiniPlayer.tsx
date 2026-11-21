@@ -1,13 +1,13 @@
 import { Pressable, StyleSheet, View } from "react-native";
-import { SymbolView } from "expo-symbols";
+import { Pause, Play } from "lucide-react-native";
 
 import { useAudio } from "@/hooks/use-audio";
-import { MiniPlayerHeight, Spacing } from "@/constants/theme";
+import { MiniPlayerHeight, Palette, Spacing } from "@/constants/theme";
 import { ThemedText } from "@/components/themed-text";
 
 // Pure content — no background or border radius; the parent container handles shape.
 export function MiniPlayer() {
-  const { currentHymn, isPlaying, play, pause, skipNext } = useAudio();
+  const { currentHymn, isPlaying, play, pause } = useAudio();
 
   if (!currentHymn) return null;
 
@@ -28,27 +28,19 @@ export function MiniPlayer() {
       <Pressable
         onPress={(e) => {
           e.stopPropagation();
+          if (!currentHymn.audioUri) return;
           isPlaying ? pause() : play();
         }}
         style={styles.btn}
         hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel={isPlaying ? "Pause" : "Play"}
       >
-        <SymbolView
-          name={isPlaying ? "pause.fill" : "play.fill"}
-          size={20}
-          tintColor="#FFFFFF"
-        />
-      </Pressable>
-
-      <Pressable
-        onPress={(e) => {
-          e.stopPropagation();
-          skipNext();
-        }}
-        style={styles.btn}
-        hitSlop={8}
-      >
-        <SymbolView name="forward.fill" size={18} tintColor="#FFFFFF" />
+        {isPlaying ? (
+          <Pause size={28} color={Palette.cyan} fill={Palette.cyan} />
+        ) : (
+          <Play size={28} color={Palette.cyan} fill={Palette.cyan} opacity={currentHymn.audioUri ? 1 : 0.35} />
+        )}
       </Pressable>
     </View>
   );
@@ -73,13 +65,15 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   title: {
-    color: "#FFFFFF",
+    color: Palette.text,
     fontSize: 14,
-    fontWeight: "600",
+    lineHeight: 19,
+    fontWeight: "700",
   },
   artist: {
-    color: "#A09080",
-    fontSize: 12,
+    color: Palette.muted,
+    fontSize: 11,
+    lineHeight: 15,
   },
   btn: {
     padding: Spacing.one,

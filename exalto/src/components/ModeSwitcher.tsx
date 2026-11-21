@@ -1,10 +1,14 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
-import { SymbolView } from 'expo-symbols';
+import { BookOpen, Headphones } from 'lucide-react-native';
 import { useEffect } from 'react';
 
 import { useViewMode } from '@/context/view-mode-context';
-import { AccentColor } from '@/constants/theme';
+import { Palette } from '@/constants/theme';
+
+// Figma: tan pill with a light-amber knob; icons in dark brown.
+const ICON_ON = '#3A2410';
+const ICON_OFF = '#5C4128';
 
 const SPRING = { damping: 18, stiffness: 280, mass: 0.7 };
 const PILL_W = 88;
@@ -34,19 +38,11 @@ export function ModeSwitcher({ variant = 'floating', bottom = 0 }: ModeSwitcherP
     <View style={styles.pillShell}>
       <View style={styles.pillInner}>
         <Animated.View style={[styles.knob, knobStyle]} />
-        <Pressable style={styles.option} onPress={() => setViewMode('hymnal')} hitSlop={4}>
-          <SymbolView
-            name="book.closed.fill"
-            size={17}
-            tintColor={viewMode === 'hymnal' ? '#FFFFFF' : '#7A6A5A'}
-          />
+        <Pressable style={styles.option} onPress={() => setViewMode('hymnal')} hitSlop={4} accessibilityRole="button" accessibilityLabel="Read lyrics" accessibilityState={{ selected: viewMode === 'hymnal' }}>
+          <BookOpen size={18} strokeWidth={1.8} color={viewMode === 'hymnal' ? ICON_ON : ICON_OFF} />
         </Pressable>
-        <Pressable style={styles.option} onPress={() => setViewMode('audio')} hitSlop={4}>
-          <SymbolView
-            name="headphones"
-            size={17}
-            tintColor={viewMode === 'audio' ? '#FFFFFF' : '#7A6A5A'}
-          />
+        <Pressable style={styles.option} onPress={() => setViewMode('audio')} hitSlop={4} accessibilityRole="button" accessibilityLabel="Listen" accessibilityState={{ selected: viewMode === 'audio' }}>
+          <Headphones size={18} strokeWidth={1.8} color={viewMode === 'audio' ? ICON_ON : ICON_OFF} />
         </Pressable>
       </View>
     </View>
@@ -66,14 +62,14 @@ const styles = StyleSheet.create({
   pillShell: {
     borderRadius: PILL_H / 2,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
+    borderColor: 'rgba(245,192,128,0.35)',
   },
   // Inner: clips the sliding knob to the pill shape
   pillInner: {
     width: PILL_W,
     height: PILL_H,
     borderRadius: PILL_H / 2 - 1,
-    backgroundColor: '#2A1F16',
+    backgroundColor: '#B98A5A',
     flexDirection: 'row',
     alignItems: 'center',
     overflow: 'hidden',
@@ -83,7 +79,7 @@ const styles = StyleSheet.create({
     width: OPTION_W,
     height: PILL_H,
     borderRadius: PILL_H / 2,
-    backgroundColor: AccentColor,
+    backgroundColor: Palette.amber,
   },
   option: {
     width: OPTION_W,

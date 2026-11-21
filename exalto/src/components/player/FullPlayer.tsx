@@ -5,15 +5,24 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import { SymbolView } from 'expo-symbols';
+import { LinearGradient } from 'expo-linear-gradient';
+import { ArrowDown, ArrowUp, Cast, Download, FileText, Heart, ListMusic, MoreVertical, Pause, Play, Repeat, Repeat1, Share2, Shuffle, SkipBack, SkipForward, ThumbsUp, type LucideIcon } from 'lucide-react-native';
 import { useState } from 'react';
 
 import { ThemedText } from '@/components/themed-text';
 import { ModeSwitcher } from '@/components/ModeSwitcher';
 import { useAudio } from '@/hooks/use-audio';
+import { useFavorites } from '@/context/favorites-context';
+
+/** Like state for the hymn that's open, backed by on-device favorites. */
+function useLike(id: string | undefined) {
+  const { isFavorite, toggle } = useFavorites();
+  return { isLiked: id ? isFavorite(id) : false, toggleLike: () => id && toggle(id) };
+}
 import { useViewMode } from '@/context/view-mode-context';
 import { LyricSection } from '@/context/audio-context';
-import { AccentColor, Spacing } from '@/constants/theme';
+import { AccentColor, BrandGradient, Palette, Spacing } from '@/constants/theme';
+import { HymnArt } from '@/components/ui/hymn-art';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const ARTWORK_SIZE = SCREEN_WIDTH - 68; // SCREEN_WIDTH - H_INSET*2 - paddingHorizontal*2
@@ -37,7 +46,6 @@ function AudioView({ onClose }: FullPlayerProps) {
     isPlaying,
     positionSecs,
     durationSecs,
-    isLiked,
     repeatMode,
     shuffleEnabled,
     play,
@@ -45,10 +53,10 @@ function AudioView({ onClose }: FullPlayerProps) {
     seekTo,
     skipNext,
     skipPrevious,
-    toggleLike,
     setRepeatMode,
     toggleShuffle,
   } = useAudio();
+  const { isLiked, toggleLike } = useLike(currentHymn?.id);
 
   if (!currentHymn) return null;
 
@@ -60,9 +68,7 @@ function AudioView({ onClose }: FullPlayerProps) {
     else setRepeatMode('off');
   }
 
-  const displayTitle = currentHymn.hymnNumber
-    ? `${currentHymn.hymnNumber} ${currentHymn.title}`
-    : currentHymn.title;
+  const displayTitle = currentHymn.label ? `${currentHymn.label} ${currentHymn.title}` : currentHymn.title;
 
   return (
     <ScrollView
@@ -78,11 +84,7 @@ function AudioView({ onClose }: FullPlayerProps) {
             {displayTitle}
           </ThemedText>
           <Pressable onPress={toggleLike} hitSlop={8}>
-            <SymbolView
-              name={isLiked ? 'heart.fill' : 'heart'}
-              size={22}
-              tintColor={isLiked ? AccentColor : '#A09080'}
-            />
+            <Heart size={22} color={isLiked ? Palette.cyan : Palette.muted} fill={isLiked ? Palette.cyan : 'transparent'} />
           </Pressable>
         </View>
         <ThemedText style={styles.artistName}>{currentHymn.artist}</ThemedText>
@@ -93,10 +95,10 @@ function AudioView({ onClose }: FullPlayerProps) {
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.actionRow}>
-        <ActionPill icon="hand.thumbsup.fill" label="Like" onPress={toggleLike} />
-        <ActionPill icon="square.and.arrow.up" label="Share" />
-        <ActionPill icon="arrow.down.circle.fill" label="Download" />
-        <ActionPill icon="list.bullet" label="Queue" />
+        <ActionPill Icon={ThumbsUp} label="Like" onPress={toggleLike} />
+        <ActionPill Icon={Share2} label="Share" />
+        <ActionPill Icon={Download} label="Download" />
+        <ActionPill Icon={ListMusic} label="Queue" />
       </ScrollView>
 
       {/* Progress */}
@@ -122,31 +124,21 @@ function AudioView({ onClose }: FullPlayerProps) {
       {/* Playback controls */}
       <View style={styles.controls}>
         <Pressable onPress={toggleShuffle} hitSlop={8}>
-          <SymbolView
-            name="shuffle"
-            size={20}
-            tintColor={shuffleEnabled ? AccentColor : '#55504A'}
-          />
+          <Shuffle size={24} color={Palette.cyan} opacity={shuffleEnabled ? 1 : 0.55} />
         </Pressable>
         <Pressable onPress={skipPrevious} hitSlop={8}>
-          <SymbolView name="backward.fill" size={28} tintColor="#FFFFFF" />
+          <SkipBack size={30} color={Palette.cyan} fill={Palette.cyan} />
         </Pressable>
-        <Pressable style={styles.playButton} onPress={isPlaying ? pause : play}>
-          <SymbolView
-            name={isPlaying ? 'pause.fill' : 'play.fill'}
-            size={30}
-            tintColor="#FFFFFF"
-          />
+        <Pressable onPress={isPlaying ? pause : play} accessibilityRole="button" accessibilityLabel={isPlaying ? 'Pause' : 'Play'}>
+          <LinearGradient colors={[Palette.cyan, '#0B4E66']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.playButton}>
+            {isPlaying ? <Pause size={30} color="#FFFFFF" fill="#FFFFFF" /> : <Play size={30} color="#FFFFFF" fill="#FFFFFF" style={{ marginLeft: 4 }} />}
+          </LinearGradient>
         </Pressable>
         <Pressable onPress={skipNext} hitSlop={8}>
-          <SymbolView name="forward.fill" size={28} tintColor="#FFFFFF" />
+          <SkipForward size={30} color={Palette.cyan} fill={Palette.cyan} />
         </Pressable>
         <Pressable onPress={cycleRepeat} hitSlop={8}>
-          <SymbolView
-            name={repeatMode === 'one' ? 'repeat.1' : 'repeat'}
-            size={20}
-            tintColor={repeatMode !== 'off' ? AccentColor : '#55504A'}
-          />
+          {repeatMode === 'one' ? <Repeat1 size={24} color={Palette.cyan} /> : <Repeat size={24} color={Palette.cyan} opacity={repeatMode === 'off' ? 0.55 : 1} />}
         </Pressable>
       </View>
     </ScrollView>
@@ -154,17 +146,17 @@ function AudioView({ onClose }: FullPlayerProps) {
 }
 
 function ActionPill({
-  icon,
+  Icon,
   label,
   onPress,
 }: {
-  icon: string;
+  Icon: LucideIcon;
   label: string;
   onPress?: () => void;
 }) {
   return (
     <Pressable onPress={onPress} style={styles.actionPill}>
-      <SymbolView name={icon as any} size={14} tintColor="#FFFFFF" />
+      <Icon size={15} color={Palette.text} strokeWidth={1.8} />
       <ThemedText style={styles.actionPillText}>{label}</ThemedText>
     </Pressable>
   );
@@ -173,14 +165,13 @@ function ActionPill({
 // ─── Hymnal mode ─────────────────────────────────────────────────────────────
 
 function HymnalView({ onClose }: FullPlayerProps) {
-  const { currentHymn, isLiked, toggleLike } = useAudio();
+  const { currentHymn } = useAudio();
+  const { isLiked, toggleLike } = useLike(currentHymn?.id);
   const [fontSize, setFontSize] = useState(15);
 
   if (!currentHymn) return null;
 
-  const displayTitle = currentHymn.hymnNumber
-    ? `${currentHymn.hymnNumber} ${currentHymn.title}`
-    : currentHymn.title;
+  const displayTitle = currentHymn.label ? `${currentHymn.label} ${currentHymn.title}` : currentHymn.title;
 
   return (
     <View style={styles.hymnalContainer}>
@@ -191,27 +182,23 @@ function HymnalView({ onClose }: FullPlayerProps) {
           onPress={() => setFontSize((s) => Math.min(s + 2, 24))}
           hitSlop={6}>
           <ThemedText style={styles.fontBtnText}>A</ThemedText>
-          <SymbolView name="arrow.up" size={10} tintColor="#A09080" />
+          <ArrowUp size={13} color={Palette.text} strokeWidth={2} />
         </Pressable>
         <Pressable
           style={styles.fontBtn}
           onPress={() => setFontSize((s) => Math.max(s - 2, 11))}
           hitSlop={6}>
-          <ThemedText style={[styles.fontBtnText, { fontSize: 12 }]}>A</ThemedText>
-          <SymbolView name="arrow.down" size={10} tintColor="#A09080" />
+          <ThemedText style={styles.fontBtnText}>A</ThemedText>
+          <ArrowDown size={13} color={Palette.text} strokeWidth={2} />
         </Pressable>
 
         <View style={{ flex: 1 }} />
 
         <Pressable onPress={toggleLike} hitSlop={8}>
-          <SymbolView
-            name={isLiked ? 'heart.fill' : 'heart'}
-            size={20}
-            tintColor={isLiked ? AccentColor : '#FFFFFF'}
-          />
+          <Heart size={24} color={Palette.cyan} fill={isLiked ? Palette.cyan : 'transparent'} strokeWidth={1.8} />
         </Pressable>
         <Pressable hitSlop={8}>
-          <SymbolView name="doc.plaintext" size={20} tintColor="#FFFFFF" />
+          <FileText size={24} color={Palette.text} strokeWidth={1.6} />
         </Pressable>
       </View>
 
@@ -220,7 +207,7 @@ function HymnalView({ onClose }: FullPlayerProps) {
         style={styles.lyricsScroll}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.lyricsContent}>
-        {currentHymn.lyrics ? (
+        {currentHymn.lyrics?.length ? (
           currentHymn.lyrics.map((section, i) => (
             <LyricBlock key={i} section={section} fontSize={fontSize} dim={false} />
           ))
@@ -233,12 +220,7 @@ function HymnalView({ onClose }: FullPlayerProps) {
 
       {/* Bottom mini bar */}
       <View style={styles.hymnalBottom}>
-        <View
-          style={[
-            styles.hymnalArt,
-            { backgroundColor: currentHymn.artworkColor ?? AccentColor },
-          ]}
-        />
+        <HymnArt seed={currentHymn.id} size={52} radius={10} />
         <View style={styles.hymnalInfo}>
           <ThemedText style={styles.hymnalTitle} numberOfLines={1}>
             {displayTitle}
@@ -309,10 +291,10 @@ export function FullPlayer({ onClose }: FullPlayerProps) {
         {viewMode === 'audio' ? (
           <>
             <Pressable hitSlop={8}>
-              <SymbolView name="airplayvideo" size={20} tintColor="#FFFFFF" />
+              <Cast size={22} color={Palette.text} strokeWidth={1.6} />
             </Pressable>
             <Pressable hitSlop={8}>
-              <SymbolView name="ellipsis" size={20} tintColor="#FFFFFF" />
+              <MoreVertical size={22} color={Palette.text} />
             </Pressable>
           </>
         ) : null}
@@ -372,12 +354,12 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
   },
   songTitle: {
-    color: '#FFFFFF',
+    color: Palette.text,
     fontSize: 22,
     fontWeight: '700',
   },
   artistName: {
-    color: '#A09080',
+    color: Palette.muted,
     fontSize: 15,
   },
   actionRow: {
@@ -388,13 +370,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: '#6B5440',
     borderRadius: 20,
     paddingVertical: 8,
     paddingHorizontal: 14,
   },
   actionPillText: {
-    color: '#FFFFFF',
+    color: Palette.text,
     fontSize: 13,
     fontWeight: '500',
   },
@@ -405,13 +387,13 @@ const styles = StyleSheet.create({
   },
   progressTrack: {
     height: 4,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(240,224,209,0.18)',
     borderRadius: 2,
     position: 'relative',
   },
   progressFill: {
     height: '100%',
-    backgroundColor: AccentColor,
+    backgroundColor: Palette.cyan,
     borderRadius: 2,
   },
   progressThumb: {
@@ -420,7 +402,7 @@ const styles = StyleSheet.create({
     width: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Palette.cyan,
     marginLeft: -8,
   },
   timeRow: {
@@ -428,7 +410,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   timeText: {
-    color: '#A09080',
+    color: Palette.muted,
     fontSize: 12,
   },
   controls: {
@@ -441,7 +423,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: AccentColor,
+    backgroundColor: Palette.cyan,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -462,7 +444,7 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   fontBtnText: {
-    color: '#A09080',
+    color: Palette.muted,
     fontSize: 15,
     fontWeight: '600',
   },
@@ -477,7 +459,7 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   lyricHeading: {
-    color: '#FFFFFF',
+    color: Palette.text,
     fontSize: 15,
     fontWeight: '600',
   },
@@ -485,13 +467,13 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   lyricLine: {
-    color: '#D0C0A8',
+    color: Palette.text,
   },
   lyricDim: {
     opacity: 0.45,
   },
   noLyrics: {
-    color: '#A09080',
+    color: Palette.muted,
     textAlign: 'center',
     marginTop: Spacing.six,
   },
@@ -501,7 +483,7 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
     paddingVertical: Spacing.three,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(255,255,255,0.1)',
+    borderTopColor: 'transparent',
     marginTop: Spacing.two,
   },
   hymnalArt: {
@@ -514,22 +496,22 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   hymnalTitle: {
-    color: '#FFFFFF',
+    color: Palette.text,
     fontSize: 14,
     fontWeight: '600',
   },
   hymnalArtist: {
-    color: '#A09080',
+    color: Palette.muted,
     fontSize: 12,
   },
   closeBtn: {
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(240,224,209,0.35)',
     borderRadius: 20,
     paddingHorizontal: Spacing.three,
     paddingVertical: 8,
   },
   closeBtnText: {
-    color: '#FFFFFF',
+    color: Palette.text,
     fontSize: 14,
     fontWeight: '500',
   },

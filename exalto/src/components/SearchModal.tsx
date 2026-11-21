@@ -9,14 +9,15 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { SymbolView } from 'expo-symbols';
+import { BookOpen, Search, X } from 'lucide-react-native';
+import { HymnArt } from '@/components/ui/hymn-art';
 import { useMemo, useRef, useEffect, useState } from 'react';
 
 import { ThemedText } from '@/components/themed-text';
 import { useHymns } from '@/context/hymns-context';
 import { Hymn, LyricSection } from '@/context/audio-context';
 import { useAudio } from '@/hooks/use-audio';
-import { AccentColor, Spacing } from '@/constants/theme';
+import { Palette, Spacing } from '@/constants/theme';
 
 interface SearchModalProps {
   visible: boolean;
@@ -94,7 +95,8 @@ export function SearchModal({ visible, onClose }: SearchModalProps) {
       }
     }
 
-    return out.slice(0, 100);
+    // Title matches first, then lyric matches, so the section headers group correctly.
+    return [...out.filter((r) => r.kind === 'hymn'), ...out.filter((r) => r.kind === 'lyric')].slice(0, 100);
   }, [q, HYMNS]);
 
   function play(hymn: Hymn) {
@@ -113,12 +115,13 @@ export function SearchModal({ visible, onClose }: SearchModalProps) {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         {/* Search bar */}
         <View style={[styles.searchBar, { paddingTop: insets.top + Spacing.two }]}>
-          <SymbolView name="magnifyingglass" size={18} tintColor="#A09080" />
+          <View style={styles.field}>
+          <Search size={20} color={Palette.cyan} strokeWidth={2} />
           <TextInput
             ref={inputRef}
             style={styles.input}
-            placeholder="Search hymns and lyrics…"
-            placeholderTextColor="#5A4A3A"
+            placeholder="Search for hymn"
+            placeholderTextColor="#3FA9CF"
             value={query}
             onChangeText={setQuery}
             returnKeyType="search"
@@ -127,9 +130,10 @@ export function SearchModal({ visible, onClose }: SearchModalProps) {
           />
           {query.length > 0 && (
             <Pressable onPress={() => setQuery('')} hitSlop={8}>
-              <SymbolView name="xmark.circle.fill" size={18} tintColor="#5A4A3A" />
+              <X size={18} color={Palette.cyan} />
             </Pressable>
           )}
+          </View>
           <Pressable onPress={onClose} hitSlop={8} style={styles.cancelBtn}>
             <ThemedText style={styles.cancelText}>Cancel</ThemedText>
           </Pressable>
@@ -138,7 +142,7 @@ export function SearchModal({ visible, onClose }: SearchModalProps) {
         {/* Results */}
         {q.length === 0 ? (
           <View style={styles.emptyState}>
-            <SymbolView name="magnifyingglass" size={40} tintColor="#3A2A1A" />
+            <Search size={40} color={Palette.line} />
             <ThemedText style={styles.emptyText}>Search hymns and lyrics</ThemedText>
           </View>
         ) : results.length === 0 ? (
@@ -170,24 +174,17 @@ export function SearchModal({ visible, onClose }: SearchModalProps) {
                   )}
                   {item.kind === 'hymn' ? (
                     <Pressable style={styles.hymnRow} onPress={() => play(item.hymn)}>
-                      <View
-                        style={[
-                          styles.artwork,
-                          { backgroundColor: item.hymn.artworkColor ?? AccentColor },
-                        ]}
-                      />
+                      <HymnArt seed={item.hymn.id} size={44} radius={8} label={item.hymn.label} />
                       <View style={styles.hymnInfo}>
                         <ThemedText style={styles.hymnTitle} numberOfLines={1}>
-                          {item.hymn.hymnNumber
-                            ? `${item.hymn.hymnNumber} ${item.hymn.title}`
-                            : item.hymn.title}
+                          {item.hymn.title}
                         </ThemedText>
                         <ThemedText style={styles.hymnArtist} numberOfLines={1}>
                           {item.hymn.artist}
                         </ThemedText>
                       </View>
                       <Pressable onPress={() => play(item.hymn)} hitSlop={8}>
-                        <SymbolView name="play.fill" size={16} tintColor="#A09080" />
+                        <BookOpen size={20} color={Palette.amber} strokeWidth={1.6} />
                       </Pressable>
                     </Pressable>
                   ) : (
@@ -216,7 +213,7 @@ export function SearchModal({ visible, onClose }: SearchModalProps) {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#100c08',
+    backgroundColor: Palette.bg,
   },
   searchBar: {
     flexDirection: 'row',
@@ -224,12 +221,21 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
     paddingHorizontal: Spacing.three,
     paddingBottom: Spacing.two,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(255,255,255,0.08)',
+  },
+  field: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    height: 44,
+    borderRadius: 999,
+    backgroundColor: '#0B4E66',
+    paddingHorizontal: Spacing.three,
   },
   input: {
     flex: 1,
-    color: '#FFFFFF',
+    color: '#BDEBFA',
+    fontFamily: 'PlusJakartaSans_500Medium',
     fontSize: 16,
     paddingVertical: Spacing.two,
   },
@@ -237,7 +243,7 @@ const styles = StyleSheet.create({
     paddingLeft: Spacing.one,
   },
   cancelText: {
-    color: AccentColor,
+    color: Palette.cyan,
     fontSize: 15,
   },
   emptyState: {
@@ -248,7 +254,7 @@ const styles = StyleSheet.create({
     paddingBottom: 80,
   },
   emptyText: {
-    color: '#5A4A3A',
+    color: Palette.muted,
     fontSize: 15,
   },
   listContent: {
@@ -257,7 +263,7 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.three,
   },
   sectionHeader: {
-    color: '#A09080',
+    color: Palette.muted,
     fontSize: 12,
     fontWeight: '700',
     letterSpacing: 0.8,
@@ -283,12 +289,12 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   hymnTitle: {
-    color: '#FFFFFF',
+    color: Palette.text,
     fontSize: 14,
     fontWeight: '600',
   },
   hymnArtist: {
-    color: '#A09080',
+    color: Palette.muted,
     fontSize: 12,
   },
   lyricRow: {
@@ -303,20 +309,20 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   lyricHymnName: {
-    color: '#A09080',
+    color: Palette.muted,
     fontSize: 12,
     fontWeight: '600',
   },
   lyricSection: {
-    color: '#5A4A3A',
+    color: Palette.muted,
     fontSize: 11,
   },
   resultLine: {
-    color: '#D0C0A8',
+    color: Palette.text,
     fontSize: 14,
   },
   highlight: {
-    color: AccentColor,
+    color: Palette.cyan,
     fontWeight: '700',
   },
 });

@@ -3,7 +3,45 @@ import "@/global.css";
 import { Platform } from "react-native";
 
 export const AccentColor = "#04C1FF";
-export const AppBackground = "#150F08";
+export const AppBackground = "#1A120A";
+
+/** Exalto palette, taken from the Figma file. */
+export const Palette = {
+  bg: "#1A120A",
+  surface: "#221A11",
+  surface2: "#2E2419",
+  sheetTop: "#241B12",
+  sheetBottom: "#3C2E1E",
+  line: "#3A2C20",
+  text: "#F0E0D1",
+  muted: "#958A7F",
+  amber: "#F5C080",
+  cyan: "#04C1FF",
+  orange: "#EDA145",
+  pill: "#5A4632",
+  field: "#4A4038",
+} as const;
+
+/** Cyan → amber, used on borders, badges and accents. */
+export const BrandGradient = ["#04C1FF", "#EDA145"] as const;
+
+/** Plus Jakarta Sans faces, loaded in app/_layout.tsx. */
+export const FontFamily = {
+  regular: "PlusJakartaSans_400Regular",
+  medium: "PlusJakartaSans_500Medium",
+  semibold: "PlusJakartaSans_600SemiBold",
+  bold: "PlusJakartaSans_700Bold",
+  extrabold: "PlusJakartaSans_800ExtraBold",
+} as const;
+
+export function fontForWeight(weight?: string | number) {
+  const w = Number(weight ?? 500);
+  if (w >= 800) return FontFamily.extrabold;
+  if (w >= 700) return FontFamily.bold;
+  if (w >= 600) return FontFamily.semibold;
+  if (w >= 500) return FontFamily.medium;
+  return FontFamily.regular;
+}
 
 export const Colors = {
   light: {
@@ -14,11 +52,11 @@ export const Colors = {
     textSecondary: "#60646C",
   },
   dark: {
-    text: "#ffffff",
+    text: "#F0E0D1",
     background: AppBackground,
-    backgroundElement: "#2A1F16",
+    backgroundElement: "#2E2419",
     backgroundSelected: "#3A2C20",
-    textSecondary: "#A09080",
+    textSecondary: "#958A7F",
   },
 } as const;
 
@@ -56,5 +94,5 @@ export const Spacing = {
 } as const;
 
 export const MiniPlayerHeight = 64;
-export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
+export const BottomTabInset = Platform.select({ ios: 50, android: 80, web: 80 }) ?? 0;
 export const MaxContentWidth = 800;
