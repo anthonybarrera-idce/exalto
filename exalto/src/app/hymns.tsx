@@ -5,20 +5,24 @@ import { useState } from 'react';
 
 import { ThemedText } from '@/components/themed-text';
 import { useAudio } from '@/hooks/use-audio';
-import { HYMNS } from '@/data/hymns';
+import { useHymns } from '@/context/hymns-context';
+import { HYMNALS } from '@/data/hymnals';
 import { Hymn } from '@/context/audio-context';
 import { AccentColor, AppBackground, BottomTabInset, MiniPlayerHeight, Spacing } from '@/constants/theme';
 
 export default function HymnsScreen() {
   const { loadHymn, isPlayerVisible } = useAudio();
   const [query, setQuery] = useState('');
+  const [hymnalId, setHymnalId] = useState(HYMNALS[0].id);
+  const { byHymnal, loading, error } = useHymns();
+  const HYMNS = byHymnal(hymnalId);
+  const q = query.trim().toLowerCase();
 
-  const filtered = query
+  const filtered = q
     ? HYMNS.filter(
         (h) =>
-          h.title.toLowerCase().includes(query.toLowerCase()) ||
-          h.artist.toLowerCase().includes(query.toLowerCase()) ||
-          String(h.hymnNumber).includes(query),
+          h.title.toLowerCase().includes(q) ||
+          (h.label ?? String(h.hymnNumber ?? '')).toLowerCase() === q,
       )
     : HYMNS;
 
@@ -31,7 +35,18 @@ export default function HymnsScreen() {
   return (
     <View style={styles.root}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-        <ThemedText style={styles.screenTitle}>Hymns Book</ThemedText>
+        <ThemedText style={styles.screenTitle}>Himnario</ThemedText>
+
+        <View style={styles.hymnalChips}>
+          {HYMNALS.filter((h) => h.id !== 'community').map((h) => (
+            <Pressable
+              key={h.id}
+              onPress={() => setHymnalId(h.id)}
+              style={[styles.chip, hymnalId === h.id && styles.chipActive]}>
+              <ThemedText style={[styles.chipText, hymnalId === h.id && styles.chipTextActive]}>{h.shortName}</ThemedText>
+            </Pressable>
+          ))}
+        </View>
 
         {/* Search */}
         <View style={styles.searchContainer}>
@@ -54,13 +69,17 @@ export default function HymnsScreen() {
         <FlatList
           data={filtered}
           keyExtractor={(h) => h.id}
+          initialNumToRender={20}
+          ListEmptyComponent={
+            <ThemedText style={styles.hymnArtist}>
+              {loading ? 'Loading hymns…' : error ? `Couldn't load hymns: ${error}` : 'No hymns match.'}
+            </ThemedText>
+          }
           contentContainerStyle={{ paddingBottom: bottomPad }}
           renderItem={({ item }) => (
             <Pressable style={styles.hymnRow} onPress={() => playHymn(item)}>
               <View style={[styles.hymnArtwork, { backgroundColor: item.artworkColor }]}>
-                {item.hymnNumber && (
-                  <ThemedText style={styles.hymnNum}>{item.hymnNumber}</ThemedText>
-                )}
+                {item.label != null && <ThemedText style={styles.hymnNum}>{item.label}</ThemedText>}
               </View>
               <View style={styles.hymnInfo}>
                 <ThemedText style={styles.hymnTitle} numberOfLines={1}>
@@ -95,6 +114,28 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginTop: Spacing.two,
     marginBottom: Spacing.three,
+  },
+  hymnalChips: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+    marginBottom: Spacing.three,
+  },
+  chip: {
+    paddingHorizontal: Spacing.three,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: '#2A1F16',
+  },
+  chipActive: {
+    backgroundColor: AccentColor,
+  },
+  chipText: {
+    color: '#A09080',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  chipTextActive: {
+    color: '#04131B',
   },
   searchContainer: {
     flexDirection: 'row',

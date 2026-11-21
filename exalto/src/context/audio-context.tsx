@@ -1,6 +1,8 @@
 import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import { createContext, useCallback, useContext, useEffect, useReducer } from 'react';
 
+import { useViewMode } from '@/context/view-mode-context';
+
 export interface LyricSection {
   type: 'verse' | 'chorus' | 'bridge';
   number?: number;
@@ -12,9 +14,13 @@ export interface Hymn {
   title: string;
   artist: string;
   hymnNumber?: number;
+  /** Display number when it isn't a plain integer, e.g. "17B". */
+  label?: string;
+  hymnalId?: string;
   artworkColor?: string;
   artworkUri?: string;
-  audioUri: string;
+  /** Hymns from the hymnal may have no recording yet; they open as lyrics. */
+  audioUri?: string;
   lyrics?: LyricSection[];
 }
 
@@ -108,6 +114,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
   const player = useAudioPlayer(null, { updateInterval: 500 });
   const status = useAudioPlayerStatus(player);
+  const { setViewMode } = useViewMode();
 
   useEffect(() => {
     setAudioModeAsync({
@@ -118,11 +125,18 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
   const loadHymn = useCallback(
     (hymn: Hymn, queue: Hymn[] = [hymn], startIndex = 0) => {
-      player.replace({ uri: hymn.audioUri });
-      player.play();
       dispatch({ type: 'LOAD', hymn, queue, queueIndex: startIndex });
+      if (hymn.audioUri) {
+        player.replace({ uri: hymn.audioUri });
+        player.play();
+      } else {
+        // No recording yet: stop any playback and open the lyrics.
+        player.pause();
+        setViewMode('hymnal');
+        dispatch({ type: 'EXPAND' });
+      }
     },
-    [player],
+    [player, setViewMode],
   );
 
   const play = useCallback(() => player.play(), [player]);
@@ -142,11 +156,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     } else {
       return;
     }
-    const nextHymn = queue[nextIndex];
-    player.replace({ uri: nextHymn.audioUri });
-    player.play();
-    dispatch({ type: 'LOAD', hymn: nextHymn, queue, queueIndex: nextIndex });
-  }, [state, player]);
+    loadHymn(queue[nextIndex], queue, nextIndex);
+  }, [state, loadHymn]);
 
   const skipPrevious = useCallback(() => {
     const { queue, queueIndex } = state;
@@ -156,11 +167,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     const prevIndex = queueIndex > 0 ? queueIndex - 1 : 0;
-    const prevHymn = queue[prevIndex];
-    player.replace({ uri: prevHymn.audioUri });
-    player.play();
-    dispatch({ type: 'LOAD', hymn: prevHymn, queue, queueIndex: prevIndex });
-  }, [state, player, status.currentTime]);
+    loadHymn(queue[prevIndex], queue, prevIndex);
+  }, [state, player, loadHymn, status.currentTime]);
 
   const expandPlayer = useCallback(() => dispatch({ type: 'EXPAND' }), []);
   const collapsePlayer = useCallback(() => dispatch({ type: 'COLLAPSE' }), []);

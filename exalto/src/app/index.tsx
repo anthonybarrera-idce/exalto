@@ -6,12 +6,7 @@ import { useState } from "react";
 import { ThemedText } from "@/components/themed-text";
 import { SearchModal } from "@/components/SearchModal";
 import { useAudio } from "@/hooks/use-audio";
-import {
-  HYMN_OF_THE_DAY,
-  HYMNS,
-  POPULAR_HYMNS,
-  RECENTLY_PLAYED,
-} from "@/data/hymns";
+import { pickHymnOfTheDay, useHymns } from "@/context/hymns-context";
 import { Hymn } from "@/context/audio-context";
 import {
   AccentColor,
@@ -24,6 +19,11 @@ import {
 export default function HomeScreen() {
   const { loadHymn, isPlayerVisible } = useAudio();
   const [searchOpen, setSearchOpen] = useState(false);
+  const { hymns: HYMNS, byHymnal } = useHymns();
+  const HYMN_OF_THE_DAY = pickHymnOfTheDay(byHymnal("idc-himnario"));
+  // Placeholders until play history exists.
+  const RECENTLY_PLAYED = HYMNS.slice(1, 5);
+  const POPULAR_HYMNS = HYMNS.slice(0, 5);
 
   const bottomPad =
     BottomTabInset + (isPlayerVisible ? MiniPlayerHeight : 0) + Spacing.three;
@@ -67,6 +67,7 @@ export default function HomeScreen() {
           <ThemedText style={styles.greeting}>Hello, Anthony</ThemedText>
 
           {/* Hymn of the Day */}
+          {HYMN_OF_THE_DAY && (
           <Pressable
             style={[
               styles.featuredCard,
@@ -89,6 +90,7 @@ export default function HomeScreen() {
               <SymbolView name="play.fill" size={22} tintColor="#FFFFFF" />
             </View>
           </Pressable>
+          )}
 
           {/* Recently Played */}
           <ThemedText style={styles.sectionTitle}>Recently Played</ThemedText>

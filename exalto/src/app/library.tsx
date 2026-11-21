@@ -5,14 +5,16 @@ import { useState } from 'react';
 
 import { ThemedText } from '@/components/themed-text';
 import { useAudio } from '@/hooks/use-audio';
-import { HYMNS } from '@/data/hymns';
+import { useHymns } from '@/context/hymns-context';
 import { Hymn } from '@/context/audio-context';
 import { AccentColor, AppBackground, BottomTabInset, MiniPlayerHeight, Spacing } from '@/constants/theme';
 
-const SAVED = HYMNS.slice(0, 5);
-const DOWNLOADED = HYMNS.slice(2, 7);
 
 export default function LibraryScreen() {
+  const { hymns: HYMNS } = useHymns();
+  // Placeholder until favorites and downloads are stored.
+  const SAVED = HYMNS.slice(0, 5);
+  const DOWNLOADED = HYMNS.slice(5, 10);
   const { loadHymn, isPlayerVisible } = useAudio();
   const [tab, setTab] = useState<'saved' | 'downloaded'>('saved');
 

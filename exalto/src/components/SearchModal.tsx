@@ -13,7 +13,7 @@ import { SymbolView } from 'expo-symbols';
 import { useMemo, useRef, useEffect, useState } from 'react';
 
 import { ThemedText } from '@/components/themed-text';
-import { HYMNS } from '@/data/hymns';
+import { useHymns } from '@/context/hymns-context';
 import { Hymn, LyricSection } from '@/context/audio-context';
 import { useAudio } from '@/hooks/use-audio';
 import { AccentColor, Spacing } from '@/constants/theme';
@@ -58,6 +58,7 @@ function highlight(text: string, query: string) {
 export function SearchModal({ visible, onClose }: SearchModalProps) {
   const [query, setQuery] = useState('');
   const { loadHymn } = useAudio();
+  const { hymns: HYMNS } = useHymns();
   const insets = useSafeAreaInsets();
   const inputRef = useRef<TextInput>(null);
 
@@ -78,7 +79,7 @@ export function SearchModal({ visible, onClose }: SearchModalProps) {
       const titleMatch =
         hymn.title.toLowerCase().includes(q) ||
         hymn.artist.toLowerCase().includes(q) ||
-        String(hymn.hymnNumber ?? '').includes(q);
+        (hymn.label ?? String(hymn.hymnNumber ?? '')).toLowerCase() === q;
 
       if (titleMatch) out.push({ kind: 'hymn', hymn });
 
@@ -93,8 +94,8 @@ export function SearchModal({ visible, onClose }: SearchModalProps) {
       }
     }
 
-    return out;
-  }, [q]);
+    return out.slice(0, 100);
+  }, [q, HYMNS]);
 
   function play(hymn: Hymn) {
     loadHymn(hymn, HYMNS, HYMNS.indexOf(hymn));
