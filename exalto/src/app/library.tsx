@@ -12,12 +12,14 @@ import { useFavorites } from '@/context/favorites-context';
 import { useHymns } from '@/context/hymns-context';
 import { useViewMode } from '@/context/view-mode-context';
 import { useAudio } from '@/hooks/use-audio';
+import { useLocale } from '@/context/locale-context';
 
 export default function LibraryScreen() {
   const { hymns } = useHymns();
   const { ids, toggle } = useFavorites();
   const { loadHymn, expandPlayer, isPlayerVisible } = useAudio();
   const { setViewMode } = useViewMode();
+  const { t, plural } = useLocale();
 
   const byId = new Map(hymns.map((h) => [h.id, h]));
   const liked = ids.map((id) => byId.get(id)).filter((h): h is Hymn => Boolean(h));
@@ -32,7 +34,7 @@ export default function LibraryScreen() {
   return (
     <View style={styles.root}>
       <SafeAreaView style={styles.flex} edges={['top']}>
-        <AppHeader title="Library" />
+        <AppHeader title={t('library.title')} />
         <FlatList
           data={liked}
           keyExtractor={(h) => h.id}
@@ -43,17 +45,17 @@ export default function LibraryScreen() {
                 <ThumbsUp size={24} color="#FFFFFF" strokeWidth={1.8} />
               </LinearGradient>
               <View style={styles.flex}>
-                <ThemedText style={styles.rowTitle}>Liked Hymns</ThemedText>
+                <ThemedText style={styles.rowTitle}>{t('library.liked')}</ThemedText>
                 <ThemedText style={styles.rowSub}>
-                  {liked.length} hymn{liked.length === 1 ? '' : 's'}
+                  {plural('library.count', liked.length)}
                 </ThemedText>
               </View>
             </View>
           }
           ListEmptyComponent={
             <View style={styles.empty}>
-              <ThemedText style={styles.emptyTitle}>Save hymns you love</ThemedText>
-              <ThemedText style={styles.rowSub}>Tap the heart on any hymn and it shows up here.</ThemedText>
+              <ThemedText style={styles.emptyTitle}>{t('library.emptyTitle')}</ThemedText>
+              <ThemedText style={styles.rowSub}>{t('library.emptyBody')}</ThemedText>
             </View>
           }
           renderItem={({ item }) => (
@@ -67,7 +69,7 @@ export default function LibraryScreen() {
                   {item.artist}
                 </ThemedText>
               </View>
-              <Pressable onPress={() => toggle(item.id)} hitSlop={10} accessibilityLabel={`Remove ${item.title} from liked hymns`}>
+              <Pressable onPress={() => toggle(item.id)} hitSlop={10} accessibilityLabel={t('library.remove', { title: item.title })}>
                 <Heart size={22} color={Palette.cyan} fill={Palette.cyan} />
               </Pressable>
             </Pressable>

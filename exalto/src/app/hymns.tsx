@@ -13,6 +13,7 @@ import { useHymns } from '@/context/hymns-context';
 import { useViewMode } from '@/context/view-mode-context';
 import { HYMNALS } from '@/data/hymnals';
 import { useAudio } from '@/hooks/use-audio';
+import { useLocale } from '@/context/locale-context';
 
 const BOOKS = HYMNALS.filter((h) => h.id !== 'community');
 
@@ -22,6 +23,7 @@ export default function HymnsScreen() {
   const { byHymnal, loading, error } = useHymns();
   const [hymnalId, setHymnalId] = useState(BOOKS[0].id);
   const [query, setQuery] = useState('');
+  const { t } = useLocale();
 
   const all = byHymnal(hymnalId);
   const q = query.trim().toLowerCase();
@@ -47,7 +49,7 @@ export default function HymnsScreen() {
   return (
     <View style={styles.root}>
       <SafeAreaView style={styles.flex} edges={['top']}>
-        <AppHeader title="Hymns" />
+        <AppHeader title={t('hymns.title')} />
 
         <View style={styles.books}>
           {BOOKS.map((b) => {
@@ -65,15 +67,15 @@ export default function HymnsScreen() {
             <Search size={20} color={Palette.cyan} strokeWidth={2} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search for hymn"
+              placeholder={t('hymns.search')}
               placeholderTextColor="#3FA9CF"
               value={query}
               onChangeText={setQuery}
               returnKeyType="search"
-              accessibilityLabel="Search hymns by number or title"
+              accessibilityLabel={t('hymns.searchLabel')}
             />
             {query.length > 0 && (
-              <Pressable onPress={() => setQuery('')} hitSlop={8} accessibilityLabel="Clear search">
+              <Pressable onPress={() => setQuery('')} hitSlop={8} accessibilityLabel={t('hymns.clearSearch')}>
                 <X size={16} color={Palette.cyan} />
               </Pressable>
             )}
@@ -87,7 +89,7 @@ export default function HymnsScreen() {
             ItemSeparatorComponent={() => <View style={styles.sep} />}
             ListEmptyComponent={
               <ThemedText style={styles.empty}>
-                {loading ? 'Loading hymns…' : error ? `Couldn't load hymns. ${error}` : q ? 'No hymns match.' : 'No hymns yet.'}
+                {loading ? t('hymns.loading') : error ? t('hymns.loadError', { error }) : q ? t('hymns.noMatch') : t('hymns.empty')}
               </ThemedText>
             }
             renderItem={({ item }) => {
@@ -99,10 +101,10 @@ export default function HymnsScreen() {
                   <ThemedText style={[styles.title, { color }]} numberOfLines={1}>
                     {item.title}
                   </ThemedText>
-                  <Pressable onPress={() => read(item)} hitSlop={8} style={styles.icon} accessibilityLabel={`Read ${item.title}`}>
+                  <Pressable onPress={() => read(item)} hitSlop={8} style={styles.icon} accessibilityLabel={t('hymns.read', { title: item.title })}>
                     <BookOpen size={22} strokeWidth={1.6} color={active ? Palette.cyan : Palette.amber} />
                   </Pressable>
-                  <Pressable onPress={() => listen(item)} hitSlop={8} style={styles.icon} accessibilityLabel={item.audioUri ? `Play ${item.title}` : `No recording yet for ${item.title}`}>
+                  <Pressable onPress={() => listen(item)} hitSlop={8} style={styles.icon} accessibilityLabel={t(item.audioUri ? 'hymns.play' : 'hymns.noRecording', { title: item.title })}>
                     {active && isPlaying ? (
                       <Pause size={22} strokeWidth={1.8} color={Palette.cyan} />
                     ) : (

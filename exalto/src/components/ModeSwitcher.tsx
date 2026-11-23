@@ -4,6 +4,7 @@ import { BookOpen, Headphones } from 'lucide-react-native';
 import { useEffect } from 'react';
 
 import { useViewMode } from '@/context/view-mode-context';
+import { useLocale } from '@/context/locale-context';
 import { Palette } from '@/constants/theme';
 
 // Figma: tan pill with a light-amber knob; icons in dark brown.
@@ -22,6 +23,7 @@ interface ModeSwitcherProps {
 
 export function ModeSwitcher({ variant = 'floating', bottom = 0 }: ModeSwitcherProps) {
   const { viewMode, setViewMode } = useViewMode();
+  const { t } = useLocale();
   const slideX = useSharedValue(viewMode === 'audio' ? OPTION_W : 0);
 
   useEffect(() => {
@@ -38,10 +40,10 @@ export function ModeSwitcher({ variant = 'floating', bottom = 0 }: ModeSwitcherP
     <View style={styles.pillShell}>
       <View style={styles.pillInner}>
         <Animated.View style={[styles.knob, knobStyle]} />
-        <Pressable style={styles.option} onPress={() => setViewMode('hymnal')} hitSlop={4} accessibilityRole="button" accessibilityLabel="Read lyrics" accessibilityState={{ selected: viewMode === 'hymnal' }}>
+        <Pressable style={styles.option} onPress={() => setViewMode('hymnal')} hitSlop={4} accessibilityRole="button" accessibilityLabel={t('mode.read')} accessibilityState={{ selected: viewMode === 'hymnal' }}>
           <BookOpen size={18} strokeWidth={1.8} color={viewMode === 'hymnal' ? ICON_ON : ICON_OFF} />
         </Pressable>
-        <Pressable style={styles.option} onPress={() => setViewMode('audio')} hitSlop={4} accessibilityRole="button" accessibilityLabel="Listen" accessibilityState={{ selected: viewMode === 'audio' }}>
+        <Pressable style={styles.option} onPress={() => setViewMode('audio')} hitSlop={4} accessibilityRole="button" accessibilityLabel={t('mode.listen')} accessibilityState={{ selected: viewMode === 'audio' }}>
           <Headphones size={18} strokeWidth={1.8} color={viewMode === 'audio' ? ICON_ON : ICON_OFF} />
         </Pressable>
       </View>

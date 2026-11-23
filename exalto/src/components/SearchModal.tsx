@@ -11,6 +11,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BookOpen, Search, X } from 'lucide-react-native';
 import { HymnArt } from '@/components/ui/hymn-art';
+import { useLocale, useSectionLabel } from '@/context/locale-context';
 import { useMemo, useRef, useEffect, useState } from 'react';
 
 import { ThemedText } from '@/components/themed-text';
@@ -38,11 +39,6 @@ interface LyricResult {
 
 type Result = HymnResult | LyricResult;
 
-function sectionLabel(s: LyricSection) {
-  if (s.type === 'chorus') return 'Chorus';
-  if (s.type === 'bridge') return 'Bridge';
-  return `Verse ${s.number ?? ''}`;
-}
 
 function highlight(text: string, query: string) {
   const idx = text.toLowerCase().indexOf(query.toLowerCase());
@@ -60,6 +56,8 @@ export function SearchModal({ visible, onClose }: SearchModalProps) {
   const [query, setQuery] = useState('');
   const { loadHymn } = useAudio();
   const { hymns: HYMNS } = useHymns();
+  const { t } = useLocale();
+  const sectionLabel = useSectionLabel();
   const insets = useSafeAreaInsets();
   const inputRef = useRef<TextInput>(null);
 
@@ -97,7 +95,7 @@ export function SearchModal({ visible, onClose }: SearchModalProps) {
 
     // Title matches first, then lyric matches, so the section headers group correctly.
     return [...out.filter((r) => r.kind === 'hymn'), ...out.filter((r) => r.kind === 'lyric')].slice(0, 100);
-  }, [q, HYMNS]);
+  }, [q, HYMNS, sectionLabel]);
 
   function play(hymn: Hymn) {
     loadHymn(hymn, HYMNS, HYMNS.indexOf(hymn));
@@ -120,7 +118,7 @@ export function SearchModal({ visible, onClose }: SearchModalProps) {
           <TextInput
             ref={inputRef}
             style={styles.input}
-            placeholder="Search for hymn"
+            placeholder={t('search.placeholder')}
             placeholderTextColor="#3FA9CF"
             value={query}
             onChangeText={setQuery}
@@ -135,7 +133,7 @@ export function SearchModal({ visible, onClose }: SearchModalProps) {
           )}
           </View>
           <Pressable onPress={onClose} hitSlop={8} style={styles.cancelBtn}>
-            <ThemedText style={styles.cancelText}>Cancel</ThemedText>
+            <ThemedText style={styles.cancelText}>{t('search.cancel')}</ThemedText>
           </Pressable>
         </View>
 
@@ -143,11 +141,11 @@ export function SearchModal({ visible, onClose }: SearchModalProps) {
         {q.length === 0 ? (
           <View style={styles.emptyState}>
             <Search size={40} color={Palette.line} />
-            <ThemedText style={styles.emptyText}>Search hymns and lyrics</ThemedText>
+            <ThemedText style={styles.emptyText}>{t('search.prompt')}</ThemedText>
           </View>
         ) : results.length === 0 ? (
           <View style={styles.emptyState}>
-            <ThemedText style={styles.emptyText}>No results for "{query}"</ThemedText>
+            <ThemedText style={styles.emptyText}>{t('search.noResults', { query })}</ThemedText>
           </View>
         ) : (
           <FlatList
@@ -167,10 +165,10 @@ export function SearchModal({ visible, onClose }: SearchModalProps) {
               return (
                 <>
                   {showHymnHeader && (
-                    <ThemedText style={styles.sectionHeader}>Hymns</ThemedText>
+                    <ThemedText style={styles.sectionHeader}>{t('search.hymns')}</ThemedText>
                   )}
                   {showLyricHeader && (
-                    <ThemedText style={styles.sectionHeader}>In Lyrics</ThemedText>
+                    <ThemedText style={styles.sectionHeader}>{t('search.inLyrics')}</ThemedText>
                   )}
                   {item.kind === 'hymn' ? (
                     <Pressable style={styles.hymnRow} onPress={() => play(item.hymn)}>

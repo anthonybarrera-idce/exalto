@@ -4,10 +4,12 @@ import { Pause, Play } from "lucide-react-native";
 import { useAudio } from "@/hooks/use-audio";
 import { MiniPlayerHeight, Palette, Spacing } from "@/constants/theme";
 import { ThemedText } from "@/components/themed-text";
+import { useLocale } from "@/context/locale-context";
 
 // Pure content — no background or border radius; the parent container handles shape.
 export function MiniPlayer() {
   const { currentHymn, isPlaying, play, pause } = useAudio();
+  const { t } = useLocale();
 
   if (!currentHymn) return null;
 
@@ -34,7 +36,7 @@ export function MiniPlayer() {
         style={styles.btn}
         hitSlop={8}
         accessibilityRole="button"
-        accessibilityLabel={isPlaying ? "Pause" : "Play"}
+        accessibilityLabel={t(isPlaying ? "player.pause" : "player.play")}
       >
         {isPlaying ? (
           <Pause size={28} color={Palette.cyan} fill={Palette.cyan} />

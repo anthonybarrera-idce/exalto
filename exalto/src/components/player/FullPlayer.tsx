@@ -13,6 +13,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ModeSwitcher } from '@/components/ModeSwitcher';
 import { useAudio } from '@/hooks/use-audio';
 import { useFavorites } from '@/context/favorites-context';
+import { useLocale, useSectionLabel } from '@/context/locale-context';
 
 /** Like state for the hymn that's open, backed by on-device favorites. */
 function useLike(id: string | undefined) {
@@ -57,6 +58,7 @@ function AudioView({ onClose }: FullPlayerProps) {
     toggleShuffle,
   } = useAudio();
   const { isLiked, toggleLike } = useLike(currentHymn?.id);
+  const { t } = useLocale();
 
   if (!currentHymn) return null;
 
@@ -95,10 +97,10 @@ function AudioView({ onClose }: FullPlayerProps) {
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.actionRow}>
-        <ActionPill Icon={ThumbsUp} label="Like" onPress={toggleLike} />
-        <ActionPill Icon={Share2} label="Share" />
-        <ActionPill Icon={Download} label="Download" />
-        <ActionPill Icon={ListMusic} label="Queue" />
+        <ActionPill Icon={ThumbsUp} label={t('player.like')} onPress={toggleLike} />
+        <ActionPill Icon={Share2} label={t('player.share')} />
+        <ActionPill Icon={Download} label={t('player.download')} />
+        <ActionPill Icon={ListMusic} label={t('player.queue')} />
       </ScrollView>
 
       {/* Progress */}
@@ -129,7 +131,7 @@ function AudioView({ onClose }: FullPlayerProps) {
         <Pressable onPress={skipPrevious} hitSlop={8}>
           <SkipBack size={30} color={Palette.cyan} fill={Palette.cyan} />
         </Pressable>
-        <Pressable onPress={isPlaying ? pause : play} accessibilityRole="button" accessibilityLabel={isPlaying ? 'Pause' : 'Play'}>
+        <Pressable onPress={isPlaying ? pause : play} accessibilityRole="button" accessibilityLabel={t(isPlaying ? 'player.pause' : 'player.play')}>
           <LinearGradient colors={[Palette.cyan, '#0B4E66']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.playButton}>
             {isPlaying ? <Pause size={30} color="#FFFFFF" fill="#FFFFFF" /> : <Play size={30} color="#FFFFFF" fill="#FFFFFF" style={{ marginLeft: 4 }} />}
           </LinearGradient>
@@ -167,6 +169,7 @@ function ActionPill({
 function HymnalView({ onClose }: FullPlayerProps) {
   const { currentHymn } = useAudio();
   const { isLiked, toggleLike } = useLike(currentHymn?.id);
+  const { t } = useLocale();
   const [fontSize, setFontSize] = useState(15);
 
   if (!currentHymn) return null;
@@ -213,7 +216,7 @@ function HymnalView({ onClose }: FullPlayerProps) {
           ))
         ) : (
           <ThemedText style={[styles.noLyrics, { fontSize }]}>
-            Lyrics not available for this hymn.
+            {t('lyrics.none')}
           </ThemedText>
         )}
       </ScrollView>
@@ -230,7 +233,7 @@ function HymnalView({ onClose }: FullPlayerProps) {
           </ThemedText>
         </View>
         <Pressable onPress={onClose} style={styles.closeBtn}>
-          <ThemedText style={styles.closeBtnText}>Close</ThemedText>
+          <ThemedText style={styles.closeBtnText}>{t('player.close')}</ThemedText>
         </Pressable>
       </View>
     </View>
@@ -246,12 +249,7 @@ function LyricBlock({
   fontSize: number;
   dim: boolean;
 }) {
-  const heading =
-    section.type === 'chorus'
-      ? 'Chorus'
-      : section.type === 'bridge'
-        ? 'Bridge'
-        : `Verse ${section.number ?? ''}`;
+  const heading = useSectionLabel()(section);
 
   return (
     <View style={styles.lyricBlock}>

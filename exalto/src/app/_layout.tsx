@@ -16,6 +16,7 @@ import { PlayerModal } from "@/components/player/PlayerModal";
 import { AudioProvider } from "@/context/audio-context";
 import { FavoritesProvider } from "@/context/favorites-context";
 import { HymnsProvider } from "@/context/hymns-context";
+import { LocaleProvider } from "@/context/locale-context";
 import { ViewModeProvider } from "@/context/view-mode-context";
 
 export default function TabLayout() {
@@ -32,6 +33,7 @@ export default function TabLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+        <LocaleProvider>
         <HymnsProvider>
         <FavoritesProvider>
           <ViewModeProvider>
@@ -43,6 +45,7 @@ export default function TabLayout() {
           </ViewModeProvider>
         </FavoritesProvider>
         </HymnsProvider>
+        </LocaleProvider>
       </ThemeProvider>
     </GestureHandlerRootView>
   );

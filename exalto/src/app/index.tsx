@@ -14,12 +14,14 @@ import type { Hymn } from "@/context/audio-context";
 import { useFavorites } from "@/context/favorites-context";
 import { pickHymnOfTheDay, useHymns } from "@/context/hymns-context";
 import { useAudio } from "@/hooks/use-audio";
+import { useLocale } from "@/context/locale-context";
 
 export default function HomeScreen() {
   const { loadHymn, isPlayerVisible } = useAudio();
   const [searchOpen, setSearchOpen] = useState(false);
   const { hymns, byHymnal, loading } = useHymns();
   const { isFavorite, toggle } = useFavorites();
+  const { t } = useLocale();
   const hymnOfTheDay = pickHymnOfTheDay(byHymnal("idc-himnario"));
   // Placeholders until play history and play counts are recorded.
   const recentlyPlayed = hymns.slice(1, 7);
@@ -36,14 +38,14 @@ export default function HomeScreen() {
       <SafeAreaView style={styles.flex} edges={["top"]}>
         <AppHeader onSearch={() => setSearchOpen(true)} />
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.content, { paddingBottom: bottomPad }]}>
-          <ThemedText style={styles.greeting}>Hello, Anthony</ThemedText>
+          <ThemedText style={styles.greeting}>{t("home.greeting", { name: "Anthony" })}</ThemedText>
 
           {hymnOfTheDay ? (
             <Pressable onPress={() => open(hymnOfTheDay, [hymnOfTheDay])} accessibilityRole="button" accessibilityLabel={`Hymn of the day: ${hymnOfTheDay.title}`}>
               <GradientBorder radius={18} fill={Palette.bg} style={styles.featured}>
                 <HymnArt seed={hymnOfTheDay.id} size={1000} radius={0} style={StyleSheet.absoluteFill} />
                 <LinearGradient colors={BrandGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.badge}>
-                  <ThemedText style={styles.badgeText}>HYMN OF THE DAY</ThemedText>
+                  <ThemedText style={styles.badgeText}>{t("home.hymnOfTheDay")}</ThemedText>
                 </LinearGradient>
                 <View style={styles.featuredFooter}>
                   <View style={styles.flex}>
@@ -51,7 +53,7 @@ export default function HomeScreen() {
                       {hymnOfTheDay.title}
                     </ThemedText>
                     <ThemedText style={styles.featuredSub} numberOfLines={1}>
-                      {hymnOfTheDay.label ? `Himno ${hymnOfTheDay.label} · ` : ""}
+                      {hymnOfTheDay.label ? `${t("home.hymnLabel", { label: hymnOfTheDay.label })} · ` : ""}
                       {hymnOfTheDay.artist}
                     </ThemedText>
                   </View>
@@ -61,11 +63,11 @@ export default function HomeScreen() {
             </Pressable>
           ) : (
             <View style={[styles.featured, styles.placeholder]}>
-              <ThemedText style={styles.muted}>{loading ? "Loading today's hymn…" : "No hymns yet."}</ThemedText>
+              <ThemedText style={styles.muted}>{loading ? t("home.loadingToday") : t("home.noHymns")}</ThemedText>
             </View>
           )}
 
-          <ThemedText style={styles.sectionTitle}>Recently Played</ThemedText>
+          <ThemedText style={styles.sectionTitle}>{t("home.recentlyPlayed")}</ThemedText>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tiles}>
             {recentlyPlayed.map((h) => (
               <Pressable key={h.id} onPress={() => open(h, recentlyPlayed)} style={styles.tile}>
@@ -82,7 +84,7 @@ export default function HomeScreen() {
             ))}
           </ScrollView>
 
-          <ThemedText style={styles.sectionTitle}>Popular Chart</ThemedText>
+          <ThemedText style={styles.sectionTitle}>{t("home.popular")}</ThemedText>
           <View style={styles.chart}>
             {popular.map((h) => (
               <Pressable key={h.id} onPress={() => open(h, popular)} style={styles.chartRow}>
@@ -95,7 +97,7 @@ export default function HomeScreen() {
                     {h.artist}
                   </ThemedText>
                 </View>
-                <Pressable onPress={() => toggle(h.id)} hitSlop={10} accessibilityLabel={isFavorite(h.id) ? `Unlike ${h.title}` : `Like ${h.title}`}>
+                <Pressable onPress={() => toggle(h.id)} hitSlop={10} accessibilityLabel={t(isFavorite(h.id) ? "home.unlike" : "home.like", { title: h.title })}>
                   <Heart size={24} color={Palette.cyan} fill={isFavorite(h.id) ? Palette.cyan : "transparent"} />
                 </Pressable>
               </Pressable>
