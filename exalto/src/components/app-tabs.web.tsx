@@ -3,22 +3,24 @@ import { Tabs, TabList, TabTrigger, TabSlot, type TabTriggerSlotProps, type TabL
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Palette, Spacing } from '@/constants/theme';
+import { useLocale } from '@/context/locale-context';
 
 // Web stand-in for the native tab bar: the floating bar from the Figma screens.
 export default function AppTabs() {
+  const { t } = useLocale();
   return (
     <Tabs>
       <TabSlot style={{ height: '100%' }} />
       <TabList asChild>
         <CustomTabList>
           <TabTrigger name="home" href="/" asChild>
-            <IconTabButton Icon={House} label="Home" />
+            <IconTabButton Icon={House} label={t('tabs.home')} />
           </TabTrigger>
           <TabTrigger name="hymns" href="/hymns" asChild>
-            <IconTabButton Icon={BookOpen} label="Himnario" />
+            <IconTabButton Icon={BookOpen} label={t('tabs.hymns')} />
           </TabTrigger>
           <TabTrigger name="library" href="/library" asChild>
-            <IconTabButton Icon={ListMusic} label="Library" />
+            <IconTabButton Icon={ListMusic} label={t('tabs.library')} />
           </TabTrigger>
         </CustomTabList>
       </TabList>
