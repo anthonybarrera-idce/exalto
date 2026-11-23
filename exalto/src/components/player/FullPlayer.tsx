@@ -8,6 +8,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { ArrowDown, ArrowUp, Cast, Download, FileText, Heart, ListMusic, MoreVertical, Pause, Play, Repeat, Repeat1, Share2, Shuffle, SkipBack, SkipForward, ThumbsUp, type LucideIcon } from 'lucide-react-native';
 import { useState } from 'react';
+import { GestureDetector, type GestureType } from 'react-native-gesture-handler';
 
 import { ThemedText } from '@/components/themed-text';
 import { ModeSwitcher } from '@/components/ModeSwitcher';
@@ -37,6 +38,11 @@ function formatTime(secs: number): string {
 
 interface FullPlayerProps {
   onClose: () => void;
+}
+
+interface RootProps extends FullPlayerProps {
+  /** Drag-to-dismiss, attached to the handle and top bar so it doesn't fight the lyrics scroll. */
+  dragGesture?: GestureType;
 }
 
 // ─── Audio mode ─────────────────────────────────────────────────────────────
@@ -271,14 +277,15 @@ function LyricBlock({
 
 // ─── Root FullPlayer ─────────────────────────────────────────────────────────
 
-export function FullPlayer({ onClose }: FullPlayerProps) {
+export function FullPlayer({ onClose, dragGesture }: RootProps) {
   const { viewMode } = useViewMode();
 
-  return (
-    <View
-      style={styles.container}>
+  const header = (
+    <View collapsable={false}>
       {/* Drag handle */}
-      <View style={styles.dragHandle} />
+      <View style={styles.dragZone}>
+        <View style={styles.dragHandle} />
+      </View>
 
       {/* Top bar: mode switcher + right icons */}
       <View style={styles.topBar}>
@@ -297,6 +304,12 @@ export function FullPlayer({ onClose }: FullPlayerProps) {
           </>
         ) : null}
       </View>
+    </View>
+  );
+
+  return (
+    <View style={styles.container}>
+      {dragGesture ? <GestureDetector gesture={dragGesture}>{header}</GestureDetector> : header}
 
       {/* Content */}
       {viewMode === 'audio' ? (
@@ -315,6 +328,12 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingTop: Spacing.two,
     paddingHorizontal: Spacing.four,
+  },
+  dragZone: {
+    // Taller than the visible handle so it's easy to grab.
+    // Same total height as before (keeps the artwork aligned) but grabbable above the handle too.
+    paddingTop: Spacing.two,
+    marginTop: -Spacing.two,
   },
   dragHandle: {
     width: 36,

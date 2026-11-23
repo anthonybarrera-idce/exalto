@@ -1,256 +1,189 @@
+import { LinearGradient } from "expo-linear-gradient";
+import { useEffect, useMemo, useState } from "react";
 import { Dimensions, Pressable, StyleSheet, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
-  clamp,
-  Easing,
   Extrapolation,
   interpolate,
-  SharedValue,
-  useAnimatedStyle,
-  useDerivedValue,
-  useSharedValue,
-  withTiming,
   runOnJS,
+  useAnimatedReaction,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  type SharedValue,
 } from "react-native-reanimated";
-import { LinearGradient } from "expo-linear-gradient";
-import { useEffect, useState } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { HymnArt } from "@/components/ui/hymn-art";
+import { BrandGradient, MiniPlayerHeight, Palette, Spacing } from "@/constants/theme";
+import { useViewMode } from "@/context/view-mode-context";
+import { useAudio } from "@/hooks/use-audio";
 import { FullPlayer } from "./FullPlayer";
 import { MiniPlayer } from "./MiniPlayer";
-import { useAudio } from "@/hooks/use-audio";
-import { useViewMode } from "@/context/view-mode-context";
-import { AccentColor, MiniPlayerHeight, Spacing } from "@/constants/theme";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 const TAB_BAR_HEIGHT = 49;
-const MINI_BG = "#2A1F16";
 const MINI_OFFSET = 10;
-const HEADER_CLEARANCE = 0;
+const H_INSET = 10;
 
-// Artwork dimensions in each state
+// Artwork geometry inside the sheet, in each state.
 const MINI_ART_SIZE = 40;
-const MINI_ART_TOP = (MiniPlayerHeight - MINI_ART_SIZE) / 2; // vertically centred in mini bar
-const MINI_ART_LEFT = Spacing.three; // matches MiniPlayer paddingHorizontal
+const MINI_ART_TOP = (MiniPlayerHeight - MINI_ART_SIZE) / 2;
+const MINI_ART_LEFT = Spacing.three;
 const MINI_ART_RADIUS = 8;
-
 const FULL_ART_SIZE = SCREEN_WIDTH - 68; // matches ARTWORK_SIZE in FullPlayer
-const FULL_ART_TOP = Spacing.two + 20 + 56; // paddingTop + dragHandle + topBar = 84
-const FULL_ART_LEFT = Spacing.four; // matches FullPlayer paddingHorizontal
+const FULL_ART_TOP = Spacing.two + 20 + 56; // paddingTop + drag handle + top bar
+const FULL_ART_LEFT = Spacing.four;
 const FULL_ART_RADIUS = 16;
 
-// Smooth ease curves — no spring bounce
-const EASE_OUT = Easing.bezier(0.4, 0, 0.2, 1); // expand
-const EASE_IN = Easing.bezier(0.4, 0, 0.6, 1);  // collapse
-const DURATION_EXPAND = 380;
-const DURATION_COLLAPSE = 280;
-
-function timing(to: number, expand: boolean, cb?: (finished?: boolean) => void) {
-  "worklet";
-  return withTiming(
-    to,
-    { duration: expand ? DURATION_EXPAND : DURATION_COLLAPSE, easing: expand ? EASE_OUT : EASE_IN },
-    cb,
-  );
-}
+/**
+ * Critically damped spring: no bounce, and it carries the flick's velocity
+ * so the sheet keeps moving at the speed the finger left it.
+ */
+const SPRING = { damping: 34, stiffness: 300, mass: 1, overshootClamping: true } as const;
 
 // ─── Floating artwork ───────────────────────────────────────────────────────
+// Rendered once at full size and moved with transforms only (no layout per frame).
 
-interface FloatingArtworkProps {
-  gestureProgress: SharedValue<number>;
-  color: string;
-  hidden: boolean;
-}
-
-function FloatingArtwork({ gestureProgress, color, hidden }: FloatingArtworkProps) {
-  const artStyle = useAnimatedStyle(() => {
-    const p = gestureProgress.value;
+function FloatingArtwork({ progress, seed, hideWhenOpen }: { progress: SharedValue<number>; seed: string; hideWhenOpen: boolean }) {
+  const style = useAnimatedStyle(() => {
+    const p = progress.value;
     const size = interpolate(p, [0, 1], [MINI_ART_SIZE, FULL_ART_SIZE], Extrapolation.CLAMP);
+    const left = interpolate(p, [0, 1], [MINI_ART_LEFT, FULL_ART_LEFT], Extrapolation.CLAMP);
+    const top = interpolate(p, [0, 1], [MINI_ART_TOP, FULL_ART_TOP], Extrapolation.CLAMP);
+    const scale = size / FULL_ART_SIZE;
+    const radius = interpolate(p, [0, 1], [MINI_ART_RADIUS, FULL_ART_RADIUS], Extrapolation.CLAMP);
     return {
-      position: "absolute",
-      width: size,
-      height: size,
-      top: interpolate(p, [0, 1], [MINI_ART_TOP, FULL_ART_TOP], Extrapolation.CLAMP),
-      left: interpolate(p, [0, 1], [MINI_ART_LEFT, FULL_ART_LEFT], Extrapolation.CLAMP),
-      borderRadius: interpolate(p, [0, 1], [MINI_ART_RADIUS, FULL_ART_RADIUS], Extrapolation.CLAMP),
-      opacity: hidden ? 0 : 1,
-      backgroundColor: color,
+      transform: [
+        // Scale is around the centre, so shift so the top-left lands on (left, top).
+        { translateX: left - FULL_ART_LEFT + (size - FULL_ART_SIZE) / 2 },
+        { translateY: top - FULL_ART_TOP + (size - FULL_ART_SIZE) / 2 },
+        { scale },
+      ],
+      borderRadius: radius / scale,
+      opacity: hideWhenOpen ? interpolate(p, [0, 0.35], [1, 0], Extrapolation.CLAMP) : 1,
     };
   });
 
-  return <Animated.View pointerEvents="none" style={artStyle} />;
+  return (
+    <Animated.View pointerEvents="none" style={[styles.art, style]}>
+      <HymnArt seed={seed} size={FULL_ART_SIZE} radius={0} />
+    </Animated.View>
+  );
 }
 
-// ─── Main modal ─────────────────────────────────────────────────────────────
+// ─── Player sheet ───────────────────────────────────────────────────────────
 
 export function PlayerModal() {
   const { isPlayerVisible, isExpanded, expandPlayer, collapsePlayer, currentHymn } = useAudio();
   const { viewMode } = useViewMode();
   const insets = useSafeAreaInsets();
 
-  const expandProgress = useSharedValue(0);
-  const dragY = useSharedValue(0);
-  const [fullPlayerActive, setFullPlayerActive] = useState(false);
+  const miniTop = SCREEN_HEIGHT - (insets.bottom + TAB_BAR_HEIGHT + MINI_OFFSET) - MiniPlayerHeight;
+  const sheetTop = insets.top;
+  const travel = miniTop - sheetTop; // how far the sheet moves between states
 
-  const miniBottom = insets.bottom + TAB_BAR_HEIGHT + MINI_OFFSET;
-  const miniTop = SCREEN_HEIGHT - miniBottom - MiniPlayerHeight;
-  const expandedTop = insets.top + HEADER_CLEARANCE;
-  const dragDistance = useSharedValue(miniTop - expandedTop);
+  /** 0 = mini player, 1 = full sheet. Driven by the finger while dragging. */
+  const progress = useSharedValue(0);
+  /** Where the sheet is heading, so a JS state update doesn't restart a gesture's spring. */
+  const target = useSharedValue(0);
+  const dragStart = useSharedValue(0);
+  const [open, setOpen] = useState(false);
 
+  // Button taps (expandPlayer/collapsePlayer) animate here; gestures set `target` first.
   useEffect(() => {
-    dragDistance.value = miniTop - expandedTop;
-  }, [miniTop, expandedTop]);
-
-  const gestureProgress = useDerivedValue(() =>
-    clamp(expandProgress.value - dragY.value / dragDistance.value, 0, 1),
-  );
-
-  useEffect(() => {
-    if (isExpanded) {
-      setFullPlayerActive(true);
-      expandProgress.value = timing(1, true);
-    } else {
-      expandProgress.value = timing(0, false, (finished) => {
-        "worklet";
-        if (finished) runOnJS(setFullPlayerActive)(false);
-      });
+    const desired = isExpanded ? 1 : 0;
+    if (target.value !== desired) {
+      target.value = desired;
+      progress.value = withSpring(desired, SPRING);
     }
   }, [isExpanded]);
 
-  const panGesture = Gesture.Pan()
-    .enabled(fullPlayerActive)
-    .minDistance(10)
-    .onUpdate((e) => {
-      if (expandProgress.value > 0.5) {
-        dragY.value = Math.max(0, e.translationY);
-      }
-    })
-    .onEnd((e) => {
-      const shouldCollapse =
-        e.translationY > dragDistance.value * 0.3 || e.velocityY > 800;
-      dragY.value = timing(0, false);
-      if (shouldCollapse) {
-        expandProgress.value = timing(0, false, (finished) => {
-          "worklet";
-          if (finished) runOnJS(collapsePlayer)();
-        });
-      } else {
-        expandProgress.value = timing(1, true);
-      }
-    });
+  // Touch handling follows the visual state, switching as the sheet crosses halfway.
+  useAnimatedReaction(
+    () => progress.value > 0.5,
+    (isOpen, was) => {
+      if (isOpen !== was) runOnJS(setOpen)(isOpen);
+    },
+  );
 
-  const containerStyle = useAnimatedStyle(() => {
-    const p = gestureProgress.value;
-    const radius = interpolate(p, [0, 1], [14, 20], Extrapolation.CLAMP);
-    return {
-      top: interpolate(p, [0, 1], [miniTop, expandedTop], Extrapolation.CLAMP),
-      bottom: interpolate(p, [0, 1], [miniBottom, H_INSET], Extrapolation.CLAMP),
-      borderTopLeftRadius: radius,
-      borderTopRightRadius: radius,
-      borderBottomLeftRadius: radius,
-      borderBottomRightRadius: radius,
+  const drag = useMemo(() => {
+    const settle = (velocityY: number) => {
+      "worklet";
+      const v = -velocityY / travel; // progress units per second
+      const p = progress.value;
+      const to = v > 0.6 ? 1 : v < -0.6 ? 0 : p > 0.5 ? 1 : 0;
+      target.value = to;
+      progress.value = withSpring(to, { ...SPRING, velocity: v });
+      runOnJS(to ? expandPlayer : collapsePlayer)();
     };
-  });
+    return Gesture.Pan()
+      .activeOffsetY([-8, 8])
+      .failOffsetX([-20, 20])
+      .onBegin(() => {
+        dragStart.value = progress.value;
+      })
+      .onUpdate((e) => {
+        progress.value = Math.min(1, Math.max(0, dragStart.value - e.translationY / travel));
+      })
+      .onEnd((e) => settle(e.velocityY));
+  }, [travel, expandPlayer, collapsePlayer]);
 
-  const gradientBorderStyle = useAnimatedStyle(() => {
-    const p = gestureProgress.value;
-    const radius = interpolate(p, [0, 1], [14, 20], Extrapolation.CLAMP);
-    return {
-      top: interpolate(p, [0, 1], [miniTop, expandedTop], Extrapolation.CLAMP) - 1,
-      bottom: interpolate(p, [0, 1], [miniBottom, H_INSET], Extrapolation.CLAMP) - 1,
-      borderTopLeftRadius: radius + 1,
-      borderTopRightRadius: radius + 1,
-      borderBottomLeftRadius: radius + 1,
-      borderBottomRightRadius: radius + 1,
-    };
-  });
-
-  const gradientStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(gestureProgress.value, [0, 0.5], [0, 1], Extrapolation.CLAMP),
+  // The sheet keeps its full-screen size and only slides: GPU transforms, no re-layout.
+  const sheetStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: interpolate(progress.value, [0, 1], [travel, 0], Extrapolation.CLAMP) }],
   }));
-
+  const sheetBgStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(progress.value, [0, 0.15], [0, 1], Extrapolation.CLAMP),
+  }));
+  const fullContentStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(progress.value, [0.3, 0.65], [0, 1], Extrapolation.CLAMP),
+  }));
   const miniStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(gestureProgress.value, [0, 0.2], [1, 0], Extrapolation.CLAMP),
+    opacity: interpolate(progress.value, [0, 0.15], [1, 0], Extrapolation.CLAMP),
+    transform: [{ translateY: interpolate(progress.value, [0, 1], [0, -travel], Extrapolation.CLAMP) }],
   }));
 
-  const fullStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(gestureProgress.value, [0.25, 0.55], [0, 1], Extrapolation.CLAMP),
-  }));
-
-  if (!isPlayerVisible) return null;
-
-  // Artwork travels between mini and full — hide it in hymnal mode once expanded
-  const artworkHidden = fullPlayerActive && viewMode === "hymnal";
-  const artworkColor = currentHymn?.artworkColor ?? AccentColor;
+  if (!isPlayerVisible || !currentHymn) return null;
 
   return (
     <>
-      <Animated.View pointerEvents="none" style={[styles.gradientBorder, gradientBorderStyle]}>
-        <LinearGradient
-          colors={["#04C1FF", "#EEA246"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-      </Animated.View>
-    <Animated.View style={[styles.container, containerStyle]}>
-      {/* Solid mini-player background */}
-      <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.miniBg]} />
-
-      {/* Gradient for full-player state */}
-      <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, gradientStyle]}>
-        <LinearGradient
-          colors={["#241B12", "#241B12", "#2E2318", "#3C2E1E"]}
-          style={StyleSheet.absoluteFill}
-        />
+      {/* Mini player bar */}
+      <Animated.View pointerEvents={open ? "none" : "auto"} style={[styles.mini, { top: miniTop }, miniStyle]}>
+        <GestureDetector gesture={drag}>
+          <LinearGradient colors={BrandGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.miniBorder}>
+            <Pressable onPress={expandPlayer} style={styles.miniInner} accessibilityRole="button" accessibilityLabel={currentHymn.title}>
+              <MiniPlayer />
+            </Pressable>
+          </LinearGradient>
+        </GestureDetector>
       </Animated.View>
 
-      {/* Mini player (placeholder artwork hidden — floating artwork covers it) */}
-      <Animated.View
-        pointerEvents={fullPlayerActive ? "none" : "auto"}
-        style={[StyleSheet.absoluteFill, miniStyle]}>
-        <Pressable onPress={expandPlayer} style={StyleSheet.absoluteFill}>
-          <MiniPlayer />
-        </Pressable>
-      </Animated.View>
-
-      {/* Full player (placeholder artwork hidden — floating artwork covers it) */}
-      <GestureDetector gesture={panGesture}>
-        <Animated.View
-          pointerEvents={fullPlayerActive ? "auto" : "none"}
-          style={[StyleSheet.absoluteFill, fullStyle]}>
-          <FullPlayer onClose={collapsePlayer} />
+      {/* Full sheet */}
+      <Animated.View pointerEvents="box-none" style={[styles.sheet, { top: sheetTop, height: SCREEN_HEIGHT - sheetTop - H_INSET }, sheetStyle]}>
+        <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, sheetBgStyle]}>
+          <LinearGradient colors={BrandGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[StyleSheet.absoluteFill, styles.sheetBorder]}>
+            <LinearGradient colors={[Palette.sheetTop, Palette.sheetTop, "#2E2318", Palette.sheetBottom]} style={styles.sheetFill} />
+          </LinearGradient>
         </Animated.View>
-      </GestureDetector>
 
-      {/* Floating artwork — animates between mini and full positions */}
-      <FloatingArtwork
-        gestureProgress={gestureProgress}
-        color={artworkColor}
-        hidden={artworkHidden}
-      />
-    </Animated.View>
+        <Animated.View pointerEvents={open ? "auto" : "none"} style={[StyleSheet.absoluteFill, fullContentStyle]}>
+          <FullPlayer onClose={collapsePlayer} dragGesture={drag} />
+        </Animated.View>
+
+        <FloatingArtwork progress={progress} seed={currentHymn.id} hideWhenOpen={viewMode === "hymnal"} />
+      </Animated.View>
     </>
   );
 }
 
-const H_INSET = 10;
-
 const styles = StyleSheet.create({
-  gradientBorder: {
-    position: "absolute",
-    left: H_INSET - 1,
-    right: H_INSET - 1,
-    overflow: "hidden",
-  },
-  container: {
-    position: "absolute",
-    left: H_INSET,
-    right: H_INSET,
-    overflow: "hidden",
-  },
-  miniBg: {
-    backgroundColor: MINI_BG,
-  },
+  mini: { position: "absolute", left: H_INSET, right: H_INSET, height: MiniPlayerHeight },
+  miniBorder: { flex: 1, borderRadius: 16, padding: 1 },
+  miniInner: { flex: 1, borderRadius: 15, backgroundColor: Palette.surface, overflow: "hidden" },
+  sheet: { position: "absolute", left: H_INSET, right: H_INSET },
+  sheetBorder: { borderRadius: 22, padding: 1 },
+  sheetFill: { flex: 1, borderRadius: 21 },
+  art: { position: "absolute", left: FULL_ART_LEFT, top: FULL_ART_TOP, width: FULL_ART_SIZE, height: FULL_ART_SIZE, overflow: "hidden" },
 });
