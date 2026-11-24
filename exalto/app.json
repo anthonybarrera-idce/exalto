@@ -48,7 +48,17 @@
         }
       ],
       "expo-image",
-      "expo-audio"
+      "expo-audio",
+      [
+        "react-native-audio-api",
+        {
+          "iosBackgroundMode": false,
+          "androidForegroundService": false,
+          "androidPermissions": [],
+          "androidFSTypes": [],
+          "androidFSStopWithTask": true
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

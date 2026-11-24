@@ -7,6 +7,22 @@ service cloud.firestore {
     function isAdmin() { return role() in ['owner', 'editor', 'moderator']; }
     function canEditContent() { return role() in ['owner', 'editor']; }
 
+    // Hymn Studio (desktop) access list, keyed by lower-case Google email. Owners manage it in the
+    // admin; a person may read only their own entry (that's how Studio checks it at sign-in).
+    match /studioAccess/{email} {
+      allow read: if isAdmin() || (request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email.lower() == email);
+      allow create: if role() == 'owner'
+        && email == email.lower()
+        && request.resource.data.keys().hasOnly(['email', 'note', 'addedBy', 'addedByName', 'addedAt'])
+        && request.resource.data.email == email
+        && request.resource.data.addedBy == request.auth.uid
+        && request.resource.data.addedAt == request.time;
+      allow update: if false;
+      allow delete: if role() == 'owner';
+    }
+
     match /hymns/{hymnId} {
       // The mobile app reads published hymns; admins read everything.
       allow read: if resource.data.status == 'published' || isAdmin();

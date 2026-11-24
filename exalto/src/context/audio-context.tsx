@@ -22,6 +22,8 @@ export interface Hymn {
   /** Hymns from the hymnal may have no recording yet; they open as lyrics. */
   audioUri?: string;
   lyrics?: LyricSection[];
+  /** practice.json from Hymn Studio: notes the Practice screen draws and plays on the phone. */
+  practice?: { url: string; version: number };
 }
 
 interface AudioState {

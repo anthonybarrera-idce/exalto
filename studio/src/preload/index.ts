@@ -1,0 +1,39 @@
+import { contextBridge, ipcRenderer, webUtils } from "electron"
+
+const on = (channel: string) => (cb: (v: any) => void) => {
+  const fn = (_e: unknown, v: any) => cb(v)
+  ipcRenderer.on(channel, fn)
+  return () => {
+    ipcRenderer.removeListener(channel, fn)
+  }
+}
+
+const api = {
+  env: (): Promise<{ serviceDir: string; outDir: string; pythonReady: boolean; version: string }> => ipcRenderer.invoke("env:info"),
+  setTheme: (mode: "system" | "light" | "dark") => ipcRenderer.invoke("theme:set", mode),
+  isDark: () => ipcRenderer.invoke("theme:isDark"),
+  setLanguage: (lang: "es" | "en") => ipcRenderer.invoke("language:set", lang),
+  onThemeChanged: on("theme:changed"),
+  pickDecks: () => ipcRenderer.invoke("files:pickDecks"),
+  pathForFile: (f: File) => webUtils.getPathForFile(f),
+  convert: (o: unknown) => ipcRenderer.invoke("convert:start", o),
+  cancel: () => ipcRenderer.invoke("convert:cancel"),
+  onLog: on("convert:log"),
+  onDone: on("convert:done"),
+  listHymns: () => ipcRenderer.invoke("hymns:list"),
+  getHymn: (slug: string) => ipcRenderer.invoke("hymns:get", slug),
+  readText: (slug: string, file: string): Promise<string> => ipcRenderer.invoke("hymns:readText", slug, file),
+  readBinary: (slug: string, file: string): Promise<Uint8Array> => ipcRenderer.invoke("hymns:readBinary", slug, file),
+  googleSignIn: (): Promise<string> => ipcRenderer.invoke("auth:google"),
+  saveLyrics: (slug: string, text: string, sections: unknown) => ipcRenderer.invoke("hymns:saveLyrics", slug, text, sections),
+  saveTo: (slug: string, names: string[]) => ipcRenderer.invoke("hymns:saveTo", slug, names),
+  ensureTones: (slug: string): Promise<boolean> => ipcRenderer.invoke("hymns:ensureTones", slug),
+  saveDetails: (slug: string, patch: Record<string, unknown>) => ipcRenderer.invoke("hymns:saveDetails", slug, patch),
+  saveSyllables: (slug: string, pages: unknown[]) => ipcRenderer.invoke("hymns:saveSyllables", slug, pages),
+  saveEdits: (slug: string, pages: unknown[], respellFrom: number | null) => ipcRenderer.invoke("hymns:saveEdits", slug, pages, respellFrom),
+  reveal: (slug: string) => ipcRenderer.invoke("hymns:reveal", slug),
+  revealFolder: (): Promise<string> => ipcRenderer.invoke("hymns:revealFolder"),
+}
+
+contextBridge.exposeInMainWorld("studio", api)
+export type StudioApi = typeof api

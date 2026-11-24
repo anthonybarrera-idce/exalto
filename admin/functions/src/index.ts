@@ -14,6 +14,16 @@ const ROLES = ["listener", "composer", "moderator", "editor", "owner"] as const
 type Role = (typeof ROLES)[number]
 const ADMIN_ROLES: Role[] = ["moderator", "editor", "owner"]
 
+// The church's main account keeps full access: nobody can demote or delete it from the admin.
+const PROTECTED_EMAILS = ["anthonybarrera@iglesiadecristoenelgin.com"]
+
+async function refuseIfProtected(uid: string, action: string) {
+  const email = (await getAuth().getUser(uid).catch(() => null))?.email?.toLowerCase()
+  if (email && PROTECTED_EMAILS.includes(email)) {
+    throw new HttpsError("failed-precondition", `${email} always keeps full access, so you can't ${action} it.`)
+  }
+}
+
 function requireOwner(req: CallableRequest) {
   if (!req.auth) throw new HttpsError("unauthenticated", "Sign in first.")
   if (req.auth.token.role !== "owner") throw new HttpsError("permission-denied", "Only the owner can do this.")
@@ -29,6 +39,7 @@ export const setUserRole = onCall({ region: "us-central1" }, async (req) => {
   const { uid, role } = (req.data ?? {}) as { uid?: string; role?: Role }
   if (!uid || !role || !ROLES.includes(role)) throw new HttpsError("invalid-argument", "Expected { uid, role }.")
   if (uid === caller.uid && role !== "owner") throw new HttpsError("failed-precondition", "You can't remove your own owner role.")
+  if (role !== "owner") await refuseIfProtected(uid, "lower the role of")
 
   const auth = getAuth()
   const user = await auth.getUser(uid)
@@ -51,6 +62,7 @@ export const deleteUser = onCall({ region: "us-central1" }, async (req) => {
   const { uid } = (req.data ?? {}) as { uid?: string }
   if (!uid) throw new HttpsError("invalid-argument", "Expected { uid }.")
   if (uid === caller.uid) throw new HttpsError("failed-precondition", "You can't delete your own account here.")
+  await refuseIfProtected(uid, "delete")
 
   const profile = db.collection("users").doc(uid)
   const handle = (await profile.get()).get("handle") ?? uid

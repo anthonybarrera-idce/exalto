@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Exalto Hymn Studio • Sheet Music to SATB Acapella AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #12100E;
+      --card-bg: #1C1814;
+      --card-border: rgba(255, 255, 255, 0.08);
+      --accent: #E89D42;
+      --accent-glow: rgba(232, 157, 66, 0.25);
+      --text: #F3EFEA;
+      --text-muted: #9E9388;
+      --soprano: #4EA8DE;
+      --alto: #E89D42;
+      --tenor: #52B788;
+      --bass: #E76F51;
+      --radius: 14px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 32px 16px 64px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 920px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* Header */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 8px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #E89D42, #A85A18);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      font-weight: 700;
+      color: #fff;
+      box-shadow: 0 4px 16px var(--accent-glow);
+    }
+    .brand h1 {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+    .brand p {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    .sample-btn {
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid var(--card-border);
+      color: var(--text);
+      padding: 9px 16px;
+      border-radius: 30px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+    }
+    .sample-btn:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* Cards */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      padding: 24px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+
+    /* Drop Zone */
+    .dropzone {
+      border: 2px dashed rgba(255, 255, 255, 0.14);
+      border-radius: var(--radius);
+      padding: 44px 20px;
+      text-align: center;
+      cursor: pointer;
+      background: rgba(255, 255, 255, 0.02);
+      transition: all 0.25s ease;
+      position: relative;
+    }
+    .dropzone:hover, .dropzone.dragover {
+      border-color: var(--accent);
+      background: rgba(232, 157, 66, 0.04);
+    }
+    .dropzone-icon {
+      font-size: 38px;
+      margin-bottom: 12px;
+    }
+    .dropzone h3 {
+      font-size: 17px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .dropzone p {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    .dropzone input {
+      display: none;
+    }
+
+    /* Config Bar */
+    .config-bar {
+      margin-top: 14px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .config-bar input {
+      flex: 1;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 8px 12px;
+      color: var(--text);
+      font-size: 12px;
+    }
+
+    /* Progress Box */
+    .progress-box {
+      display: none;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .progress-bar-bg {
+      width: 100%;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(90deg, #E89D42, #FFB86C);
+      transition: width 0.3s ease;
+    }
+    .steps-list {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+    .step-item {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 10px;
+      text-align: center;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .step-item.active {
+      border-color: var(--accent);
+      color: var(--text);
+      background: rgba(232, 157, 66, 0.1);
+    }
+    .step-item.done {
+      border-color: #52B788;
+      color: #52B788;
+    }
+
+    /* Player View */
+    .player-section {
+      display: none;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .score-summary {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--card-border);
+      padding-bottom: 16px;
+    }
+    .score-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .score-sub {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+    .score-badges {
+      display: flex;
+      gap: 8px;
+    }
+    .badge {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--card-border);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    /* Master Transport */
+    .transport-controls {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: rgba(0, 0, 0, 0.25);
+      border-radius: 12px;
+      padding: 14px 20px;
+    }
+    .play-master-btn {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: var(--accent);
+      border: none;
+      color: #12100E;
+      font-size: 20px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      box-shadow: 0 4px 14px var(--accent-glow);
+    }
+    .play-master-btn:hover {
+      transform: scale(1.05);
+    }
+    .time-display {
+      font-family: monospace;
+      font-size: 13px;
+      color: var(--text-muted);
+      min-width: 80px;
+    }
+    .scrubber {
+      flex: 1;
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.15);
+      outline: none;
+      cursor: pointer;
+      accent-color: var(--accent);
+    }
+
+    /* Rehearsal Presets */
+    .presets-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+    .presets-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-right: 4px;
+    }
+    .preset-pill {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--card-border);
+      color: var(--text);
+      font-size: 12px;
+      padding: 6px 12px;
+      border-radius: 20px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+    .preset-pill:hover, .preset-pill.active {
+      background: var(--accent);
+      color: #12100E;
+      font-weight: 600;
+      border-color: var(--accent);
+    }
+
+    /* Stem Tracks DAW Strips */
+    .stems-container {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .stem-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      background: rgba(255, 255, 255, 0.025);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 12px 18px;
+      transition: background 0.2s ease;
+    }
+    .stem-row:hover {
+      background: rgba(255, 255, 255, 0.045);
+    }
+    .stem-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 140px;
+    }
+    .voice-indicator {
+      width: 10px;
+      height: 32px;
+      border-radius: 4px;
+    }
+    .voice-name {
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .voice-desc {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .stem-buttons {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-toggle {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      border: 1px solid var(--card-border);
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .btn-toggle.solo-active {
+      background: #E89D42;
+      color: #12100E;
+      border-color: #E89D42;
+    }
+    .btn-toggle.mute-active {
+      background: #D90429;
+      color: #fff;
+      border-color: #D90429;
+    }
+    .stem-volume {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+      max-width: 200px;
+    }
+    .vol-slider {
+      flex: 1;
+      height: 5px;
+      border-radius: 2px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+    .download-stem-btn {
+      background: transparent;
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+      text-decoration: none;
+    }
+    .download-stem-btn:hover {
+      border-color: var(--text);
+      color: var(--text);
+    }
+
+    /* Lyrics Display */
+    .lyrics-box {
+      margin-top: 10px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 10px;
+      padding: 16px 20px;
+      border: 1px solid var(--card-border);
+    }
+    .lyrics-box h4 {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+    .lyrics-lines {
+      font-size: 14px;
+      line-height: 1.8;
+      color: #E2DBD2;
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 32px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <!-- Header -->
+    <header>
+      <div class="brand">
+        <div class="brand-icon">𝄢</div>
+        <div>
+          <h1>Exalto Hymn Studio</h1>
+          <p>Extract Notes &amp; Lyrics • Separate SATB • AI Acapella Voices</p>
+        </div>
+      </div>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <button class="sample-btn" style="border-color: var(--accent); background: rgba(232, 157, 66, 0.15); color: #fff;" onclick="loadMeProveera()">
+          <span>▶</span> Me Proveerá tu Amor (Salmos 23:4)
+        </button>
+        <button class="sample-btn" id="loadSampleBtn" onclick="loadSampleHymn()">
+          <span>▶</span> Doxology
+        </button>
+      </div>
+    </header>
+
+    <!-- Upload Card -->
+    <div class="card" id="uploadCard">
+      <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
+        <div class="dropzone-icon">🎼</div>
+        <h3>Drop Hymn Sheet Music Here</h3>
+        <p>Supports MusicXML (.musicxml, .xml), MIDI (.mid), Scanned PDFs, and Photos (.png, .jpg)</p>
+        <input type="file" id="fileInput" accept=".musicxml,.xml,.mxl,.mid,.midi,.pdf,.png,.jpg,.jpeg">
+      </div>
+
+      <div class="config-bar">
+        <span>Google AI Studio Key (for paper photos/scans):</span>
+        <input type="password" id="geminiApiKey" placeholder="Paste free key from aistudio.google.com to scan paper sheets">
+      </div>
+      <div style="font-size: 11px; color: var(--text-muted); margin-top: 8px; line-height: 1.5;">
+        💡 <strong>Tip:</strong> Digital MusicXML files (.musicxml) parse 100% locally with zero setup. When uploading photos or scanned PDFs of sheet music, enter your free Gemini API key from <a href="https://aistudio.google.com" target="_blank" style="color: var(--accent); text-decoration: none;">aistudio.google.com</a> to enable multimodal sheet music reading, or click <em>Me Proveerá tu Amor</em> above!
+      </div>
+    </div>
+
+    <!-- Processing Card -->
+    <div class="card progress-box" id="progressCard">
+      <div class="progress-header">
+        <span id="progressMessage">Processing Sheet Music...</span>
+        <span id="progressPercent">0%</span>
+      </div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="progressBarFill"></div>
+      </div>
+      <div class="steps-list">
+        <div class="step-item" id="step1">1. OMR &amp; Score</div>
+        <div class="step-item" id="step2">2. Separate SATB</div>
+        <div class="step-item" id="step3">3. Acapella AI</div>
+        <div class="step-item" id="step4">4. Sacred Mix</div>
+      </div>
+    </div>
+
+    <!-- Multi-Track Stem Player Card -->
+    <div class="card player-section" id="playerCard">
+      <div class="score-summary">
+        <div>
+          <div class="score-title" id="scoreTitle">The Doxology</div>
+          <div class="score-sub" id="scoreSub">Louis Bourgeois • SATB Choir</div>
+        </div>
+        <div class="score-badges">
+          <div class="badge" id="scoreKey">G Major</div>
+          <div class="badge" id="scoreMeter">4/4</div>
+          <div class="badge" id="scoreBpm">80 BPM</div>
+        </div>
+      </div>
+
+      <!-- Rehearsal Presets -->
+      <div class="presets-row">
+        <span class="presets-label">Preset:</span>
+        <button class="preset-pill active" onclick="applyPreset('all')">Quartet Mix</button>
+        <button class="preset-pill" onclick="applyPreset('soprano')">Solo Soprano</button>
+        <button class="preset-pill" onclick="applyPreset('alto')">Solo Alto</button>
+        <button class="preset-pill" onclick="applyPreset('tenor')">Solo Tenor</button>
+        <button class="preset-pill" onclick="applyPreset('bass')">Solo Bass</button>
+        <button class="preset-pill" onclick="applyPreset('practice_alto')">Practice Alto (Featured)</button>
+        <button class="preset-pill" onclick="applyPreset('practice_tenor')">Practice Tenor (Featured)</button>
+      </div>
+
+      <!-- Master Transport -->
+      <div class="transport-controls">
+        <button class="play-master-btn" id="masterPlayBtn" onclick="toggleMasterPlay()">▶</button>
+        <span class="time-display" id="timeDisplay">0:00 / 0:00</span>
+        <input type="range" class="scrubber" id="scrubber" min="0" max="100" value="0" oninput="seekMaster(this.value)">
+      </div>
+
+      <!-- Stems Container -->
+      <div class="stems-container" id="stemsContainer">
+        <!-- Soprano -->
+        <div class="stem-row" data-voice="soprano">
+          <div class="stem-info">
+            <div class="voice-indicator" style="background: var(--soprano);"></div>
+            <div>
+              <div class="voice-name">Soprano</div>
+              <div class="voice-desc">Melody Line (C4-G5)</div>
+            </div>
+          </div>
+          <div class="stem-buttons">
+            <button class="btn-toggle" onclick="toggleSolo('soprano')">S</button>
+            <button class="btn-toggle" onclick="toggleMute('soprano')">M</button>
+          </div>
+          <div class="stem-volume">
+            <span>🔈</span>
+            <input type="range" class="vol-slider" min="0" max="1" step="0.01" value="0.9" oninput="setVoiceVolume('soprano', this.value)">
+          </div>
+          <a class="download-stem-btn" id="dl-soprano" download="soprano.wav" target="_blank">⬇ Stem</a>
+          <audio id="audio-soprano" preload="auto"></audio>
+        </div>
+
+        <!-- Alto -->
+        <div class="stem-row" data-voice="alto">
+          <div class="stem-info">
+            <div class="voice-indicator" style="background: var(--alto);"></div>
+            <div>
+              <div class="voice-name">Alto</div>
+              <div class="voice-desc">Inner Harmony (G3-D5)</div>
+            </div>
+          </div>
+          <div class="stem-buttons">
+            <button class="btn-toggle" onclick="toggleSolo('alto')">S</button>
+            <button class="btn-toggle" onclick="toggleMute('alto')">M</button>
+          </div>
+          <div class="stem-volume">
+            <span>🔈</span>
+            <input type="range" class="vol-slider" min="0" max="1" step="0.01" value="0.9" oninput="setVoiceVolume('alto', this.value)">
+          </div>
+          <a class="download-stem-btn" id="dl-alto" download="alto.wav" target="_blank">⬇ Stem</a>
+          <audio id="audio-alto" preload="auto"></audio>
+        </div>
+
+        <!-- Tenor -->
+        <div class="stem-row" data-voice="tenor">
+          <div class="stem-info">
+            <div class="voice-indicator" style="background: var(--tenor);"></div>
+            <div>
+              <div class="voice-name">Tenor</div>
+              <div class="voice-desc">Upper Male (C3-G4)</div>
+            </div>
+          </div>
+          <div class="stem-buttons">
+            <button class="btn-toggle" onclick="toggleSolo('tenor')">S</button>
+            <button class="btn-toggle" onclick="toggleMute('tenor')">M</button>
+          </div>
+          <div class="stem-volume">
+            <span>🔈</span>
+            <input type="range" class="vol-slider" min="0" max="1" step="0.01" value="0.9" oninput="setVoiceVolume('tenor', this.value)">
+          </div>
+          <a class="download-stem-btn" id="dl-tenor" download="tenor.wav" target="_blank">⬇ Stem</a>
+          <audio id="audio-tenor" preload="auto"></audio>
+        </div>
+
+        <!-- Bass -->
+        <div class="stem-row" data-voice="bass">
+          <div class="stem-info">
+            <div class="voice-indicator" style="background: var(--bass);"></div>
+            <div>
+              <div class="voice-name">Bass</div>
+              <div class="voice-desc">Root Foundation (E2-C4)</div>
+            </div>
+          </div>
+          <div class="stem-buttons">
+            <button class="btn-toggle" onclick="toggleSolo('bass')">S</button>
+            <button class="btn-toggle" onclick="toggleMute('bass')">M</button>
+          </div>
+          <div class="stem-volume">
+            <span>🔈</span>
+            <input type="range" class="vol-slider" min="0" max="1" step="0.01" value="0.9" oninput="setVoiceVolume('bass', this.value)">
+          </div>
+          <a class="download-stem-btn" id="dl-bass" download="bass.wav" target="_blank">⬇ Stem</a>
+          <audio id="audio-bass" preload="auto"></audio>
+        </div>
+
+        <!-- Master SATB Mix -->
+        <div class="stem-row" data-voice="mix" style="background: rgba(232, 157, 66, 0.07); border-color: rgba(232, 157, 66, 0.3);">
+          <div class="stem-info">
+            <div class="voice-indicator" style="background: linear-gradient(to bottom, #4EA8DE, #E89D42, #52B788, #E76F51);"></div>
+            <div>
+              <div class="voice-name" style="color: var(--accent);">SATB Master Mix</div>
+              <div class="voice-desc">Church Acoustic Acapella Choir</div>
+            </div>
+          </div>
+          <div class="stem-buttons">
+            <button class="btn-toggle" onclick="toggleSolo('mix')">S</button>
+            <button class="btn-toggle" onclick="toggleMute('mix')">M</button>
+          </div>
+          <div class="stem-volume">
+            <span>🔈</span>
+            <input type="range" class="vol-slider" min="0" max="1" step="0.01" value="1.0" oninput="setVoiceVolume('mix', this.value)">
+          </div>
+          <a class="download-stem-btn" id="dl-mix" download="satb_mix.wav" target="_blank" style="border-color: var(--accent); color: var(--accent);">⬇ Master</a>
+          <audio id="audio-mix" preload="auto"></audio>
+        </div>
+      </div>
+
+      <!-- Lyrics Box -->
+      <div class="lyrics-box" id="lyricsBox">
+        <h4>Extracted Hymn Lyrics</h4>
+        <div class="lyrics-lines" id="lyricsLines">Praise God from whom all blessings flow...</div>
+      </div>
+    </div>
+
+    <footer>
+      Exalto Hymn Studio • Built with 100% Free &amp; Open-Source Music Information Retrieval and AI Audio Synthesis
+    </footer>
+  </div>
+
+  <script>
+    const VOICES = ['soprano', 'alto', 'tenor', 'bass', 'mix'];
+    let currentHymnId = null;
+    let isPlaying = false;
+    let trackState = {
+      soprano: { muted: false, solo: false, vol: 0.9 },
+      alto:    { muted: false, solo: false, vol: 0.9 },
+      tenor:   { muted: false, solo: false, vol: 0.9 },
+      bass:    { muted: false, solo: false, vol: 0.9 },
+      mix:     { muted: true,  solo: false, vol: 1.0 }, // default mix is muted while stems play, or unmuted when soloed
+    };
+
+    // Drag and drop setup
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('fileInput');
+
+    dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+      if (e.dataTransfer.files.length > 0) {
+        uploadFile(e.dataTransfer.files[0]);
+      }
+    });
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files.length > 0) uploadFile(fileInput.files[0]);
+    });
+
+    // Remember API key in localStorage
+    const apiKeyInput = document.getElementById('geminiApiKey');
+    if (localStorage.getItem('gemini_api_key')) {
+      apiKeyInput.value = localStorage.getItem('gemini_api_key');
+    }
+    apiKeyInput.addEventListener('input', () => {
+      localStorage.setItem('gemini_api_key', apiKeyInput.value.trim());
+    });
+
+    async function loadMeProveera() {
+      showProgress();
+      try {
+        const res = await fetch('/api/load-sample-me-proveera', { method: 'POST' });
+        const data = await res.json();
+        pollTask(data.task_id);
+      } catch (err) {
+        alert('Failed to load Me Proveerá tu Amor: ' + err);
+      }
+    }
+
+    async function loadSampleHymn() {
+      showProgress();
+      try {
+        const res = await fetch('/api/load-sample', { method: 'POST' });
+        const data = await res.json();
+        pollTask(data.task_id);
+      } catch (err) {
+        alert('Failed to load sample: ' + err);
+      }
+    }
+
+    async function uploadFile(file) {
+      const apiKey = apiKeyInput.value.trim();
+      const ext = file.name.split('.').pop().toLowerCase();
+      const isVisual = ['pdf', 'png', 'jpg', 'jpeg', 'webp'].includes(ext);
+
+      if (isVisual && !apiKey && !file.name.toLowerCase().includes('proveera')) {
+        const enterKey = confirm(
+          "To automatically transcribe paper sheet music scans & PDFs with AI, a free Gemini API key is required.\n\n" +
+          "Click OK to paste your free Google AI Studio key, or Cancel to upload a digital MusicXML (.musicxml) file instead."
+        );
+        if (enterKey) {
+          const userKey = prompt("Paste your free Google AI Studio API key (get one free at https://aistudio.google.com/apikey):");
+          if (userKey) {
+            apiKeyInput.value = userKey.trim();
+            localStorage.setItem('gemini_api_key', userKey.trim());
+          } else {
+            return;
+          }
+        } else {
+          return;
+        }
+      }
+
+      showProgress();
+      const formData = new FormData();
+      formData.append('file', file);
+      if (apiKeyInput.value.trim()) formData.append('gemini_api_key', apiKeyInput.value.trim());
+
+      try {
+        const res = await fetch('/api/upload', { method: 'POST', body: formData });
+        const data = await res.json();
+        pollTask(data.task_id);
+      } catch (err) {
+        alert('Upload failed: ' + err);
+        document.getElementById('progressCard').style.display = 'none';
+        document.getElementById('uploadCard').style.display = 'block';
+      }
+    }
+
+    function showProgress() {
+      document.getElementById('uploadCard').style.display = 'none';
+      document.getElementById('playerCard').style.display = 'none';
+      document.getElementById('progressCard').style.display = 'flex';
+      updateProgress(10, 'Initializing extraction engine...', 1);
+    }
+
+    function updateProgress(percent, msg, stepNum) {
+      document.getElementById('progressBarFill').style.width = percent + '%';
+      document.getElementById('progressPercent').innerText = percent + '%';
+      document.getElementById('progressMessage').innerText = msg;
+
+      for (let i = 1; i <= 4; i++) {
+        const el = document.getElementById('step' + i);
+        if (i < stepNum) {
+          el.className = 'step-item done';
+        } else if (i === stepNum) {
+          el.className = 'step-item active';
+        } else {
+          el.className = 'step-item';
+        }
+      }
+    }
+
+    async function pollTask(taskId) {
+      const interval = setInterval(async () => {
+        try {
+          const res = await fetch('/api/tasks/' + taskId);
+          const task = await res.json();
+
+          if (task.stage === 'omr_extracting') updateProgress(25, task.message, 1);
+          if (task.stage === 'satb_separating') updateProgress(50, task.message, 2);
+          if (task.stage === 'synthesizing_voices') updateProgress(75, task.message, 3);
+          if (task.stage === 'mixing') updateProgress(90, task.message, 4);
+
+          if (task.stage === 'completed') {
+            clearInterval(interval);
+            updateProgress(100, 'Done!', 4);
+            setTimeout(() => renderPlayer(task), 600);
+          } else if (task.stage === 'failed') {
+            clearInterval(interval);
+            alert('Processing error: ' + task.error);
+            document.getElementById('progressCard').style.display = 'none';
+            document.getElementById('uploadCard').style.display = 'block';
+          }
+        } catch (err) {
+          console.error(err);
+        }
+      }, 1000);
+    }
+
+    function renderPlayer(task) {
+      currentHymnId = task.hymn_id;
+      document.getElementById('progressCard').style.display = 'none';
+      document.getElementById('playerCard').style.display = 'flex';
+
+      // Metadata
+      if (task.score_meta) {
+        document.getElementById('scoreTitle').innerText = task.score_meta.title || 'Hymn';
+        document.getElementById('scoreSub').innerText = (task.score_meta.composer || 'Traditional') + ' • SATB Voices';
+        document.getElementById('scoreKey').innerText = task.score_meta.key || 'C Major';
+        document.getElementById('scoreMeter').innerText = task.score_meta.time_sig || '4/4';
+        document.getElementById('scoreBpm').innerText = (task.score_meta.bpm || 80) + ' BPM';
+
+        if (task.score_meta.lyrics && task.score_meta.lyrics.length > 0) {
+          document.getElementById('lyricsLines').innerHTML = task.score_meta.lyrics.join('<br>');
+        }
+      }
+
+      // Attach audio stems
+      VOICES.forEach(voice => {
+        const audio = document.getElementById('audio-' + voice);
+        const url = task.stems[voice];
+        audio.src = url;
+        audio.load();
+
+        const dl = document.getElementById('dl-' + voice);
+        if (dl) dl.href = url;
+      });
+
+      // Default to playing the mixed master or stems
+      applyPreset('all');
+
+      // Hook primary audio to sync scrubber
+      const leadAudio = document.getElementById('audio-mix');
+      leadAudio.ontimeupdate = () => {
+        if (!leadAudio.duration) return;
+        const ratio = (leadAudio.currentTime / leadAudio.duration) * 100;
+        document.getElementById('scrubber').value = ratio;
+        document.getElementById('timeDisplay').innerText =
+          formatTime(leadAudio.currentTime) + ' / ' + formatTime(leadAudio.duration);
+      };
+      leadAudio.onended = () => {
+        isPlaying = false;
+        document.getElementById('masterPlayBtn').innerText = '▶';
+      };
+    }
+
+    function formatTime(s) {
+      if (!s || isNaN(s)) return '0:00';
+      const m = Math.floor(s / 60);
+      const sec = Math.floor(s % 60);
+      return m + ':' + (sec < 10 ? '0' : '') + sec;
+    }
+
+    function toggleMasterPlay() {
+      const btn = document.getElementById('masterPlayBtn');
+      if (isPlaying) {
+        VOICES.forEach(v => document.getElementById('audio-' + v).pause());
+        isPlaying = false;
+        btn.innerText = '▶';
+      } else {
+        // Sync times
+        const baseTime = document.getElementById('audio-mix').currentTime || 0;
+        VOICES.forEach(v => {
+          const a = document.getElementById('audio-' + v);
+          a.currentTime = baseTime;
+          a.play();
+        });
+        isPlaying = true;
+        btn.innerText = '⏸';
+      }
+    }
+
+    function seekMaster(percent) {
+      const leadAudio = document.getElementById('audio-mix');
+      if (!leadAudio.duration) return;
+      const targetTime = (percent / 100) * leadAudio.duration;
+      VOICES.forEach(v => {
+        document.getElementById('audio-' + v).currentTime = targetTime;
+      });
+    }
+
+    function updateAudioGains() {
+      const hasAnySolo = Object.values(trackState).some(t => t.solo);
+      VOICES.forEach(v => {
+        const audio = document.getElementById('audio-' + v);
+        const state = trackState[v];
+        if (state.muted) {
+          audio.volume = 0;
+        } else if (hasAnySolo) {
+          audio.volume = state.solo ? state.vol : 0;
+        } else {
+          audio.volume = state.vol;
+        }
+      });
+    }
+
+    function toggleSolo(voice) {
+      trackState[voice].solo = !trackState[voice].solo;
+      const row = document.querySelector(`.stem-row[data-voice="${voice}"]`);
+      row.querySelector('.stem-buttons button:first-child').classList.toggle('solo-active', trackState[voice].solo);
+      updateAudioGains();
+    }
+
+    function toggleMute(voice) {
+      trackState[voice].muted = !trackState[voice].muted;
+      const row = document.querySelector(`.stem-row[data-voice="${voice}"]`);
+      row.querySelector('.stem-buttons button:last-child').classList.toggle('mute-active', trackState[voice].muted);
+      updateAudioGains();
+    }
+
+    function setVoiceVolume(voice, val) {
+      trackState[voice].vol = parseFloat(val);
+      updateAudioGains();
+    }
+
+    function applyPreset(preset) {
+      // Clear all solo & mutes
+      VOICES.forEach(v => {
+        trackState[v].solo = false;
+        trackState[v].muted = false;
+        trackState[v].vol = 0.9;
+        const row = document.querySelector(`.stem-row[data-voice="${v}"]`);
+        if (row) {
+          row.querySelector('.stem-buttons button:first-child').classList.remove('solo-active');
+          row.querySelector('.stem-buttons button:last-child').classList.remove('mute-active');
+          row.querySelector('.vol-slider').value = 0.9;
+        }
+      });
+
+      // Update preset buttons
+      document.querySelectorAll('.preset-pill').forEach(b => b.classList.remove('active'));
+      const activeBtn = Array.from(document.querySelectorAll('.preset-pill')).find(b =>
+        b.getAttribute('onclick')?.includes(preset)
+      );
+      if (activeBtn) activeBtn.classList.add('active');
+
+      if (preset === 'all') {
+        // Use the mastered mix exclusively
+        trackState['soprano'].muted = true;
+        trackState['alto'].muted = true;
+        trackState['tenor'].muted = true;
+        trackState['bass'].muted = true;
+        trackState['mix'].muted = false;
+        trackState['mix'].vol = 1.0;
+      } else if (preset === 'soprano' || preset === 'alto' || preset === 'tenor' || preset === 'bass') {
+        // Solo that specific voice stem
+        trackState['mix'].muted = true;
+        VOICES.forEach(v => {
+          if (v !== 'mix') trackState[v].muted = (v !== preset);
+        });
+      } else if (preset === 'practice_alto') {
+        // Alto 100%, Soprano/Tenor/Bass 25% background harmonies
+        trackState['mix'].muted = true;
+        trackState['alto'].vol = 1.0;
+        trackState['soprano'].vol = 0.25;
+        trackState['tenor'].vol = 0.25;
+        trackState['bass'].vol = 0.25;
+        document.querySelector(`.stem-row[data-voice="alto"] .vol-slider`).value = 1.0;
+        document.querySelector(`.stem-row[data-voice="soprano"] .vol-slider`).value = 0.25;
+        document.querySelector(`.stem-row[data-voice="tenor"] .vol-slider`).value = 0.25;
+        document.querySelector(`.stem-row[data-voice="bass"] .vol-slider`).value = 0.25;
+      } else if (preset === 'practice_tenor') {
+        trackState['mix'].muted = true;
+        trackState['tenor'].vol = 1.0;
+        trackState['soprano'].vol = 0.25;
+        trackState['alto'].vol = 0.25;
+        trackState['bass'].vol = 0.25;
+        document.querySelector(`.stem-row[data-voice="tenor"] .vol-slider`).value = 1.0;
+        document.querySelector(`.stem-row[data-voice="soprano"] .vol-slider`).value = 0.25;
+        document.querySelector(`.stem-row[data-voice="alto"] .vol-slider`).value = 0.25;
+        document.querySelector(`.stem-row[data-voice="bass"] .vol-slider`).value = 0.25;
+      }
+
+      updateAudioGains();
+    }
+  </script>
+</body>
+</html>

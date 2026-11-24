@@ -9,6 +9,7 @@ import { HymnEditorPage } from "@/pages/hymn-editor"
 import { HymnalsPage } from "@/pages/hymnals"
 import { HymnsPage } from "@/pages/hymns"
 import { LoginPage } from "@/pages/login"
+import { StudioAccessPage } from "@/pages/studio-access"
 import { UsersPage } from "@/pages/users"
 
 const LATER: { path: string; group: string; title: string; description: string }[] = [
@@ -37,6 +38,7 @@ export default function App() {
           <Route path="hymns/:id" element={<HymnEditorPage />} />
           <Route path="audit-log" element={<AuditLogPage />} />
           <Route path="users" element={<UsersPage />} />
+          <Route path="studio-access" element={<StudioAccessPage />} />
           {LATER.map((p) => (
             <Route key={p.path} path={p.path} element={<ComingSoonPage {...p} />} />
           ))}

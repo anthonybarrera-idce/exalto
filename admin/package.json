@@ -12,6 +12,7 @@
     "dev:emulated": "VITE_USE_EMULATORS=true vite",
     "set-role": "node scripts/set-role.ts",
     "import-legacy": "node scripts/import-legacy.ts",
+    "import-hymns": "node scripts/import-hymns.ts",
     "typecheck": "tsc -b",
     "import-rtdb": "node scripts/import-rtdb.ts",
     "seed-users": "node scripts/seed-users.ts"
@@ -20,6 +21,7 @@
     "@fontsource-variable/geist": "^5.3.0",
     "@tailwindcss/vite": "^4.3.5",
     "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "cn": "^0.5.2",
     "firebase": "^13.4.0",
     "lucide-react": "^1.77.0",

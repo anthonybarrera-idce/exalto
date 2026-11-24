@@ -6,6 +6,7 @@ import {
   Layers,
   LayoutDashboard,
   LogOut,
+  MonitorDown,
   Mic,
   ScrollText,
   Settings,
@@ -62,6 +63,7 @@ export const NAV: { label: string; items: NavItem[] }[] = [
     label: "System",
     items: [
       { title: "Audit log", to: "/audit-log", icon: ScrollText },
+      { title: "Studio access", to: "/studio-access", icon: MonitorDown },
       { title: "Settings", to: "/settings", icon: Settings },
     ],
   },

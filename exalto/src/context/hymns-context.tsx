@@ -32,6 +32,7 @@ function toHymn(id: string, d: DocumentData): Hymn {
     artworkColor: hymnal?.color,
     audioUri: d.audioUri || undefined,
     lyrics: d.lyrics ?? [],
+    practice: typeof d.practiceData?.url === 'string' ? { url: d.practiceData.url, version: Number(d.practiceData.version) || 1 } : undefined,
   };
 }
 
