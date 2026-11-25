@@ -16,7 +16,7 @@ import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { canEditContent, useAuth } from "@/lib/auth"
-import { HYMNALS } from "@/lib/hymnals"
+import { useHymnals } from "@/lib/hymnals"
 import { saveHymn, useHymn, type HymnInput } from "@/lib/hymns"
 import { parseLegacyLyrics, sectionLabel } from "@/lib/lyrics"
 import type { LyricSection } from "@/lib/types"
@@ -53,6 +53,7 @@ export function HymnEditorPage() {
   const { role } = useAuth()
   const canEdit = canEditContent(role)
   const navigate = useNavigate()
+  const HYMNALS = useHymnals()
 
   const [form, setForm] = useState<HymnInput>(EMPTY)
   const [loadedId, setLoadedId] = useState<string | null>(null)

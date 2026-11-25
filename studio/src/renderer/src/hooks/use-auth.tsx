@@ -1,16 +1,17 @@
 import { GoogleAuthProvider, onIdTokenChanged, signInWithCredential, signOut as fbSignOut, type User } from "firebase/auth"
 import { doc, onSnapshot } from "firebase/firestore"
+import { httpsCallable } from "firebase/functions"
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
-import { auth, db, firebaseConfigured, usingEmulators } from "@/lib/firebase"
+import { auth, db, firebaseConfigured, functions, usingEmulators } from "@/lib/firebase"
 import { studio } from "@/lib/studio"
 
-export type Role = "owner" | "editor" | "moderator" | null
+export type Role = "owner" | "admin" | "editor" | "moderator" | null
 /**
  * Whether this person may use Studio:
  * - "loading": restoring a saved sign-in
  * - "signed-out"
  * - "checking": signed in, reading the access list
- * - "allowed": owner/editor, or on the admin's Studio access list
+ * - "allowed": owner/admin/editor, or on the admin's Studio access list
  * - "denied": signed in but not on the list
  * - "offline": couldn't check (no saved answer and no connection)
  * - "unconfigured": this build has no Firebase settings (local development only)
@@ -40,8 +41,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () =>
       onIdTokenChanged(auth, async (u) => {
         setUser(u)
-        const r = u ? (await u.getIdTokenResult()).claims.role : null
-        setRole(r === "owner" || r === "editor" || r === "moderator" ? r : null)
+        let r = u ? (await u.getIdTokenResult()).claims.role : null
+        // Someone invited to the team by email (admin → Settings) gets their role the first time they sign in.
+        if (u && !r) {
+          const accepted = await httpsCallable<void, { role: string | null }>(functions, "acceptInvite")().catch(() => null)
+          if (accepted?.data.role) r = (await u.getIdTokenResult(true)).claims.role
+        }
+        setRole(r === "owner" || r === "admin" || r === "editor" || r === "moderator" ? r : null)
         setReady(true)
       }),
     [],
@@ -68,7 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await signInWithCredential(auth, GoogleAuthProvider.credential(idToken))
   }
 
-  const staff = role === "owner" || role === "editor"
+  const staff = role === "owner" || role === "admin" || role === "editor"
   const access: Access = !configured
     ? "unconfigured"
     : !ready

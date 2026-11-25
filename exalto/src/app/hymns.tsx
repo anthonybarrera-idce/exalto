@@ -11,17 +11,19 @@ import { BottomTabInset, MiniPlayerHeight, Palette, Spacing } from '@/constants/
 import type { Hymn } from '@/context/audio-context';
 import { useHymns } from '@/context/hymns-context';
 import { useViewMode } from '@/context/view-mode-context';
-import { HYMNALS } from '@/data/hymnals';
+import { useHymnals } from '@/data/hymnals';
 import { useAudio } from '@/hooks/use-audio';
 import { useLocale } from '@/context/locale-context';
-
-const BOOKS = HYMNALS.filter((h) => h.id !== 'community');
 
 export default function HymnsScreen() {
   const { loadHymn, expandPlayer, currentHymn, isPlaying, isPlayerVisible } = useAudio();
   const { viewMode, setViewMode } = useViewMode();
   const { byHymnal, loading, error } = useHymns();
-  const [hymnalId, setHymnalId] = useState(BOOKS[0].id);
+  // Official hymnals that are visible in the app, in the order set in the admin / Hymn Studio.
+  const hymnals = useHymnals();
+  const BOOKS = useMemo(() => hymnals.filter((h) => h.kind === 'official' && h.visible), [hymnals]);
+  const [picked, setHymnalId] = useState<string | null>(null);
+  const hymnalId = BOOKS.find((b) => b.id === picked)?.id ?? BOOKS[0]?.id ?? '';
   const [query, setQuery] = useState('');
   const { t } = useLocale();
 

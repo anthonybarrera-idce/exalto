@@ -58,7 +58,8 @@
           "androidFSTypes": [],
           "androidFSStopWithTask": true
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,

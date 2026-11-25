@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { useStudio } from "@/hooks/use-studio"
-import { HYMNALS, studio, type HymnDoc } from "@/lib/studio"
+import { studio, type HymnDoc } from "@/lib/studio"
+import { useHymnals } from "@/lib/hymnals"
 import { useLocale } from "@/hooks/use-locale"
 
 type Form = {
@@ -37,6 +38,7 @@ const toForm = (h: HymnDoc): Form => ({
 export function DetailsPage({ go }: { go: (p: PageId) => void }) {
   const { detail, refresh } = useStudio()
   const { t, rich, hymnal: hymnalLabel } = useLocale()
+  const HYMNALS = useHymnals()
   const [form, setForm] = useState<Form | null>(null)
   useEffect(() => setForm(detail ? toForm(detail.hymn) : null), [detail?.slug, detail?.hymn])
   if (!detail || !form) return <Empty>{t("common.convertFirst")}</Empty>

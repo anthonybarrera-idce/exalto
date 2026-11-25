@@ -13,6 +13,7 @@ import { BottomTabInset, BrandGradient, MiniPlayerHeight, Palette, Spacing } fro
 import type { Hymn } from "@/context/audio-context";
 import { useFavorites } from "@/context/favorites-context";
 import { pickHymnOfTheDay, useHymns } from "@/context/hymns-context";
+import { useHymnals } from "@/data/hymnals";
 import { useAudio } from "@/hooks/use-audio";
 import { useLocale } from "@/context/locale-context";
 
@@ -26,6 +27,10 @@ export default function HomeScreen() {
   // Placeholders until play history and play counts are recorded.
   const recentlyPlayed = hymns.slice(1, 7);
   const popular = byHymnal("canticos-espirituales").slice(0, 6);
+  // Published hymns from community hymnals (hidden hymnals are already filtered out of `hymns`).
+  const hymnals = useHymnals();
+  const communityIds = new Set(hymnals.filter((h) => h.kind === "community" && h.visible).map((h) => h.id));
+  const community = hymns.filter((h) => h.hymnalId && communityIds.has(h.hymnalId)).slice(0, 10);
 
   const bottomPad = BottomTabInset + (isPlayerVisible ? MiniPlayerHeight + Spacing.three : 0) + Spacing.four;
 
@@ -83,6 +88,27 @@ export default function HomeScreen() {
               </Pressable>
             ))}
           </ScrollView>
+
+          {community.length > 0 && (
+            <>
+              <ThemedText style={styles.sectionTitle}>{t("home.community")}</ThemedText>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tiles}>
+                {community.map((h) => (
+                  <Pressable key={h.id} onPress={() => open(h, community)} style={styles.tile} accessibilityRole="button" accessibilityLabel={h.title}>
+                    <HymnArt seed={h.id} size={140} radius={16} />
+                    <View style={styles.tileText}>
+                      <ThemedText style={styles.tileTitle} numberOfLines={1}>
+                        {h.title}
+                      </ThemedText>
+                      <ThemedText style={styles.tileSub} numberOfLines={1}>
+                        {h.artist}
+                      </ThemedText>
+                    </View>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            </>
+          )}
 
           <ThemedText style={styles.sectionTitle}>{t("home.popular")}</ThemedText>
           <View style={styles.chart}>

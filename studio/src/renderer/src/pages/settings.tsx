@@ -1,10 +1,11 @@
-import { Check, Cpu, FolderOpen, Info, Languages, LogOut, Monitor, Moon, RefreshCw, Sun, Upload, UserRoundCog, X } from "lucide-react"
+import { Check, Cpu, FolderOpen, Info, KeyRound, Languages, LogOut, Monitor, Moon, RefreshCw, Sun, Upload, UserRoundCog, X } from "lucide-react"
 import { useEffect, useState, type ReactNode } from "react"
 import { toast } from "sonner"
 import { PageHeader } from "@/components/page-header"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { useAuth, type Role } from "@/hooks/use-auth"
 import { useLocale, useT, type LanguagePreference } from "@/hooks/use-locale"
@@ -48,6 +49,7 @@ export function SettingsPage() {
             <SoundChoice />
           </Row>
         </Card>
+        <ApiKeysCard />
         <AboutCard env={env} />
       </div>
     </>
@@ -219,6 +221,85 @@ function SoundChoice() {
     <div className="[&>div>span:first-child]:hidden">
       <SoundSwitch sound={sound} onChange={setSound} />
     </div>
+  )
+}
+
+type KeyStatus = Awaited<ReturnType<typeof studio.keyStatus>>
+type Provider = "anthropic" | "gemini"
+
+/** Claude and Gemini API keys for the vision readers on Import, kept encrypted on this computer. */
+function ApiKeysCard() {
+  const t = useT()
+  const [status, setStatus] = useState<KeyStatus | null>(null)
+  const refresh = () => studio.keyStatus().then(setStatus)
+  useEffect(() => void refresh(), [])
+  return (
+    <Card className="gap-0 p-0">
+      <div className="px-5 pt-4 pb-2">
+        <div className="flex items-center gap-2 text-sm font-semibold">
+          <KeyRound className="size-4 text-muted-foreground" />
+          {t("keys.title")}
+        </div>
+        <div className="mt-1 text-xs text-muted-foreground">{t("keys.help")}</div>
+      </div>
+      {status && !status.secure && <div className="px-5 pb-3 text-xs text-destructive">{t("keys.insecure")}</div>}
+      <KeyRow provider="anthropic" title={t("keys.anthropic")} placeholder="sk-ant-…" status={status} onChange={refresh} />
+      <Separator />
+      <KeyRow provider="gemini" title={t("keys.gemini")} placeholder="AIza…" status={status} onChange={refresh} />
+    </Card>
+  )
+}
+
+function KeyRow({ provider, title, placeholder, status, onChange }: { provider: Provider; title: string; placeholder: string; status: KeyStatus | null; onChange: () => void }) {
+  const t = useT()
+  const [value, setValue] = useState("")
+  const [busy, setBusy] = useState(false)
+  const saved = status?.[provider]
+  const run = async (fn: () => Promise<unknown>, done: string) => {
+    setBusy(true)
+    try {
+      await fn()
+      setValue("")
+      toast.success(done)
+      onChange()
+    } catch (e) {
+      toast.error(t("keys.failed", { error: String((e as Error)?.message ?? e).replace(/^Error invoking remote method '[^']+': (Error: )?/, "") }))
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <Row
+      title={title}
+      help={saved ? t("keys.saved", { last4: saved.last4 }) : t("keys.notSet")}
+    >
+      <form
+        className="flex items-center gap-2"
+        onSubmit={(e) => {
+          e.preventDefault()
+          if (value.trim()) run(() => studio.setKey(provider, value), t("keys.savedToast", { name: title }))
+        }}
+      >
+        <Input
+          type="password"
+          autoComplete="off"
+          spellCheck={false}
+          className="w-56 font-mono"
+          placeholder={saved ? t("keys.replace") : placeholder}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          disabled={busy || status?.secure === false}
+          aria-label={title}
+        />
+        <Button type="submit" variant="outline" disabled={busy || !value.trim()}>{t("keys.save")}</Button>
+        {saved && (
+          <Button type="button" variant="ghost" size="icon" disabled={busy} aria-label={t("keys.remove", { name: title })} title={t("keys.remove", { name: title })}
+            onClick={() => run(() => studio.clearKey(provider), t("keys.removedToast", { name: title }))}>
+            <X />
+          </Button>
+        )}
+      </form>
+    </Row>
   )
 }
 

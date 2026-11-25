@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
-import { BookOpen, Headphones } from 'lucide-react-native';
+import { BookOpen, FileMusic, Headphones } from 'lucide-react-native';
 import { useEffect } from 'react';
 
 import { useViewMode } from '@/context/view-mode-context';
@@ -12,23 +12,27 @@ const ICON_ON = '#3A2410';
 const ICON_OFF = '#5C4128';
 
 const SPRING = { damping: 18, stiffness: 280, mass: 0.7 };
-const PILL_W = 88;
+const OPTION_W = 44;
 const PILL_H = 40;
-const OPTION_W = PILL_W / 2;
 
 interface ModeSwitcherProps {
   variant?: 'floating' | 'inline';
   bottom?: number;
+  /** Offer the third option, the voices practice tool (full player, hymns with practice notes). */
+  practice?: boolean;
 }
 
-export function ModeSwitcher({ variant = 'floating', bottom = 0 }: ModeSwitcherProps) {
+export function ModeSwitcher({ variant = 'floating', bottom = 0, practice = false }: ModeSwitcherProps) {
   const { viewMode, setViewMode } = useViewMode();
   const { t } = useLocale();
-  const slideX = useSharedValue(viewMode === 'audio' ? OPTION_W : 0);
+  // Without the practice option, 'practice' shows as listening.
+  const shown = viewMode === 'practice' && !practice ? 'audio' : viewMode;
+  const index = shown === 'hymnal' ? 0 : shown === 'audio' ? 1 : 2;
+  const slideX = useSharedValue(index * OPTION_W);
 
   useEffect(() => {
-    slideX.value = withSpring(viewMode === 'audio' ? OPTION_W : 0, SPRING);
-  }, [viewMode]);
+    slideX.value = withSpring(index * OPTION_W, SPRING);
+  }, [index]);
 
   const knobStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: slideX.value }],
@@ -38,14 +42,19 @@ export function ModeSwitcher({ variant = 'floating', bottom = 0 }: ModeSwitcherP
   // never swallows it on any platform.
   const pill = (
     <View style={styles.pillShell}>
-      <View style={styles.pillInner}>
+      <View style={[styles.pillInner, { width: OPTION_W * (practice ? 3 : 2) }]}>
         <Animated.View style={[styles.knob, knobStyle]} />
-        <Pressable style={styles.option} onPress={() => setViewMode('hymnal')} hitSlop={4} accessibilityRole="button" accessibilityLabel={t('mode.read')} accessibilityState={{ selected: viewMode === 'hymnal' }}>
-          <BookOpen size={18} strokeWidth={1.8} color={viewMode === 'hymnal' ? ICON_ON : ICON_OFF} />
+        <Pressable style={styles.option} onPress={() => setViewMode('hymnal')} hitSlop={4} accessibilityRole="button" accessibilityLabel={t('mode.read')} accessibilityState={{ selected: shown === 'hymnal' }}>
+          <BookOpen size={18} strokeWidth={1.8} color={shown === 'hymnal' ? ICON_ON : ICON_OFF} />
         </Pressable>
-        <Pressable style={styles.option} onPress={() => setViewMode('audio')} hitSlop={4} accessibilityRole="button" accessibilityLabel={t('mode.listen')} accessibilityState={{ selected: viewMode === 'audio' }}>
-          <Headphones size={18} strokeWidth={1.8} color={viewMode === 'audio' ? ICON_ON : ICON_OFF} />
+        <Pressable style={styles.option} onPress={() => setViewMode('audio')} hitSlop={4} accessibilityRole="button" accessibilityLabel={t('mode.listen')} accessibilityState={{ selected: shown === 'audio' }}>
+          <Headphones size={18} strokeWidth={1.8} color={shown === 'audio' ? ICON_ON : ICON_OFF} />
         </Pressable>
+        {practice ? (
+          <Pressable style={styles.option} onPress={() => setViewMode('practice')} hitSlop={4} accessibilityRole="button" accessibilityLabel={t('practice.open')} accessibilityState={{ selected: shown === 'practice' }}>
+            <FileMusic size={18} strokeWidth={1.8} color={shown === 'practice' ? ICON_ON : ICON_OFF} />
+          </Pressable>
+        ) : null}
       </View>
     </View>
   );
@@ -68,7 +77,6 @@ const styles = StyleSheet.create({
   },
   // Inner: clips the sliding knob to the pill shape
   pillInner: {
-    width: PILL_W,
     height: PILL_H,
     borderRadius: PILL_H / 2 - 1,
     backgroundColor: '#B98A5A',

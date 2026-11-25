@@ -630,10 +630,30 @@ class ShapeNotePage:
         sp = self.sp
         first_stem = {}
         for h in self.heads:
-            if h.stems and h.filled:  # (time-signature digits can look like a stemmed hollow head)
+            # The first note marks where the clef/key/time signature ends. Clef and time-signature
+            # strokes can look like a stemmed hollow head, but their strokes are short (~2 spacings);
+            # a half note's stem is full length, and a system may well open with one.
+            if h.stems and (h.filled or any(st.y1 - st.y0 >= 2.5 * sp for st in h.stems)):
                 first_stem[h.staff] = min(first_stem.get(h.staff, 1e9), h.x0)
+        # A sharp or natural is two short parallel strokes; the white inside a natural, or between
+        # a sharp and the staff lines, can pass for a hollow head. Drop those "heads" and free the
+        # strokes, so the sign is read as an accidental instead.
+        accidental = self._accidental_strokes()
+        for h in self.heads:
+            if h.filled or h.rest:
+                continue
+            on_sign = [(a, b) for a, b in accidental
+                       if h.x0 - 0.8 * sp <= a.x and b.x <= h.x1 + 0.3 * sp
+                       and min(a.y1, b.y1) > h.y0 and max(a.y0, b.y0) < h.y1]
+            if on_sign:
+                h.accidental_hole = True
+                gone = {id(st) for a, b in on_sign for st in (a, b)}
+                for other in self.heads:
+                    other.stems = [st for st in other.stems if id(st) not in gone]
         kept = []
         for h in self.heads:
+            if getattr(h, "accidental_hole", False):
+                continue
             s = self.staves[h.staff]
             if h.x1 < first_stem.get(h.staff, 0) - 2 * sp:
                 continue  # clef, key signature, time signature
@@ -684,6 +704,22 @@ class ShapeNotePage:
         if sharp_counts and not counts:
             sc = list(sharp_counts.values())
             self.key_fifths = max(set(sc), key=sc.count)
+
+    def _accidental_strokes(self) -> list[tuple[Stem, Stem]]:
+        """Pairs of short parallel strokes (sharps and naturals). Strokes on a filled head are its
+        stems; ones on a hollow "head" may be a sign whose inside passed for one."""
+        sp = self.sp
+        stems = {id(st) for h in self.heads if h.filled and not h.rest for st in h.stems}
+        short = sorted((st for st in self.stems if id(st) not in stems and 1.9 * sp <= st.y1 - st.y0 <= 3.6 * sp),
+                       key=lambda st: st.x)
+        pairs = []
+        for i, a in enumerate(short):
+            for b in short[i + 1 :]:
+                if b.x - a.x > 0.7 * sp:
+                    break
+                if b.x - a.x >= 0.2 * sp and min(a.y1, b.y1) - max(a.y0, b.y0) > 0.3 * sp:
+                    pairs.append((a, b))
+        return pairs
 
     def _stroke_pairs(self) -> list[tuple[str, int, float, float]]:
         """("sharp" | "natural", staff, x, centre y) for each pair of free strokes 2–3.6 spacings long."""
@@ -851,6 +887,76 @@ class ShapeNotePage:
                     h.shape_ok = not (own < 0.5 or (other > 0.7 and other > own + 0.1))
                 # (too few heads of this degree on the page to say what it should look like)
 
+    # ---- time signature
+    TIME_TOPS = {2, 3, 4, 5, 6, 7, 9, 12}
+    TIME_BOTTOMS = {2, 4, 8}
+
+    def read_time_signature(self) -> str | None:
+        """The printed time signature ("3/4"), or None when there is none or it can't be read.
+
+        It is only printed on the first system, as two stacked digits between the key signature
+        and the first note: the rightmost block of ink there. Erasing the staff lines cuts thin
+        strokes of the digits, so line pixels next to the digit's ink are put back before OCR.
+        Tesseract misreads single bold digits now and then, so several renderings vote.
+        """
+        if len(self.staves) < 2:
+            return None
+        sp = self.sp
+        votes: dict[str, int] = {}
+        for si in (0, 1):
+            st = self.staves[si]
+            first = min((h.x0 for h in self.heads if h.staff == si and not h.rest), default=None)
+            if first is None:
+                continue
+            ya, yb = int(st.top - 0.4 * sp), int(st.bottom + 0.4 * sp) + 1
+            xa, xb = int(self.clef_end), int(first - 0.3 * sp)
+            if xb - xa < sp:
+                continue
+            band = self.nostaff[ya:yb, xa:xb]
+            cols = np.flatnonzero(band.sum(axis=0) >= 2)
+            if not len(cols):
+                continue
+            # runs of ink columns (gaps under ~0.3 spacing don't split a glyph), right to left
+            runs: list[list[int]] = []
+            for c in cols[::-1]:
+                if runs and runs[-1][0] - c <= 0.3 * sp:
+                    runs[-1][0] = c
+                else:
+                    runs.append([c, c])
+            # The digits are the rightmost glyph-sized block, though a repeat sign or a bar
+            # line may stand between them and the first note.
+            for start, end in [r for r in runs if 0.6 * sp <= r[1] - r[0] + 1 <= 2.8 * sp][:2]:
+                x0, x1 = xa + start - 3, xa + end + 4
+                # Put back erased line pixels in columns where the digit has ink just above or
+                # below the line (its strokes crossing it), not the line stubs beside the digit.
+                ink = self.nostaff[ya:yb, x0:x1]
+                t = self.line_t + 2
+                above = np.zeros((2 * t + 1, 3), bool)
+                above[t + 1 :] = True  # (dilation mirrors the structure: this reaches upward)
+                below = above[::-1]
+                crossing = ndi.binary_dilation(ink, structure=above) | ndi.binary_dilation(ink, structure=below)
+                glyph = ink | (self.img[ya:yb, x0:x1] & crossing)
+                mid = int((st.top + st.bottom) / 2) - ya
+                top, bottom = glyph[:mid], glyph[mid:]
+                if not top.any() or not bottom.any():
+                    continue
+                found = 0
+                for scale in (1, 2, 3):
+                    for psm in ("10", "8"):
+                        a, b = _ocr_digits(top, scale, psm), _ocr_digits(bottom, scale, psm)
+                        if a in self.TIME_TOPS and b in self.TIME_BOTTOMS:
+                            votes[f"{a}/{b}"] = votes.get(f"{a}/{b}", 0) + 1
+                            found += 1
+                            if votes[f"{a}/{b}"] >= 3:
+                                return f"{a}/{b}"  # settled
+                if found:
+                    break
+        if not votes:
+            return None
+        best = max(votes, key=votes.get)
+        # (the deck pipeline cross-checks this against the measures' lengths)
+        return best if votes[best] >= 2 else None
+
     # ---- layout into measures and voices
     def to_page_dict(self) -> dict:
         sp = self.sp
@@ -881,8 +987,10 @@ class ShapeNotePage:
                     x1 = b if b < self.W else max(h.x1 for h in sys_heads) + 1.5 * sp
                     m["box"] = [int(max(0, x0)), int(max(0, top - 2.5 * sp)), int(min(self.W, x1)), int(min(self.H, bottom + 2.5 * sp))]
                     measures_out.append(m)
+        time_sig = self.read_time_signature()
         if measures_out:
-            bar = 4.0
+            num, den = (int(x) for x in (time_sig or "4/4").split("/"))
+            bar = num * 4 / den
             first = measures_out[0]
             if 0 < sum(n["dur"] for n in first["soprano"]) < bar:
                 first["pickup"] = True
@@ -898,7 +1006,8 @@ class ShapeNotePage:
             "credits": meta.get("credits", []),
             "exact_lyrics": self.exact_lyrics,
             "key_fifths": self.key_fifths,
-            "time_signature": "4/4",
+            "time_signature": time_sig or "4/4",
+            "time_found": time_sig is not None,  # False: 4/4 is only a default
             "tempo_bpm": meta.get("tempo_bpm"),
             "measures": measures_out,
             "lyric_lines": lyric_lines,
@@ -991,11 +1100,13 @@ class ShapeNotePage:
         onsets: list[list[Head]] = []
         for h in sorted(heads, key=lambda h: h.cx):
             prev = onsets[-1] if onsets else None
-            # A chord note a step away is drawn beside the other, touching it: same onset.
+            # A chord note a step away, or a unison (two voices on one pitch), is drawn beside the
+            # other, touching it; heads on one stem are one chord too: same onset.
             second = prev and any(
-                not o.rest and not h.rest and abs(o.step - h.step) == 1 and h.x0 <= o.x1 + 0.25 * sp for o in prev
+                not o.rest and not h.rest and abs(o.step - h.step) <= 1 and h.x0 <= o.x1 + 0.25 * sp for o in prev
             )
-            if prev and (abs(h.cx - np.mean([o.cx for o in prev])) < 0.9 * sp or second):
+            shared_stem = prev and any(st is s2 for o in prev for st in o.stems for s2 in h.stems)
+            if prev and (abs(h.cx - np.mean([o.cx for o in prev])) < 0.9 * sp or second or shared_stem):
                 prev.append(h)
             else:
                 onsets.append([h])
@@ -1243,6 +1354,28 @@ def _attach_syllables(words: list[tuple[str, float]], notes: list[dict]) -> None
         notes[j]["syllabic"] = ("middle" if cont else "end") if prev_cont else ("begin" if cont else "single")
         prev_cont = cont
         i = j + 1
+
+
+def _ocr_digits(glyph: np.ndarray, scale: int = 1, psm: str = "10") -> int | None:
+    """One time-signature number (black-on-white mask) read by Tesseract, or None."""
+    import subprocess
+    import tempfile
+
+    if not glyph.any():
+        return None
+    rows, cols = np.flatnonzero(glyph.any(axis=1)), np.flatnonzero(glyph.any(axis=0))
+    glyph = glyph[rows[0] : rows[-1] + 1, cols[0] : cols[-1] + 1]
+    im = Image.fromarray(((~glyph) * 255).astype(np.uint8))
+    if scale != 1:
+        im = im.resize((im.width * scale, im.height * scale), Image.LANCZOS)
+    pad = 30 * scale
+    padded = Image.new("L", (im.width + 2 * pad, im.height + 2 * pad), 255)
+    padded.paste(im, (pad, pad))
+    with tempfile.NamedTemporaryFile(suffix=".png") as f:
+        padded.save(f.name)
+        out = subprocess.run(["tesseract", f.name, "-", "--psm", psm, "-c", "tessedit_char_whitelist=0123456789"],
+                             capture_output=True, text=True).stdout.strip()
+    return int(out) if out.isdigit() else None
 
 
 def _ocr_chars(band: np.ndarray) -> list[tuple[str, float, float]]:

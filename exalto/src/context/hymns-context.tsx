@@ -3,7 +3,7 @@ import { collection, onSnapshot, query, where, type DocumentData } from 'firebas
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
 import type { Hymn } from '@/context/audio-context';
-import { hymnalById, HYMNALS } from '@/data/hymnals';
+import { useHymnals, watchHymnals, type Hymnal } from '@/data/hymnals';
 import { db, firebaseConfigured } from '@/lib/firebase';
 
 const CACHE_KEY = 'exalto.hymns.v1';
@@ -20,8 +20,8 @@ type HymnsState = {
 
 const HymnsContext = createContext<HymnsState | null>(null);
 
-function toHymn(id: string, d: DocumentData): Hymn {
-  const hymnal = hymnalById(d.hymnalId);
+function toHymn(id: string, d: DocumentData, hymnals: Hymnal[]): Hymn {
+  const hymnal = hymnals.find((h) => h.id === d.hymnalId);
   return {
     id,
     title: d.title ?? '',
@@ -36,12 +36,11 @@ function toHymn(id: string, d: DocumentData): Hymn {
   };
 }
 
-const hymnalOrder = (id?: string) => {
-  const i = HYMNALS.findIndex((h) => h.id === id);
-  return i === -1 ? HYMNALS.length : i;
-};
-
-function sortHymns(list: Hymn[]) {
+function sortHymns(list: Hymn[], hymnals: Hymnal[]) {
+  const hymnalOrder = (id?: string) => {
+    const i = hymnals.findIndex((h) => h.id === id);
+    return i === -1 ? hymnals.length : i;
+  };
   return [...list].sort(
     (a, b) =>
       hymnalOrder(a.hymnalId) - hymnalOrder(b.hymnalId) ||
@@ -52,19 +51,23 @@ function sortHymns(list: Hymn[]) {
 }
 
 export function HymnsProvider({ children }: { children: React.ReactNode }) {
-  const [hymns, setHymns] = useState<Hymn[]>([]);
+  // Published hymn docs as the server sent them; display fields (color, order) come from the live hymnal list.
+  const [docs, setDocs] = useState<{ id: string; data: DocumentData }[]>([]);
+  const [cached, setCached] = useState<Hymn[]>([]);
+  const hymnals = useHymnals();
   const [loading, setLoading] = useState(true);
   const [stale, setStale] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let live = false;
+    watchHymnals();
 
     // Show the last downloaded hymnal right away (and offline).
     AsyncStorage.getItem(CACHE_KEY)
       .then((raw) => {
         if (!live && raw) {
-          setHymns(JSON.parse(raw) as Hymn[]);
+          setCached(JSON.parse(raw) as Hymn[]);
           setLoading(false);
         }
       })
@@ -81,12 +84,10 @@ export function HymnsProvider({ children }: { children: React.ReactNode }) {
       query(collection(db, 'hymns'), where('status', '==', 'published')),
       (snap) => {
         live = true;
-        const next = sortHymns(snap.docs.map((d) => toHymn(d.id, d.data())));
-        setHymns(next);
+        setDocs(snap.docs.map((d) => ({ id: d.id, data: d.data() })));
         setLoading(false);
         setStale(false);
         setError(null);
-        AsyncStorage.setItem(CACHE_KEY, JSON.stringify(next)).catch(() => {});
       },
       (e) => {
         setError(e.message);
@@ -94,6 +95,19 @@ export function HymnsProvider({ children }: { children: React.ReactNode }) {
       },
     );
   }, []);
+
+  // Hymns in hidden hymnals don't show; the offline copy keeps only hymnals marked "available offline".
+  const hymns = useMemo(() => {
+    const shown = new Set(hymnals.filter((h) => h.visible).map((h) => h.id));
+    const list = stale ? cached : docs.map((d) => toHymn(d.id, d.data, hymnals));
+    return sortHymns(list.filter((h) => !h.hymnalId || shown.has(h.hymnalId) || !hymnals.some((x) => x.id === h.hymnalId)), hymnals);
+  }, [docs, cached, stale, hymnals]);
+
+  useEffect(() => {
+    if (stale) return;
+    const offline = new Set(hymnals.filter((h) => h.offline).map((h) => h.id));
+    AsyncStorage.setItem(CACHE_KEY, JSON.stringify(hymns.filter((h) => h.hymnalId && offline.has(h.hymnalId)))).catch(() => {});
+  }, [hymns, hymnals, stale]);
 
   const value = useMemo<HymnsState>(
     () => ({

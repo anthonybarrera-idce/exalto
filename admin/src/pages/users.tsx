@@ -1,4 +1,4 @@
-import { AlertTriangle, Ban, ChevronLeft, ChevronRight, Mic, MoreHorizontal, PenLine, RotateCcw, Search, Shield, Trash2, User as UserIcon } from "lucide-react"
+import { AlertTriangle, Ban, ChevronLeft, ChevronRight, Crown, Mic, MoreHorizontal, PenLine, RotateCcw, Search, Shield, Trash2, User as UserIcon } from "lucide-react"
 import { useMemo, useState } from "react"
 import { toast } from "sonner"
 
@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { useAuth } from "@/lib/auth"
+import { canManageTeam, useAuth } from "@/lib/auth"
 import { formatWhen } from "@/lib/format"
 import type { AppUser, UserRole, UserStatus } from "@/lib/types"
 import { deleteUserAccount, setUserRole, setUserStatus, useUsers } from "@/lib/users"
@@ -27,12 +27,13 @@ import { cn } from "@/lib/utils"
 
 const PAGE_SIZE = 20
 
-const ROLE_LABEL: Record<UserRole, string> = { listener: "Listener", composer: "Composer", moderator: "Moderator", editor: "Editor", owner: "Owner" }
+const ROLE_LABEL: Record<UserRole, string> = { listener: "Listener", composer: "Composer", moderator: "Moderator", editor: "Editor", admin: "Admin", owner: "Owner" }
 const ROLE_STYLE: Record<UserRole, string> = {
   listener: "bg-secondary text-secondary-foreground",
   composer: "bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300",
   moderator: "border-border bg-transparent text-foreground",
   editor: "border-border bg-transparent text-foreground",
+  admin: "bg-foreground/85 text-background",
   owner: "bg-primary text-primary-foreground",
 }
 const STATUS_LABEL: Record<UserStatus, string> = { active: "Active", warned: "Warned", suspended: "Suspended" }
@@ -53,7 +54,9 @@ function joined(u: AppUser) {
 export function UsersPage() {
   const { data, loading, error } = useUsers()
   const { role: myRole, user: me } = useAuth()
-  const isOwner = myRole === "owner"
+  // Owners and admins manage roles; only an owner can touch another owner (the Cloud Functions enforce this too).
+  const canManage = canManageTeam(myRole)
+  const canManageUser = (u: AppUser) => canManage && (u.role !== "owner" || myRole === "owner")
   const [q, setQ] = useState("")
   const [roleFilter, setRoleFilter] = useState<"all" | UserRole>("all")
   const [statusFilter, setStatusFilter] = useState<"all" | UserStatus>("all")
@@ -172,8 +175,11 @@ export function UsersPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-56">
                         <DropdownMenuLabel className="truncate">{u.displayName}</DropdownMenuLabel>
-                        {isOwner && !isMe && (
+                        {canManageUser(u) && !isMe && (
                           <>
+                            {u.role !== "admin" && (
+                              <DropdownMenuItem onSelect={() => run(`${u.displayName} is now an admin`, () => setUserRole(u, "admin"))}><Crown /> Make admin</DropdownMenuItem>
+                            )}
                             {u.role !== "composer" && (
                               <DropdownMenuItem onSelect={() => run(`${u.displayName} is now a composer`, () => setUserRole(u, "composer"))}><Mic /> Make composer</DropdownMenuItem>
                             )}
@@ -198,7 +204,7 @@ export function UsersPage() {
                         {!isMe && u.status !== "suspended" && (
                           <DropdownMenuItem onSelect={() => run(`${u.displayName} suspended`, () => setUserStatus(u, "suspended"))}><Ban /> Suspend</DropdownMenuItem>
                         )}
-                        {isOwner && !isMe && (
+                        {canManageUser(u) && !isMe && (
                           <DropdownMenuItem variant="destructive" onSelect={() => { setConfirmText(""); setToDelete(u) }}><Trash2 /> Delete account</DropdownMenuItem>
                         )}
                         {isMe && <DropdownMenuItem disabled>No actions on your own account</DropdownMenuItem>}

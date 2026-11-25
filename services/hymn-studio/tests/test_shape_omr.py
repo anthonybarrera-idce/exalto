@@ -91,3 +91,48 @@ def test_notes_and_measures_know_where_they_are_on_the_page():
                 if n["pitch"] != "REST" or n.get("box"):
                     nx0, ny0, nx1, ny1 = n["box"]
                     assert x0 <= (nx0 + nx1) / 2 <= x1 and y0 <= (ny0 + ny1) / 2 <= y1
+
+
+def test_system_opening_with_a_half_note_keeps_it():
+    """A system whose first notes are hollow (half notes) must not lose them as "clef/key signature".
+
+    Iglesia de Cristo, slide 2: the top system opens with a half-note chord. Only filled heads used to
+    mark where the music starts, so the half notes were dropped, the measure read as 1 beat, and
+    join_split_measures glued it onto the previous page's last measure (playback skipped a bar).
+    """
+    d = read_page(str(PAGES / "iglesia_system_opens_with_half_note.png"))
+    first = d["measures"][0]
+    assert notes(first, "soprano") == ["B4/2", "E4/0.5", "D4/0.5"]
+    assert notes(first, "tenor") == ["G#3/2", "G#3/1"]
+    assert notes(first, "bass") == ["E3/2", "E3/1"]
+    for v in ("soprano", "alto", "tenor", "bass"):
+        assert sum(n["dur"] for n in first[v]) == 3, (v, notes(first, v))
+    # the measure box starts at the half notes, not at the eighths
+    assert first["box"][0] < 360
+
+
+def test_reads_the_printed_time_signature():
+    assert read_page(str(PAGES / "iglesia_page1.png"))["time_signature"] == "3/4"
+    d = read_page(str(PAGES / "page1.png"))
+    assert (d["time_signature"], d["time_found"]) == ("4/4", True)
+    # later pages print none: 4/4 is only the default there
+    assert read_page(str(PAGES / "page2.png"))["time_found"] is False
+
+
+def test_unison_heads_sharp_and_natural_are_not_extra_notes():
+    """Iglesia de Cristo, slide 2, lower system (3/4):
+    - "zó A": the "A" is a soprano/alto unison drawn as two heads side by side on one stem;
+    - a sharp beside a head left a white gap between its strokes and the staff lines;
+    - the inside of a natural sign looked like a whole note.
+    Each used to add beats to its measure.
+    """
+    measures = read_page(str(PAGES / "iglesia_unison_sharp_natural.png"))["measures"]
+    zo, anuncia, constante = measures[-3:]
+    assert notes(zo, "soprano") == ["B4/2", "E4/1"]
+    assert notes(zo, "alto") == ["E4/2", "E4/1"]
+    assert notes(anuncia, "soprano") == ["E4/1", "E4/1", "F#4/1"]
+    assert notes(anuncia, "alto") == ["E4/1", "E4/1", "D#4/1"]  # the sharp is printed on the alto's D
+    assert notes(constante, "soprano") == ["G4/1", "G4/1", "A4/1"]  # natural: G, not G#
+    for m in (zo, anuncia, constante):
+        for v in ("soprano", "alto", "tenor", "bass"):
+            assert sum(n["dur"] for n in m[v]) == 3, (v, notes(m, v))

@@ -4,8 +4,10 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function role() { return request.auth != null ? request.auth.token.role : null; }
-    function isAdmin() { return role() in ['owner', 'editor', 'moderator']; }
-    function canEditContent() { return role() in ['owner', 'editor']; }
+    // owner > admin > editor / moderator. Only the church account is ever owner (enforced in Cloud Functions).
+    function isAdmin() { return role() in ['owner', 'admin', 'editor', 'moderator']; }
+    function canEditContent() { return role() in ['owner', 'admin', 'editor']; }
+    function canManageTeam() { return role() in ['owner', 'admin']; }
 
     // Hymn Studio (desktop) access list, keyed by lower-case Google email. Owners manage it in the
     // admin; a person may read only their own entry (that's how Studio checks it at sign-in).
@@ -13,14 +15,37 @@ service cloud.firestore {
       allow read: if isAdmin() || (request.auth != null
         && request.auth.token.email_verified == true
         && request.auth.token.email.lower() == email);
-      allow create: if role() == 'owner'
+      allow create: if canManageTeam()
         && email == email.lower()
         && request.resource.data.keys().hasOnly(['email', 'note', 'addedBy', 'addedByName', 'addedAt'])
         && request.resource.data.email == email
         && request.resource.data.addedBy == request.auth.uid
         && request.resource.data.addedAt == request.time;
       allow update: if false;
-      allow delete: if role() == 'owner';
+      allow delete: if canManageTeam();
+    }
+
+    // Team invites by Google email, written only by the inviteMember / revokeInvite / acceptInvite functions.
+    match /members/{email} {
+      allow read: if canManageTeam();
+      allow write: if false;
+    }
+
+    // Hymnals shown in the app's hymnal picker. Anyone can read them (the app needs them before sign-in);
+    // owners, admins and editors edit them; only owners and admins delete one. Built-in hymnals
+    // (idc-himnario, canticos-espirituales, community) also exist in code as defaults, so a missing doc is fine.
+    match /hymnals/{hymnalId} {
+      allow read: if true;
+      allow create, update: if canEditContent()
+        && hymnalId.matches('[a-z0-9-]{2,40}')
+        && request.resource.data.keys().hasOnly(['name', 'shortName', 'color', 'kind', 'visible', 'offline', 'order', 'createdAt', 'updatedAt', 'updatedBy'])
+        && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 60
+        && request.resource.data.kind in ['official', 'community']
+        && request.resource.data.visible is bool
+        && request.resource.data.offline is bool
+        && request.resource.data.order is int
+        && request.resource.data.updatedBy == request.auth.uid;
+      allow delete: if canManageTeam();
     }
 
     match /hymns/{hymnId} {

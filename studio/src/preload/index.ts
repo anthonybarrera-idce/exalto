@@ -31,6 +31,13 @@ const api = {
   saveDetails: (slug: string, patch: Record<string, unknown>) => ipcRenderer.invoke("hymns:saveDetails", slug, patch),
   saveSyllables: (slug: string, pages: unknown[]) => ipcRenderer.invoke("hymns:saveSyllables", slug, pages),
   saveEdits: (slug: string, pages: unknown[], respellFrom: number | null) => ipcRenderer.invoke("hymns:saveEdits", slug, pages, respellFrom),
+  /** Asks to confirm, then moves the import to the Trash; false if the user cancelled. */
+  deleteHymn: (slug: string): Promise<boolean> => ipcRenderer.invoke("hymns:delete", slug),
+  /** Whether a Claude / Gemini key is saved (last 4 characters only; the key never comes back). */
+  keyStatus: (): Promise<{ secure: boolean; anthropic: { last4: string } | null; gemini: { last4: string } | null }> =>
+    ipcRenderer.invoke("keys:status"),
+  setKey: (provider: "anthropic" | "gemini", value: string): Promise<boolean> => ipcRenderer.invoke("keys:set", provider, value),
+  clearKey: (provider: "anthropic" | "gemini"): Promise<boolean> => ipcRenderer.invoke("keys:clear", provider),
   reveal: (slug: string) => ipcRenderer.invoke("hymns:reveal", slug),
   revealFolder: (): Promise<string> => ipcRenderer.invoke("hymns:revealFolder"),
 }

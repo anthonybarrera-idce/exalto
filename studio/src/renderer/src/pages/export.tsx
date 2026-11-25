@@ -1,4 +1,4 @@
-import { Check, CloudUpload, FileText, FolderOpen, Loader2, LogIn } from "lucide-react"
+import { Check, CloudUpload, FileText, FolderOpen, Link2, Loader2, LogIn } from "lucide-react"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import type { PageId } from "@/App"
@@ -15,6 +15,7 @@ import { useAuth } from "@/hooks/use-auth"
 import { firebaseConfigured, usingEmulators } from "@/lib/firebase"
 import { existingHymn, numberTakenBy, uploadHymn, type UploadStep } from "@/lib/upload"
 import { Progress } from "@/components/ui/progress"
+import { AttachDialog } from "@/components/attach-dialog"
 import { useLocale } from "@/hooks/use-locale"
 import type { StringKey } from "@/lib/i18n"
 import { VOICES, type Voice } from "@/lib/notes"
@@ -57,7 +58,7 @@ export function ExportPage({ go }: { go: (p: PageId) => void }) {
   const [picked, setPicked] = useState<Set<string>>(new Set())
   useEffect(() => {
     if (!detail) return
-    setPicked(new Set(detail.files.filter((f) => !/\.wav$|transcription|review\.json/.test(f.name)).map((f) => f.name)))
+    setPicked(new Set(detail.files.filter((f) => !/\.(wav|m4a|mp3)$|transcription|review\.json/.test(f.name)).map((f) => f.name)))
   }, [detail?.slug])
   if (!detail) return <Empty>{t("common.convertFirst")}</Empty>
   const files = detail.files.filter((f) => f.name.includes("."))
@@ -105,6 +106,7 @@ function UploadCard({ detail, go }: { detail: HymnDetail; go: (p: PageId) => voi
   }
   const [steps, setSteps] = useState<UploadStep[] | null>(null)
   const [busy, setBusy] = useState(false)
+  const [attaching, setAttaching] = useState(false)
   useEffect(() => setSteps(null), [detail.slug])
   const h = detail.hymn
   const lyricsOnly = detail.review.kind === "lyrics"
@@ -176,6 +178,14 @@ function UploadCard({ detail, go }: { detail: HymnDetail; go: (p: PageId) => voi
           <Button onClick={upload} disabled={busy}>
             {busy ? <Loader2 className="animate-spin" /> : <CloudUpload />}{t("upload.button")}
           </Button>
+          {!lyricsOnly && (
+            <>
+              <Button variant="outline" onClick={() => setAttaching(true)} disabled={busy} title={t("attach.openHint")}>
+                <Link2 />{t("attach.open")}
+              </Button>
+              {attaching && <AttachDialog slug={detail.slug} onClose={() => setAttaching(false)} />}
+            </>
+          )}
           <p className="text-xs text-muted-foreground">{t("upload.signedInAs", { email: user.email ?? "" })}</p>
         </>
       )}

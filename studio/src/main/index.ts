@@ -3,17 +3,20 @@
  * Python converter in services/hymn-studio (run as a child process).
  */
 import { spawn, type ChildProcess } from "node:child_process"
-import { cp, mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises"
-import { existsSync } from "node:fs"
-import { basename, join, resolve } from "node:path"
+import { createHash } from "node:crypto"
+import { cp, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises"
+import { createReadStream, existsSync } from "node:fs"
+import { basename, extname, join, resolve } from "node:path"
+import { Readable } from "node:stream"
 import { pathToFileURL } from "node:url"
-import { app, BrowserWindow, dialog, ipcMain, nativeTheme, net, protocol, shell, systemPreferences } from "electron"
+import { app, BrowserWindow, dialog, ipcMain, nativeTheme, net, protocol, safeStorage, shell, systemPreferences } from "electron"
 import { googleSignIn } from "./google-signin"
 
 const isDev = !!process.env.ELECTRON_RENDERER_URL
 const REPO = resolve(app.getAppPath(), "..")
 const SERVICE_DIR = process.env.HYMN_STUDIO_DIR ?? join(REPO, "services", "hymn-studio")
-const PYTHON = join(SERVICE_DIR, ".venv", "bin", "python")
+// (virtualenvs put the interpreter in Scripts\\python.exe on Windows, bin/python elsewhere)
+const PYTHON = process.platform === "win32" ? join(SERVICE_DIR, ".venv", "Scripts", "python.exe") : join(SERVICE_DIR, ".venv", "bin", "python")
 const OUT_DIR = join(SERVICE_DIR, "storage", "decks")
 
 // App name in the menu bar, Dock and About panel (dev builds would otherwise say "Electron").
@@ -33,6 +36,10 @@ const TEXT = {
     saveTitle: "Choose where to save the files",
     saveButton: "Save here",
     busy: "A conversion is already running",
+    deleteTitle: "Delete “{title}”?",
+    deleteDetail: "Its folder (page images, score, audio and edits) moves to the Trash, and its saved transcriptions are cleared. Copies already uploaded to Exalto aren’t affected.",
+    deleteButton: "Move to Trash",
+    cancel: "Cancel",
   },
   es: {
     pickTitle: "Elige presentaciones o PDF",
@@ -41,6 +48,10 @@ const TEXT = {
     saveTitle: "Elige dónde guardar los archivos",
     saveButton: "Guardar aquí",
     busy: "Ya hay una conversión en curso",
+    deleteTitle: "¿Eliminar «{title}»?",
+    deleteDetail: "Su carpeta (imágenes de las páginas, partitura, audio y cambios) se mueve a la Papelera y se borran sus transcripciones guardadas. Las copias ya subidas a Exalto no cambian.",
+    deleteButton: "Mover a la Papelera",
+    cancel: "Cancelar",
   },
 } satisfies Record<Lang, Record<string, string>>
 ipcMain.handle("language:set", (_e, l: Lang) => {
@@ -78,6 +89,38 @@ function inOutDir(p: string) {
   return full
 }
 
+const MIME: Record<string, string> = {
+  ".wav": "audio/wav", ".m4a": "audio/mp4", ".mp3": "audio/mpeg", ".mid": "audio/midi",
+  ".png": "image/png", ".jpg": "image/jpeg", ".json": "application/json", ".musicxml": "application/xml",
+}
+
+/** Answer an HTTP Range request ("bytes=start-end", "bytes=start-" or "bytes=-suffix") from a file. */
+async function serveRange(file: string, range: string): Promise<Response> {
+  const size = (await stat(file)).size
+  const m = /^bytes=(\d*)-(\d*)$/.exec(range.trim())
+  let start = 0
+  let end = size - 1
+  if (m && m[1]) {
+    start = Number(m[1])
+    if (m[2]) end = Math.min(Number(m[2]), size - 1)
+  } else if (m && m[2]) {
+    start = Math.max(0, size - Number(m[2]))
+  }
+  const headers = new Headers({
+    "Content-Type": MIME[extname(file).toLowerCase()] ?? "application/octet-stream",
+    "Accept-Ranges": "bytes",
+    "Access-Control-Allow-Origin": "*",
+  })
+  if (!m || start >= size || start > end) {
+    headers.set("Content-Range", `bytes */${size}`)
+    return new Response(null, { status: 416, headers })
+  }
+  headers.set("Content-Range", `bytes ${start}-${end}/${size}`)
+  headers.set("Content-Length", String(end - start + 1))
+  const body = Readable.toWeb(createReadStream(file, { start, end })) as unknown as ReadableStream
+  return new Response(body, { status: 206, headers })
+}
+
 function createWindow() {
   updateDockIcon()
   win = new BrowserWindow({
@@ -97,10 +140,15 @@ function createWindow() {
 app.whenReady().then(() => {
   protocol.handle("studio", async (req) => {
     const rel = decodeURIComponent(new URL(req.url).pathname).replace(/^\/+/, "")
+    // Audio can only seek (measure buttons, clicks on the score) when byte ranges are served;
+    // without them Chromium restarts the track at 0:00.
+    const range = req.headers.get("range")
+    if (range) return serveRange(inOutDir(rel), range)
     const res = await net.fetch(pathToFileURL(inOutDir(rel)).toString(), { headers: req.headers })
     // Let the app's Web Audio mixer read these files (it can't process cross-origin audio otherwise).
     const headers = new Headers(res.headers)
     headers.set("Access-Control-Allow-Origin", "*")
+    headers.set("Accept-Ranges", "bytes")
     return new Response(res.body, { status: res.status, statusText: res.statusText, headers })
   })
   createWindow()
@@ -135,14 +183,69 @@ ipcMain.handle("files:pickDecks", async () => {
   return r.canceled ? [] : r.filePaths
 })
 
+// ---- API keys for the Claude and Gemini readers. Encrypted with the OS (macOS Keychain, Windows
+// DPAPI) in the app's data folder; the screen only ever sees whether one is saved and its last 4
+// characters. The converter gets them as environment variables for the run.
+type KeyProvider = "anthropic" | "gemini"
+const KEY_ENV: Record<KeyProvider, string> = { anthropic: "ANTHROPIC_API_KEY", gemini: "GEMINI_API_KEY" }
+const keysFile = () => join(app.getPath("userData"), "api-keys.json")
+async function readKeys(): Promise<Partial<Record<KeyProvider, string>>> {
+  if (!existsSync(keysFile()) || !safeStorage.isEncryptionAvailable()) return {}
+  const stored = JSON.parse(await readFile(keysFile(), "utf8")) as Partial<Record<KeyProvider, string>>
+  const out: Partial<Record<KeyProvider, string>> = {}
+  for (const p of Object.keys(KEY_ENV) as KeyProvider[]) {
+    const v = stored[p]
+    if (!v) continue
+    try {
+      out[p] = safeStorage.decryptString(Buffer.from(v, "base64"))
+    } catch {
+      // saved under another OS account or machine: treat as not set
+    }
+  }
+  return out
+}
+async function writeKeys(keys: Partial<Record<KeyProvider, string>>) {
+  const enc: Partial<Record<KeyProvider, string>> = {}
+  for (const [p, v] of Object.entries(keys) as [KeyProvider, string][]) {
+    if (v) enc[p] = safeStorage.encryptString(v).toString("base64")
+  }
+  await mkdir(app.getPath("userData"), { recursive: true })
+  await writeFile(keysFile(), JSON.stringify(enc), { mode: 0o600 })
+}
+ipcMain.handle("keys:status", async () => {
+  const keys = await readKeys()
+  return {
+    secure: safeStorage.isEncryptionAvailable(),
+    anthropic: keys.anthropic ? { last4: keys.anthropic.slice(-4) } : null,
+    gemini: keys.gemini ? { last4: keys.gemini.slice(-4) } : null,
+  }
+})
+ipcMain.handle("keys:set", async (_e, provider: KeyProvider, value: string) => {
+  if (!(provider in KEY_ENV)) throw new Error("Unknown provider")
+  if (!safeStorage.isEncryptionAvailable()) throw new Error("This computer can't store keys securely")
+  const key = String(value ?? "").trim()
+  if (key.length < 20 || /\s/.test(key)) throw new Error("That doesn't look like an API key")
+  await writeKeys({ ...(await readKeys()), [provider]: key })
+  return true
+})
+ipcMain.handle("keys:clear", async (_e, provider: KeyProvider) => {
+  const keys = await readKeys()
+  delete keys[provider]
+  await writeKeys(keys)
+  return true
+})
+
 // ---- convert: runs `python -m hymn_processor.cli deck …` and streams its log lines
 type ConvertOptions = { inputs: string[]; engine: string; hymnal: string; tempo: number; correct: boolean }
-ipcMain.handle("convert:start", (_e, o: ConvertOptions) => {
+ipcMain.handle("convert:start", async (_e, o: ConvertOptions) => {
+  // Keys saved in Settings win over the shell's and the service .env's.
+  const keyEnv: Record<string, string> = {}
+  for (const [p, v] of Object.entries(await readKeys()) as [KeyProvider, string][]) keyEnv[KEY_ENV[p]] = v
   if (job) throw new Error(TEXT[lang].busy)
   const args = ["-m", "hymn_processor.cli", "deck", ...o.inputs, "--out", OUT_DIR, "--engine", o.engine,
     "--hymnal", o.hymnal, "--tempo", String(o.tempo)]
   if (!o.correct) args.push("--no-correct")
-  job = spawn(PYTHON, args, { cwd: SERVICE_DIR, env: { ...process.env, PYTHONPATH: SERVICE_DIR, PYTHONUNBUFFERED: "1" } })
+  job = spawn(PYTHON, args, { cwd: SERVICE_DIR, env: { ...process.env, ...keyEnv, PYTHONPATH: SERVICE_DIR, PYTHONUNBUFFERED: "1" } })
   const send = (line: string) => line.trim() && win?.webContents.send("convert:log", line)
   let buf = ""
   const onData = (d: Buffer) => {
@@ -290,6 +393,44 @@ ipcMain.handle("hymns:saveTo", async (_e, slug: string, names: string[]) => {
   await mkdir(dest, { recursive: true })
   for (const n of names) await cp(join(inOutDir(slug), basename(n)), join(dest, basename(n)))
   return dest
+})
+
+// ---- delete an import: its folder goes to the Trash (recoverable); cached page transcriptions
+// (.cache/<engine>/<sha1 of the page image>.json) and its entry in the hymns.json manifest go too.
+ipcMain.handle("hymns:delete", async (_e, slug: string) => {
+  if (job) throw new Error(TEXT[lang].busy)
+  const dir = inOutDir(slug)
+  if (dir === OUT_DIR || basename(dir).startsWith(".") || !existsSync(join(dir, "review.json"))) throw new Error("Not an imported hymn")
+  const title = JSON.parse(await readFile(join(dir, "review.json"), "utf8")).title || slug
+  const t = TEXT[lang]
+  const { response } = await dialog.showMessageBox(win!, {
+    type: "warning",
+    message: t.deleteTitle.replace("{title}", title),
+    detail: t.deleteDetail,
+    buttons: [t.deleteButton, t.cancel],
+    defaultId: 1,
+    cancelId: 1,
+  })
+  if (response !== 0) return false
+  const pagesDir = join(dir, "pages")
+  const shas = existsSync(pagesDir)
+    ? await Promise.all((await readdir(pagesDir)).map(async (f) => createHash("sha1").update(await readFile(join(pagesDir, f))).digest("hex")))
+    : []
+  await shell.trashItem(dir)
+  const cacheDir = join(OUT_DIR, ".cache")
+  if (existsSync(cacheDir)) {
+    for (const engine of await readdir(cacheDir)) {
+      for (const sha of shas) await rm(join(cacheDir, engine, `${sha}.json`), { force: true })
+    }
+  }
+  const manifest = join(OUT_DIR, "hymns.json")
+  if (existsSync(manifest)) {
+    const list = JSON.parse(await readFile(manifest, "utf8"))
+    if (Array.isArray(list) && list.some((h) => h?.id === slug)) {
+      await writeFile(manifest, JSON.stringify(list.filter((h) => h?.id !== slug), null, 2))
+    }
+  }
+  return true
 })
 
 ipcMain.handle("hymns:reveal", (_e, slug: string) => shell.showItemInFolder(join(inOutDir(slug), "hymn.json")))

@@ -10,6 +10,7 @@ import { HymnalsPage } from "@/pages/hymnals"
 import { HymnsPage } from "@/pages/hymns"
 import { LoginPage } from "@/pages/login"
 import { StudioAccessPage } from "@/pages/studio-access"
+import { TeamPage } from "@/pages/team"
 import { UsersPage } from "@/pages/users"
 
 const LATER: { path: string; group: string; title: string; description: string }[] = [
@@ -17,7 +18,6 @@ const LATER: { path: string; group: string; title: string; description: string }
   { path: "featured", group: "Content", title: "Featured", description: "Hymn of the Day and Discover sections." },
   { path: "composer-requests", group: "Community", title: "Composer requests", description: "People asking to upload hymns." },
   { path: "reports", group: "Community", title: "Reports", description: "Content flagged by people in the app." },
-  { path: "settings", group: "System", title: "Settings", description: "Admin team and app settings." },
 ]
 
 export default function App() {
@@ -39,6 +39,7 @@ export default function App() {
           <Route path="audit-log" element={<AuditLogPage />} />
           <Route path="users" element={<UsersPage />} />
           <Route path="studio-access" element={<StudioAccessPage />} />
+          <Route path="settings" element={<TeamPage />} />
           {LATER.map((p) => (
             <Route key={p.path} path={p.path} element={<ComingSoonPage {...p} />} />
           ))}

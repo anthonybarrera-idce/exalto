@@ -103,3 +103,45 @@ def test_rebuild_score_uses_edited_syllables(tmp_path):
     rebuild_score(res.out_dir)
     score = music21.converter.parse(str(res.files["musicxml"]))
     assert [n.lyric for n in score.parts[0].recurse().notes if n.lyric][0] == "Yo"
+
+
+def _bars(*beats):
+    return [{"pickup": False, "soprano": [{"pitch": "A4", "dur": b}]} for b in beats]
+
+
+def test_time_signature_printed_and_confirmed_by_the_measures():
+    from hymn_processor.deck_batch import choose_time_signature
+
+    page = {"time_signature": "3/4", "time_found": True, "measures": _bars(1, 3, 3, 3, 3, 2)}
+    assert choose_time_signature([page]) == ("3/4", None)
+
+
+def test_time_signature_inferred_when_none_is_printed():
+    from hymn_processor.deck_batch import choose_time_signature, set_time_signature
+
+    pages = [{"time_signature": "4/4", "time_found": False, "measures": _bars(3, 3, 3, 3)},
+             {"time_signature": "4/4", "time_found": False, "measures": _bars(3, 3, 4, 2)}]
+    ts, warning = choose_time_signature(pages)
+    assert (ts, warning) == ("3/4", None)
+    set_time_signature(pages, ts)
+    assert [p["time_signature"] for p in pages] == ["3/4", "3/4"]
+    assert pages[0]["measures"][0]["pickup"] is False  # a full 3/4 bar is not a pickup
+
+
+def test_misread_time_signature_gives_way_to_the_measures():
+    from hymn_processor.deck_batch import choose_time_signature
+
+    page = {"time_signature": "5/4", "time_found": True, "measures": _bars(3, 3, 3, 3, 3)}
+    ts, warning = choose_time_signature([page])
+    assert ts == "3/4" and "5/4" in warning
+    # 6/8 hymns count 3 quarter beats a bar: the printed 6/8 agrees and stays
+    assert choose_time_signature([{**page, "time_signature": "6/8"}]) == ("6/8", None)
+
+
+def test_time_signature_stays_when_the_measures_are_unclear():
+    from hymn_processor.deck_batch import choose_time_signature
+
+    page = {"time_signature": "4/4", "time_found": False, "measures": _bars(1, 2)}
+    assert choose_time_signature([page]) == ("4/4", None)
+    # other transcribers state the time signature without time_found
+    assert choose_time_signature([{"time_signature": "2/2", "measures": _bars(4, 4, 4)}]) == ("2/2", None)

@@ -1,10 +1,11 @@
 import { Pause, Play } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, type CSSProperties } from "react"
 import { Empty, PageHeader } from "@/components/page-header"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Slider } from "@/components/ui/slider"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Switch } from "@/components/ui/switch"
 import { useStudio } from "@/hooks/use-studio"
 import { asset, studio, type Measure } from "@/lib/studio"
@@ -17,23 +18,27 @@ import { useLocale } from "@/hooks/use-locale"
 import type { StringKey } from "@/lib/i18n"
 
 const TRACKS = [
-  { id: "soprano", sub: "practice.subSoprano", color: "bg-rose-500" },
-  { id: "alto", sub: "practice.subAlto", color: "bg-amber-500" },
-  { id: "tenor", sub: "practice.subTenor", color: "bg-emerald-500" },
-  { id: "bass", sub: "practice.subBass", color: "bg-blue-500" },
+  { id: "soprano", sub: "practice.subSoprano" },
+  { id: "alto", sub: "practice.subAlto" },
+  { id: "tenor", sub: "practice.subTenor" },
+  { id: "bass", sub: "practice.subBass" },
 ] as const
 type Voice = (typeof TRACKS)[number]["id"]
+/** Same voice colors as the mobile app's practice screen (exalto/src/components/practice/ScoreView.tsx). */
+const VOICE_COLOR: Record<Voice, string> = { soprano: "#04C1FF", alto: "#C9801C", tenor: "#3E9F6B", bass: "#7B63D6" }
 const PRESETS: [StringKey, Record<Voice, number>][] = [
   ["preset.quartet", { soprano: 100, alto: 100, tenor: 100, bass: 100 }],
   ["preset.sopranoOnly", { soprano: 100, alto: 0, tenor: 0, bass: 0 }],
   ["preset.altoOnly", { soprano: 0, alto: 100, tenor: 0, bass: 0 }],
   ["preset.tenorOnly", { soprano: 0, alto: 0, tenor: 100, bass: 0 }],
   ["preset.bassOnly", { soprano: 0, alto: 0, tenor: 0, bass: 100 }],
+  ["preset.upperVoices", { soprano: 100, alto: 100, tenor: 0, bass: 0 }],
+  ["preset.lowerVoices", { soprano: 0, alto: 0, tenor: 100, bass: 100 }],
   ["preset.practiceAlto", { soprano: 25, alto: 100, tenor: 25, bass: 25 }],
 ]
 const fmt = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`
 
-/** Plays the four voice tracks in sync; volume, solo and mute are per voice. */
+/** Plays the four voice tracks in sync; each voice can be checked on or off and has its own volume. */
 export function PracticePage() {
   const { detail } = useStudio()
   const { t, voiceName } = useLocale()
@@ -41,8 +46,9 @@ export function PracticePage() {
   const [playing, setPlaying] = useState(false)
   const [time, setTime] = useState(0)
   const [vol, setVol] = useState<Record<Voice, number>>(PRESETS[0][1])
-  const [solo, setSolo] = useState<Voice | null>(null)
-  const [muted, setMuted] = useState<Set<Voice>>(new Set())
+  // Checked voices play: any combination (e.g. soprano + alto).
+  const ALL: Voice[] = TRACKS.map((t) => t.id)
+  const [on, setOn] = useState<Set<Voice>>(new Set(ALL))
   const [bpm, setBpm] = useState(80)
   const [clickMode, setClickMode] = useState<"play" | "note">("play")
   const [sound, setSound] = useSound()
@@ -69,7 +75,7 @@ export function PracticePage() {
   useEffect(() => setBpm(base), [base, detail?.slug])
   const mixer = useRef<Mixer | null>(null)
   const levels = () =>
-    Object.fromEntries(TRACKS.map((t) => [t.id, (solo ? (solo === t.id ? 1 : 0) : muted.has(t.id) ? 0 : 1) * (vol[t.id] / 100)]))
+    Object.fromEntries(TRACKS.map((t) => [t.id, (on.has(t.id) ? 1 : 0) * (vol[t.id] / 100)]))
   // Created on the first Play (browsers only start audio after a click), then reused.
   const ensureMixer = async () => {
     if (!mixer.current) {
@@ -91,7 +97,7 @@ export function PracticePage() {
       a.volume = 1 // levels are applied in the mixer, which can go above 100%
       a.playbackRate = bpm / base
     }
-  }, [vol, solo, muted, bpm, base]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [vol, on, bpm, base]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     setPlaying(false)
     setTime(0)
@@ -137,7 +143,8 @@ export function PracticePage() {
   }
   // Measure lengths come from the score (pickups and page-split measures included);
   // streamed audio doesn't report a duration.
-  const starts = measureStarts(detail.transcription.pages.flatMap((p) => p.measures))
+  const [num, den] = (detail.transcription.pages[0]?.time_signature ?? "4/4").split("/").map(Number)
+  const starts = measureStarts(detail.transcription.pages.flatMap((p) => p.measures), (num * 4) / den || 4)
   const measures = starts.length - 1
   const secPerBeat = 60 / base
   const duration = starts[measures] * secPerBeat
@@ -200,9 +207,15 @@ export function PracticePage() {
       <div className="my-4 flex flex-wrap items-center gap-2">
         <span className="text-sm font-medium text-muted-foreground">{t("practice.quickMix")}</span>
         {PRESETS.map(([name, v]) => {
-          const on = TRACKS.every((t) => vol[t.id] === v[t.id]) && !solo && !muted.size
+          // A preset checks the voices it uses (others unchecked) and sets their volumes.
+          const picks = ALL.filter((id) => v[id] > 0)
+          const active = ALL.every((id) => on.has(id) === v[id] > 0 && (v[id] === 0 || vol[id] === v[id]))
           return (
-            <button key={name} onClick={() => (setVol(v), setSolo(null), setMuted(new Set()))} className={cn("rounded-full px-3 py-1.5 text-sm font-medium", on ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground")}>
+            <button
+              key={name}
+              onClick={() => (setOn(new Set(picks)), setVol(Object.fromEntries(ALL.map((id) => [id, v[id] || vol[id] || 100])) as Record<Voice, number>))}
+              className={cn("rounded-full px-3 py-1.5 text-sm font-medium", active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground")}
+            >
               {t(name)}
             </button>
           )
@@ -220,10 +233,12 @@ export function PracticePage() {
         </span>
       </label>
       </div>
-      <Card className="mb-4 max-h-[420px] gap-0 overflow-y-auto bg-card p-3">
+      <Card className="mb-4 gap-0 overflow-x-auto overflow-y-hidden bg-card p-3">
         <ScoreView
+          horizontal
           xml={xml}
           beat={(time * base) / 60}
+          voiceColors={playing ? Object.fromEntries(ALL.filter((id) => on.has(id) && vol[id] > 0).map((id) => [id, VOICE_COLOR[id]])) : undefined}
           hint={clickMode === "play" ? t("practice.hintPlay") : t("practice.hintNote")}
           onHit={(hit) => {
             if (clickMode === "note") {
@@ -238,15 +253,21 @@ export function PracticePage() {
 
       <Card className="gap-0 py-1.5">
         {TRACKS.map((tr) => (
-          <div key={tr.id} className="flex items-center gap-4 border-t px-5 py-3 first:border-t-0">
-            <span className={cn("size-2.5 rounded-full", tr.color)} />
-            <div className="w-36">
-              <div className="text-sm font-medium">{voiceName(tr.id)}</div>
-              <div className="text-xs text-muted-foreground">{t(tr.sub)}</div>
-            </div>
-            <Toggle on={solo === tr.id} onClick={() => setSolo(solo === tr.id ? null : tr.id)} label={t("practice.soloShort")} title={t("practice.solo")} />
-            <Toggle on={muted.has(tr.id)} onClick={() => setMuted((m) => { const n = new Set(m); n.has(tr.id) ? n.delete(tr.id) : n.add(tr.id); return n })} label={t("practice.muteShort")} title={t("practice.mute")} />
-            <Slider className="flex-1" value={[vol[tr.id]]} max={100} step={5} onValueChange={([v]) => setVol({ ...vol, [tr.id]: v })} aria-label={t("practice.volume", { voice: voiceName(tr.id) })} />
+          <div key={tr.id} className={cn("flex items-center gap-4 border-t px-5 py-3 transition-opacity first:border-t-0", !on.has(tr.id) && "opacity-50")}>
+            <label className="flex w-44 cursor-pointer items-center gap-3">
+              <Checkbox
+                checked={on.has(tr.id)}
+                onCheckedChange={(c) => setOn((s) => { const n = new Set(s); c ? n.add(tr.id) : n.delete(tr.id); return n })}
+                aria-label={t("practice.hearVoice", { voice: voiceName(tr.id) })}
+                style={{ "--voice": VOICE_COLOR[tr.id] } as CSSProperties}
+                className="size-5 border-2 border-(--voice) data-checked:border-(--voice) data-checked:bg-(--voice) data-checked:text-white dark:data-checked:bg-(--voice)"
+              />
+              <div>
+                <div className="text-sm font-medium" style={{ color: on.has(tr.id) ? VOICE_COLOR[tr.id] : undefined }}>{voiceName(tr.id)}</div>
+                <div className="text-xs text-muted-foreground">{t(tr.sub)}</div>
+              </div>
+            </label>
+            <Slider className="flex-1 [&_[data-slot=slider-range]]:bg-(--voice)" style={{ "--voice": VOICE_COLOR[tr.id] } as CSSProperties} value={[vol[tr.id]]} max={100} step={5} onValueChange={([v]) => setVol({ ...vol, [tr.id]: v })} aria-label={t("practice.volume", { voice: voiceName(tr.id) })} />
             <span className="w-10 text-right text-sm font-medium tabular-nums text-muted-foreground">{vol[tr.id]}%</span>
           </div>
         ))}
@@ -255,21 +276,13 @@ export function PracticePage() {
   )
 }
 
-function Toggle({ on, onClick, label, title }: { on: boolean; onClick: () => void; label: string; title: string }) {
-  return (
-    <button title={title} aria-pressed={on} onClick={onClick} className={cn("size-7 rounded-md border text-xs font-semibold", on ? "border-primary bg-primary text-primary-foreground" : "bg-background text-muted-foreground")}>
-      {label}
-    </button>
-  )
-}
-
 /** Beat where each measure starts (plus the end), rejoining a measure split across pages. */
-function measureStarts(ms: Measure[]): number[] {
+function measureStarts(ms: Measure[], bar: number): number[] {
   const len = (m: Measure) => m.soprano.reduce((a, n) => a + n.dur, 0)
   const out = [0]
   for (let i = 0; i < ms.length; i++) {
     let l = len(ms[i])
-    if (i > 0 && l < 4 && ms[i + 1] && l + len(ms[i + 1]) === 4) l += len(ms[++i])
+    if (i > 0 && l < bar && ms[i + 1] && Math.abs(l + len(ms[i + 1]) - bar) < 1e-6) l += len(ms[++i])
     out.push(out[out.length - 1] + l)
   }
   return out

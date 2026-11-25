@@ -6,8 +6,8 @@ import {
   View,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ArrowDown, ArrowUp, Cast, Download, FileText, Heart, ListMusic, MoreVertical, Music, Pause, Play, Repeat, Repeat1, Share2, Shuffle, SkipBack, SkipForward, ThumbsUp, type LucideIcon } from 'lucide-react-native';
-import { useState } from 'react';
+import { ArrowDown, ArrowUp, Cast, Download, FileText, Heart, ListMusic, MoreVertical, Pause, Play, Repeat, Repeat1, Share2, Shuffle, SkipBack, SkipForward, ThumbsUp, type LucideIcon } from 'lucide-react-native';
+import { useEffect, useState } from 'react';
 import { GestureDetector, type GestureType } from 'react-native-gesture-handler';
 
 import { ThemedText } from '@/components/themed-text';
@@ -25,7 +25,7 @@ import { useViewMode } from '@/context/view-mode-context';
 import { LyricSection } from '@/context/audio-context';
 import { AccentColor, BrandGradient, Palette, Spacing } from '@/constants/theme';
 import { HymnArt } from '@/components/ui/hymn-art';
-import { PracticeModal } from '@/components/practice/PracticeModal';
+import { PracticePanel } from '@/components/practice/PracticeModal';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const ARTWORK_SIZE = SCREEN_WIDTH - 68; // SCREEN_WIDTH - H_INSET*2 - paddingHorizontal*2
@@ -178,11 +178,8 @@ function HymnalView({ onClose }: FullPlayerProps) {
   const { isLiked, toggleLike } = useLike(currentHymn?.id);
   const { t } = useLocale();
   const [fontSize, setFontSize] = useState(15);
-  const [practicing, setPracticing] = useState(false);
 
   if (!currentHymn) return null;
-  // Dev builds can try the practice screen with a bundled sample before any hymn has practice notes uploaded.
-  const practiceSource = currentHymn.practice ?? (__DEV__ ? ('sample' as const) : null);
 
   const displayTitle = currentHymn.label ? `${currentHymn.label} ${currentHymn.title}` : currentHymn.title;
 
@@ -214,24 +211,6 @@ function HymnalView({ onClose }: FullPlayerProps) {
           <FileText size={24} color={Palette.text} strokeWidth={1.6} />
         </Pressable>
       </View>
-
-      {practiceSource ? (
-        <Pressable style={styles.practiceBtn} onPress={() => setPracticing(true)} accessibilityRole="button">
-          <View style={styles.practiceIcon}>
-            <Music size={16} color="#04131B" strokeWidth={2.2} />
-          </View>
-          <ThemedText style={styles.practiceText}>{t('practice.open')}</ThemedText>
-        </Pressable>
-      ) : null}
-      {practiceSource ? (
-        <PracticeModal
-          visible={practicing}
-          onClose={() => setPracticing(false)}
-          hymnId={currentHymn.id}
-          title={currentHymn.title}
-          source={practiceSource}
-        />
-      ) : null}
 
       {/* Lyrics */}
       <ScrollView
@@ -300,7 +279,20 @@ function LyricBlock({
 // ─── Root FullPlayer ─────────────────────────────────────────────────────────
 
 export function FullPlayer({ onClose, dragGesture }: RootProps) {
-  const { viewMode } = useViewMode();
+  const { viewMode, setViewMode } = useViewMode();
+  const { currentHymn, isPlaying, pause } = useAudio();
+  // Dev builds can try the practice tool with a bundled sample before any hymn has practice notes uploaded.
+  const practiceSource = currentHymn ? (currentHymn.practice ?? (__DEV__ ? ('sample' as const) : null)) : null;
+  const practicing = viewMode === 'practice' && practiceSource != null;
+
+  // Opening the practice tool pauses the hymn's recording, so only the practice notes sound.
+  useEffect(() => {
+    if (practicing && isPlaying) pause();
+  }, [practicing]); // eslint-disable-line react-hooks/exhaustive-deps
+  // A hymn without practice notes can't stay on the practice tab.
+  useEffect(() => {
+    if (viewMode === 'practice' && !practiceSource) setViewMode('audio');
+  }, [viewMode, practiceSource, setViewMode]);
 
   const header = (
     <View collapsable={false}>
@@ -311,7 +303,7 @@ export function FullPlayer({ onClose, dragGesture }: RootProps) {
 
       {/* Top bar: mode switcher + right icons */}
       <View style={styles.topBar}>
-        <ModeSwitcher variant="inline" />
+        <ModeSwitcher variant="inline" practice={practiceSource != null} />
 
         <View style={{ flex: 1 }} />
 
@@ -334,10 +326,12 @@ export function FullPlayer({ onClose, dragGesture }: RootProps) {
       {dragGesture ? <GestureDetector gesture={dragGesture}>{header}</GestureDetector> : header}
 
       {/* Content */}
-      {viewMode === 'audio' ? (
-        <AudioView onClose={onClose} />
-      ) : (
+      {practicing && currentHymn && practiceSource ? (
+        <PracticePanel key={currentHymn.id} hymnId={currentHymn.id} title={currentHymn.title} source={practiceSource} />
+      ) : viewMode === 'hymnal' ? (
         <HymnalView onClose={onClose} />
+      ) : (
+        <AudioView onClose={onClose} />
       )}
     </View>
   );
@@ -471,21 +465,6 @@ const styles = StyleSheet.create({
   hymnalContainer: {
     flex: 1,
   },
-  practiceBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginHorizontal: Spacing.four,
-    marginTop: Spacing.two,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: Palette.line,
-    backgroundColor: Palette.surface2,
-  },
-  practiceIcon: { width: 30, height: 30, borderRadius: 15, backgroundColor: Palette.cyan, alignItems: 'center', justifyContent: 'center' },
-  practiceText: { fontSize: 14, fontWeight: '700' },
   hymnalTopActions: {
     flexDirection: 'row',
     alignItems: 'center',

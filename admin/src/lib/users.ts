@@ -1,4 +1,4 @@
-import { collection, doc, onSnapshot, orderBy, query, serverTimestamp } from "firebase/firestore"
+import { collection, doc, onSnapshot, orderBy, query, serverTimestamp, type Timestamp } from "firebase/firestore"
 import { connectFunctionsEmulator, getFunctions, httpsCallable } from "firebase/functions"
 import { useEffect, useState } from "react"
 
@@ -51,7 +51,7 @@ export async function setUserStatus(user: AppUser, status: UserStatus) {
   await batch.commit()
 }
 
-// Role changes and deletion touch Firebase Auth, so they run in Cloud Functions (admin/functions), owner only.
+// Role changes, invites and deletion touch Firebase Auth, so they run in Cloud Functions (admin/functions), owners and admins only.
 const functions = getFunctions(app, "us-central1")
 if (usingEmulators) connectFunctionsEmulator(functions, "127.0.0.1", 5001)
 
@@ -61,4 +61,40 @@ export async function setUserRole(user: AppUser, role: UserRole) {
 
 export async function deleteUserAccount(user: AppUser) {
   await httpsCallable(functions, "deleteUser")({ uid: user.id })
+}
+
+/** Roles that can be given by email invite (must match INVITE_ROLES in admin/functions). */
+export const INVITE_ROLES = ["admin"] as const
+export type InviteRole = (typeof INVITE_ROLES)[number]
+
+/** Team invites by Google email (`members/{email}`), written by Cloud Functions only. */
+export type Member = { email: string; role: UserRole; status: "invited" | "active"; invitedByName?: string; invitedAt?: Timestamp; acceptedAt?: Timestamp }
+
+export function useMembers(): Live<Member[]> {
+  const [state, setState] = useState<Live<Member[]>>({ data: [], loading: true, error: null })
+  useEffect(
+    () =>
+      onSnapshot(
+        query(collection(db, "members"), orderBy("invitedAt", "desc")),
+        (snap) => setState({ data: snap.docs.map((d) => d.data() as Member), loading: false, error: null }),
+        (error) => setState((s) => ({ ...s, loading: false, error })),
+      ),
+    [],
+  )
+  return state
+}
+
+export async function inviteMember(email: string, role: InviteRole) {
+  const r = await httpsCallable<{ email: string; role: InviteRole }, { status: "invited" | "active" }>(functions, "inviteMember")({ email, role })
+  return r.data.status
+}
+
+export async function revokeInvite(email: string) {
+  await httpsCallable(functions, "revokeInvite")({ email })
+}
+
+/** Applies a pending invite for the signed-in person's email. Returns the new role, or null. */
+export async function acceptInvite() {
+  const r = await httpsCallable<void, { role: string | null }>(functions, "acceptInvite")()
+  return r.data.role
 }

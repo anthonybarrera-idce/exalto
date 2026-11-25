@@ -282,6 +282,54 @@ def _bar_length(ts: str) -> float:
     return num * 4 / den
 
 
+def _measure_beats(m: dict) -> float:
+    return sum(float(n.get("dur") or 0) for n in m.get("soprano", []))
+
+
+def choose_time_signature(pages: list[dict]) -> tuple[str, str | None]:
+    """The hymn's time signature: the printed one when the measures agree with it, otherwise
+    what most measures add up to. Returns (time signature, warning or None).
+
+    The local reader marks a printed one with time_found (False means 4/4 is just a default);
+    other transcribers always state one.
+    """
+    first = pages[0] if pages else {}
+    printed = str(first.get("time_signature") or "") if first.get("time_found", True) else ""
+    printed = printed if re.fullmatch(r"\d+/\d+", printed) else ""
+    # Most measures fill the bar; pickups, page-split halves and misreads are the minority.
+    counts: dict[float, int] = {}
+    measures = [m for p in pages for m in p.get("measures", [])]
+    for m in measures:
+        b = round(_measure_beats(m), 3)
+        if b > 0:
+            counts[b] = counts.get(b, 0) + 1
+    common = max(counts, key=lambda b: (counts[b], b), default=None)
+    clear = common is not None and counts[common] >= max(3, 0.5 * len(measures))
+    if printed and (not clear or abs(_bar_length(printed) - common) < 1e-6):
+        return printed, None
+    if not clear:
+        return printed or "4/4", None
+    den = int(printed.split("/")[1]) if printed else 4
+    num = common * den / 4
+    if abs(num - round(num)) > 1e-6:  # e.g. 1.5 beats: count in eighths
+        den, num = 8, common * 2
+    inferred = f"{int(round(num))}/{den}"
+    if printed:
+        return inferred, (f"Time signature read as {printed}, but most measures have {common:g} beats: "
+                          f"using {inferred} (check it).")
+    return inferred, None
+
+
+def set_time_signature(pages: list[dict], ts: str) -> None:
+    """Record the hymn's time signature on every page and re-mark the opening pickup by it."""
+    bar = _bar_length(ts)
+    for i, pg in enumerate(pages):
+        pg["time_signature"] = ts
+        if i == 0 and pg.get("measures"):
+            first = pg["measures"][0]
+            first["pickup"] = 0 < _measure_beats(first) < bar - 1e-6
+
+
 def _make_note(item: dict) -> note.GeneralNote:
     dur = float(item.get("dur") or item.get("beat_duration") or 1.0)
     pitch = str(item.get("pitch", "REST"))
@@ -440,7 +488,11 @@ def convert_hymn(
     credits = next((p.get("credits") for p in pages if p.get("credits")), []) or []
     credits = [c for c in credits if c and not re.search(r"\.com|productions", c, re.I)]
 
-    ts = str(pages[0].get("time_signature") or "4/4")
+    ts, ts_warning = choose_time_signature(pages)
+    if ts_warning:
+        res.warnings.append(ts_warning)
+    for group in [pages, *extra_pages]:
+        set_time_signature(group, ts)
     bar = _bar_length(ts)
     res.warnings += measure_warnings(pages)
 

@@ -8,14 +8,14 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, Di
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { useAuth } from "@/lib/auth"
+import { canManageTeam, useAuth } from "@/lib/auth"
 import { formatWhen } from "@/lib/format"
 import { grantStudioAccess, isEmail, normalizeEmail, revokeStudioAccess, useStudioAccess, type StudioAccess } from "@/lib/studio-access"
 
 export function StudioAccessPage() {
   const { data, loading, error } = useStudioAccess()
   const { role } = useAuth()
-  const isOwner = role === "owner"
+  const isOwner = canManageTeam(role)
   const [email, setEmail] = useState("")
   const [note, setNote] = useState("")
   const [busy, setBusy] = useState(false)
@@ -55,7 +55,7 @@ export function StudioAccessPage() {
     <Page
       crumbs={[{ label: "System" }, { label: "Studio access" }]}
       title="Studio access"
-      description="Who can sign in to Hymn Studio, the desktop app for converting hymn slides. Owners and editors can always use it."
+      description="Who can sign in to Hymn Studio, the desktop app for converting hymn slides. Owners, admins and editors can always use it."
     >
       {isOwner ? (
         <form onSubmit={add} className="flex flex-wrap items-end gap-3 rounded-lg border p-4">
@@ -73,7 +73,7 @@ export function StudioAccessPage() {
           </p>
         </form>
       ) : (
-        <p className="text-sm text-muted-foreground">Only owners can change who has access.</p>
+        <p className="text-sm text-muted-foreground">Only owners and admins can change who has access.</p>
       )}
 
       {error && <p className="text-sm text-destructive">Couldn't load the list: {error.message}</p>}
@@ -96,7 +96,7 @@ export function StudioAccessPage() {
               ))}
             {!loading && data.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">Nobody yet besides owners and editors.</TableCell>
+                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">Nobody yet besides owners, admins and editors.</TableCell>
               </TableRow>
             )}
             {data.map((d) => (

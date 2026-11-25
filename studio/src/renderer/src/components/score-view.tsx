@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react"
 import { usePressHold } from "@/hooks/use-press-hold"
 import { useTheme } from "@/hooks/use-theme"
 import { useLocale } from "@/hooks/use-locale"
+import { cn } from "@/lib/utils"
 import type { HeldTone } from "@/lib/tone"
 
 /** What was clicked: the beat (for seeking) and the single note under the pointer (for auditioning). */
@@ -11,6 +12,9 @@ export type ScoreHit = {
   note?: { frequency: number; quarters: number; staff: number; name: string; voice: string }
 }
 type Flash = { x: number; y: number; label: string; key: number; ms: number; held?: boolean }
+export type VoiceId = "soprano" | "alto" | "tenor" | "bass"
+/** A drawn note: when it sounds (beats), which voice sings it, and its notehead shapes. */
+type DrawnNote = { start: number; end: number; voice: VoiceId; heads: SVGElement[] }
 
 type Props = {
   /** MusicXML text (re-renders when it changes, keeping the scroll position) */
@@ -24,15 +28,21 @@ type Props = {
   onHit?: (hit: ScoreHit) => number | HeldTone | void
   /** Hint shown on hover */
   hint?: string
+  /** Colour the notes sounding at `beat` in these voices (only the voices listed). */
+  voiceColors?: Partial<Record<VoiceId, string>>
+  /** One long line that scrolls sideways (the playhead stays centred), like the mobile app. */
+  horizontal?: boolean
 }
 
 const ACCENT = "#0ea5e9"
 
 /** Renders the score with OpenSheetMusicDisplay and moves a note cursor and a measure shade to `beat`. */
-export function ScoreView({ xml, beat, onHit, hint }: Props) {
+export function ScoreView({ xml, beat, onHit, hint, voiceColors, horizontal = false }: Props) {
   const host = useRef<HTMLDivElement>(null)
   const osmd = useRef<OpenSheetMusicDisplay | null>(null)
   const steps = useRef<number[]>([])
+  const drawn = useRef<DrawnNote[]>([])
+  const lit = useRef<Set<SVGElement>>(new Set())
   const at = useRef(0)
   const [ready, setReady] = useState(0)
   const [error, setError] = useState<string | null>(null)
@@ -60,6 +70,7 @@ export function ScoreView({ xml, beat, onHit, hint }: Props) {
       drawLyricist: false,
       drawPartNames: false,
       followCursor: true,
+      renderSingleHorizontalStaffline: horizontal,
       defaultColorMusic: ink,
       defaultColorLabel: ink,
       defaultColorStem: ink,
@@ -75,15 +86,16 @@ export function ScoreView({ xml, beat, onHit, hint }: Props) {
       o.clear()
       osmd.current = null
     }
-  }, [resolved])
+  }, [resolved, horizontal])
 
   // (Re)load whenever the MusicXML changes; keep where the user had scrolled to.
   useEffect(() => {
     const o = osmd.current
     if (!o || !xml) return
     let cancelled = false
-    const scroller = host.current?.closest(".overflow-y-auto") as HTMLElement | null
+    const scroller = host.current?.closest(".overflow-y-auto, .overflow-x-auto") as HTMLElement | null
     const keep = scroller?.scrollTop ?? 0
+    const keepX = scroller?.scrollLeft ?? 0
     ;(async () => {
       try {
         await o.load(xml)
@@ -98,9 +110,11 @@ export function ScoreView({ xml, beat, onHit, hint }: Props) {
           c.next()
         }
         steps.current = s
+        drawn.current = collectNotes(o)
+        lit.current.clear()
         at.current = 0
         o.cursors.forEach((k) => (k.reset(), k.show()))
-        if (scroller) scroller.scrollTop = keep
+        if (scroller) (scroller.scrollTop = keep), (scroller.scrollLeft = keepX)
         setError(null)
         setReady((r) => r + 1)
       } catch (e) {
@@ -110,7 +124,7 @@ export function ScoreView({ xml, beat, onHit, hint }: Props) {
     return () => {
       cancelled = true
     }
-  }, [xml, resolved])
+  }, [xml, resolved, horizontal])
 
   // Move the cursors to `beat`
   useEffect(() => {
@@ -128,6 +142,21 @@ export function ScoreView({ xml, beat, onHit, hint }: Props) {
       at.current++
     }
   }, [beat, ready])
+
+  // Colour the notes sounding now, each in its voice's colour.
+  const colorKey = JSON.stringify(voiceColors ?? {})
+  useEffect(() => {
+    const next = new Map<SVGElement, string>()
+    if (voiceColors) {
+      for (const n of drawn.current) {
+        const color = voiceColors[n.voice]
+        if (color && n.start <= beat + 1e-3 && beat + 1e-3 < n.end) n.heads.forEach((h) => next.set(h, color))
+      }
+    }
+    for (const h of lit.current) if (!next.has(h)) paint(h, null)
+    for (const [h, color] of next) paint(h, color)
+    lit.current = new Set(next.keys())
+  }, [beat, ready, colorKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Click: the measure under the pointer, the note at or left of it (for the beat), and the
   // single notehead nearest the pointer (for auditioning).
@@ -213,7 +242,7 @@ export function ScoreView({ xml, beat, onHit, hint }: Props) {
 
   if (error) return <div className="p-6 text-sm text-muted-foreground">{t("score.error", { error })}</div>
   return (
-    <div ref={wrap} className="relative w-full">
+    <div ref={wrap} className={horizontal ? "relative w-max min-w-full" : "relative w-full"}>
       <div
         ref={host}
         onPointerDown={onPointerDown}
@@ -221,7 +250,7 @@ export function ScoreView({ xml, beat, onHit, hint }: Props) {
         onPointerCancel={hold.release}
         onLostPointerCapture={hold.release}
         onPointerLeave={hold.release}
-        className={onHit ? "w-full cursor-pointer" : "w-full"} aria-label={t("score.label")} title={hint} />
+        className={cn(horizontal ? "w-max min-w-full" : "w-full", onHit && "cursor-pointer")} aria-label={t("score.label")} title={hint} />
       {flash && (
         <div key={flash.key} className="pointer-events-none absolute" style={{ left: flash.x, top: flash.y }} aria-live="polite">
           <span className="absolute size-5 -translate-x-1/2 -translate-y-1/2 animate-ping rounded-full bg-sky-500/40" />
@@ -243,4 +272,38 @@ function noteName(p: { FundamentalNote: number; AccidentalHalfTones: number; Fre
   const midi = Math.round(69 + 12 * Math.log2(p.Frequency / 440))
   const natural = midi - p.AccidentalHalfTones
   return `${letter}${acc}${Math.floor(natural / 12) - 1}`
+}
+
+/** Every pitched note in the rendered score with its timing, voice and notehead shapes. */
+function collectNotes(o: OpenSheetMusicDisplay): DrawnNote[] {
+  const out: DrawnNote[] = []
+  for (const column of o.GraphicSheet?.MeasureList ?? []) {
+    column.forEach((gm, staffIdx) => {
+      if (!gm || staffIdx > 1) return
+      // The first voice on a staff is the upper one (soprano / tenor), the next the lower one.
+      const ids = [...new Set(gm.staffEntries.flatMap((e) => e.graphicalVoiceEntries.map((v) => v.parentVoiceEntry?.ParentVoice?.VoiceId ?? 1)))].sort((a, b) => a - b)
+      for (const se of gm.staffEntries) {
+        const start = se.getAbsoluteTimestamp().RealValue * 4
+        for (const gve of se.graphicalVoiceEntries) {
+          const lower = ids.indexOf(gve.parentVoiceEntry?.ParentVoice?.VoiceId ?? 1) > 0
+          const voice: VoiceId = staffIdx === 0 ? (lower ? "alto" : "soprano") : lower ? "bass" : "tenor"
+          for (const gn of gve.notes) {
+            const n = gn.sourceNote
+            if (!n || n.isRest() || !n.Pitch) continue
+            const heads = ((gn as unknown as { getNoteheadSVGs?: () => SVGElement[] }).getNoteheadSVGs?.() ?? []).filter(Boolean)
+            if (heads.length) out.push({ start, end: start + n.Length.RealValue * 4, voice, heads })
+          }
+        }
+      }
+    })
+  }
+  return out
+}
+
+/** Fill and outline a notehead in `color`, or back to the score's own ink (null). */
+function paint(head: SVGElement, color: string | null) {
+  for (const el of [head, ...Array.from(head.querySelectorAll<SVGElement>("path, ellipse, circle, polygon"))]) {
+    el.style.fill = color ?? ""
+    el.style.stroke = color ?? ""
+  }
 }

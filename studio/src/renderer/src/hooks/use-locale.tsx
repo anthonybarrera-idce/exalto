@@ -117,7 +117,8 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
         return known ? t(DUR_KEYS[known.label]) : t("dur.beats", { beats: num(d, 3) })
       },
       voiceName: (v) => t(`voice.${v}`),
-      hymnal: (id) => (id === "community" ? t("hymnal.community") : hymnalName(id)),
+      // The built-in Community hymnal is translated unless someone renamed it.
+      hymnal: (id) => (id === "community" && hymnalName(id) === "Community" ? t("hymnal.community") : hymnalName(id)),
       status: (st = "draft") => (st === "draft" || st === "published" || st === "archived" ? t(`status.${st}`) : st),
     }
   }, [language, preference])

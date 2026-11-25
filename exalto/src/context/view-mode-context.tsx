@@ -1,6 +1,7 @@
 import { createContext, useContext, useState } from 'react';
 
-export type ViewMode = 'hymnal' | 'audio';
+/** 'practice' (the voices practice tool) is only offered in the full player, for hymns with practice notes. */
+export type ViewMode = 'hymnal' | 'audio' | 'practice';
 
 interface ViewModeContextValue {
   viewMode: ViewMode;

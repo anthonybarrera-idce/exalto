@@ -8,6 +8,8 @@ type Ctx = {
   detail: HymnDetail | null
   select: (slug: string) => void
   refresh: () => Promise<void>
+  /** Confirms, then deletes an import and its files; false if cancelled. */
+  remove: (slug: string) => Promise<boolean>
   job: Job
   startJob: (o: { inputs: string[]; engine: string; hymnal: string; tempo: number; correct: boolean }) => Promise<void>
 }
@@ -39,13 +41,24 @@ export function StudioProvider({ children }: { children: ReactNode }) {
     [refresh],
   )
 
+  const remove = useCallback(
+    async (gone: string) => {
+      if (!(await studio.deleteHymn(gone))) return false
+      setSlug((s) => (s === gone ? null : s))
+      setDetail((d) => (d?.slug === gone ? null : d))
+      await refresh()
+      return true
+    },
+    [refresh],
+  )
+
   const startJob: Ctx["startJob"] = async (o) => {
     setJob({ running: true, log: [] })
     await studio.convert(o)
   }
 
   return (
-    <StudioContext.Provider value={{ hymns, slug, detail, select: setSlug, refresh, job, startJob }}>
+    <StudioContext.Provider value={{ hymns, slug, detail, select: setSlug, refresh, remove, job, startJob }}>
       {children}
     </StudioContext.Provider>
   )

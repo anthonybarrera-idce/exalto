@@ -2,6 +2,7 @@ import { onIdTokenChanged, signInWithPopup, signOut as fbSignOut, type User } fr
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
 
 import { auth, googleProvider } from "@/lib/firebase"
+import { acceptInvite } from "@/lib/users"
 import { ADMIN_ROLES, type AdminRole } from "@/lib/types"
 
 type AuthState = {
@@ -26,7 +27,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       onIdTokenChanged(auth, async (u) => {
         setUser(u)
         if (u) {
-          const { claims } = await u.getIdTokenResult()
+          let { claims } = await u.getIdTokenResult()
+          // Someone invited by email gets their role the first time they sign in.
+          if (!claims.role && (await acceptInvite().catch(() => null))) claims = (await u.getIdTokenResult(true)).claims
           const r = claims.role as AdminRole | undefined
           setRole(r && ADMIN_ROLES.includes(r) ? r : null)
         } else {
@@ -60,5 +63,10 @@ export function useAuth() {
 }
 
 export function canEditContent(role: AdminRole | null) {
-  return role === "owner" || role === "editor"
+  return role === "owner" || role === "admin" || role === "editor"
+}
+
+/** Owners and admins change roles, invite people and manage Studio access. */
+export function canManageTeam(role: AdminRole | null) {
+  return role === "owner" || role === "admin"
 }

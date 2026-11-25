@@ -1,4 +1,5 @@
 import { memo, useMemo } from 'react';
+import { Pressable, View } from 'react-native';
 import Svg, { Ellipse, G, Line, Path, Rect, Text as SvgText } from 'react-native-svg';
 
 import { FontFamily, Palette } from '@/constants/theme';
@@ -12,14 +13,18 @@ const TREBLE_TOP = 44;
 const BASS_TOP = 156;
 const PAD = 12; // space after each barline
 const HEAD_X = 70; // where measure 1 starts, after clefs and key signature
-export const SCORE_HEIGHT = BASS_TOP + 4 * GAP + 46;
+const RAW_HEIGHT = BASS_TOP + 4 * GAP + 46;
+/** The whole drawing is scaled up by this much on screen (bigger, easier to tap). */
+export const ZOOM = 1.35;
+export const SCORE_HEIGHT = RAW_HEIGHT * ZOOM;
 const INK = '#2A2016';
 export const VOICE_COLOR: Record<Voice, string> = { soprano: Palette.cyan, alto: '#C9801C', tenor: '#3E9F6B', bass: '#7B63D6' };
 
 const ACC: Record<string, string> = { b: '♭', '#': '♯', n: '♮', bb: '𝄫', '##': '𝄪' };
 const staffBottom = (staff: 0 | 1) => (staff === 0 ? TREBLE_TOP : BASS_TOP) + 4 * GAP;
 
-export type Layout = { measureX: number[]; width: number; xOf: (beat: number) => number };
+/** `rx`/`rawWidth`/`measureX` are drawing units; `xOf`/`width` are on-screen points (× ZOOM). */
+export type Layout = { measureX: number[]; rawWidth: number; rx: (beat: number) => number; width: number; xOf: (beat: number) => number };
 
 export function scoreLayout(data: PracticeData): Layout {
   const measureX: number[] = [];
@@ -28,19 +33,19 @@ export function scoreLayout(data: PracticeData): Layout {
     measureX.push(x);
     x += PAD + m.beats * PX_PER_BEAT;
   }
-  const xOf = (beat: number) => {
+  const rx = (beat: number) => {
     let i = 0;
     while (i + 1 < data.measures.length && data.measures[i + 1].start <= beat) i++;
     const m = data.measures[i];
     return measureX[i] + PAD + (beat - m.start) * PX_PER_BEAT;
   };
-  return { measureX, width: x + 24, xOf };
+  return { measureX, rawWidth: x + 24, rx, width: (x + 24) * ZOOM, xOf: (beat: number) => rx(beat) * ZOOM };
 }
 
 /** The point a notehead is drawn at (for callouts). */
 export function notePoint(data: PracticeData, layout: Layout, voice: Voice, n: PracticeNote) {
   const staff = data.voices[voice].staff;
-  return { x: layout.xOf(n.start) + 5, y: staffBottom(staff) - (n.y ?? 0) * STEP };
+  return { x: (layout.rx(n.start) + 5) * ZOOM, y: (staffBottom(staff) - (n.y ?? 0) * STEP) * ZOOM };
 }
 
 type Props = {
@@ -56,21 +61,45 @@ type Props = {
 
 export const ScoreView = memo(function ScoreView({ data, layout, faded, activeId, onNoteIn, onNoteOut }: Props) {
   const staticParts = useMemo(() => <Staff data={data} layout={layout} />, [data, layout]);
+  // Plain views over the noteheads, so press-in / press-out (tap and hold) work on iOS, Android and web.
+  const hitAreas = useMemo(
+    () =>
+      VOICES.flatMap((v) =>
+        data.voices[v].notes
+          .filter((n) => !n.rest && !faded.has(v))
+          .map((n) => {
+            const { x, y } = notePoint(data, layout, v, n);
+            return (
+              <Pressable
+                key={n.id}
+                accessibilityLabel={n.name}
+                onPressIn={() => onNoteIn?.(v, n)}
+                onPressOut={() => onNoteOut?.(v, n)}
+                style={{ position: 'absolute', left: x - 14, top: y - 12, width: 28, height: 24 }}
+              />
+            );
+          }),
+      ),
+    [data, layout, faded, onNoteIn, onNoteOut],
+  );
   return (
-    <Svg width={layout.width} height={SCORE_HEIGHT}>
-      {staticParts}
-      {VOICES.map((v) => (
-        <G key={v} opacity={faded.has(v) ? 0.18 : 1}>
-          <VoiceNotes data={data} layout={layout} voice={v} activeId={activeId} onNoteIn={onNoteIn} onNoteOut={onNoteOut} />
-        </G>
-      ))}
-      <Lyrics data={data} layout={layout} />
-    </Svg>
+    <View style={{ width: layout.width, height: SCORE_HEIGHT }}>
+      <Svg width={layout.width} height={SCORE_HEIGHT} viewBox={`0 0 ${layout.rawWidth} ${RAW_HEIGHT}`}>
+        {staticParts}
+        {VOICES.map((v) => (
+          <G key={v} opacity={faded.has(v) ? 0.18 : 1}>
+            <VoiceNotes data={data} layout={layout} voice={v} activeId={activeId} />
+          </G>
+        ))}
+        <Lyrics data={data} layout={layout} />
+      </Svg>
+      {onNoteIn ? hitAreas : null}
+    </View>
   );
 });
 
 function Staff({ data, layout }: { data: PracticeData; layout: Layout }) {
-  const right = layout.width - 24;
+  const right = layout.rawWidth - 24;
   const els = [];
   for (const top of [TREBLE_TOP, BASS_TOP]) for (let i = 0; i < 5; i++) els.push(<Line key={`l${top}${i}`} x1={8} x2={right} y1={top + i * GAP} y2={top + i * GAP} stroke={INK} strokeWidth={0.8} />);
   els.push(<Rect key="brace" x={3} y={TREBLE_TOP} width={2.4} height={BASS_TOP + 4 * GAP - TREBLE_TOP} fill={INK} />);
@@ -96,12 +125,12 @@ function Staff({ data, layout }: { data: PracticeData; layout: Layout }) {
   return <G>{els}</G>;
 }
 
-function VoiceNotes({ data, layout, voice, activeId, onNoteIn, onNoteOut }: { data: PracticeData; layout: Layout; voice: Voice; activeId: string | null } & Pick<Props, 'onNoteIn' | 'onNoteOut'>) {
+function VoiceNotes({ data, layout, voice, activeId }: { data: PracticeData; layout: Layout; voice: Voice; activeId: string | null }) {
   const { notes, stem, staff } = data.voices[voice];
   const up = stem === 'up';
   const bottom = staffBottom(staff);
   const els = [];
-  const pt = (n: PracticeNote) => ({ x: layout.xOf(n.start) + 5, y: bottom - (n.y ?? 0) * STEP });
+  const pt = (n: PracticeNote) => ({ x: layout.rx(n.start) + 5, y: bottom - (n.y ?? 0) * STEP });
   for (let i = 0; i < notes.length; i++) {
     const n = notes[i];
     if (n.rest) continue;
@@ -136,21 +165,6 @@ function VoiceNotes({ data, layout, voice, activeId, onNoteIn, onNoteOut }: { da
       const d = up ? `M${sx} ${sy2} c1 6 8 8 6 15` : `M${sx} ${sy2} c1 -6 8 -8 6 -15`;
       els.push(<Path key={`${n.id}f`} d={d} stroke={color} strokeWidth={1.5} fill="none" />);
     }
-    // invisible hit area for tap / hold
-    if (onNoteIn)
-      els.push(
-        <Rect
-          key={`${n.id}h`}
-          x={x - 11}
-          y={y - 11}
-          width={22}
-          height={22}
-          fill="#000"
-          fillOpacity={0.001}
-          onPressIn={() => onNoteIn(voice, n)}
-          onPressOut={() => onNoteOut?.(voice, n)}
-        />,
-      );
   }
   return <G>{els}</G>;
 }
@@ -164,7 +178,7 @@ function Lyrics({ data, layout }: { data: PracticeData; layout: Layout }) {
         if (!l) return null;
         const text = l.syllabic === 'begin' || l.syllabic === 'middle' ? `${l.text}-` : l.text;
         return (
-          <SvgText key={n.id} x={layout.xOf(n.start) + 5} y={y} fontSize={11} textAnchor="middle" fill={INK} fontFamily={FontFamily.regular}>
+          <SvgText key={n.id} x={layout.rx(n.start) + 5} y={y} fontSize={11} textAnchor="middle" fill={INK} fontFamily={FontFamily.regular}>
             {text}
           </SvgText>
         );

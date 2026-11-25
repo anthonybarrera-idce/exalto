@@ -1,4 +1,4 @@
-import { Download, Headphones, Music, Settings, Share, Type, BookOpen, ChevronRight } from "lucide-react"
+import { Download, Headphones, Music, Settings, Share, Type, BookOpen, ChevronRight, Library, LibraryBig } from "lucide-react"
 import { useState } from "react"
 import { cn } from "@/lib/utils"
 import exaltoMark from "@/assets/exalto-mark.svg"
@@ -12,6 +12,9 @@ import { LyricsPage } from "@/pages/lyrics"
 import { PracticePage } from "@/pages/practice"
 import { ExportPage } from "@/pages/export"
 import { DetailsPage } from "@/pages/details"
+import { LibraryPage } from "@/pages/library"
+import { HymnalsPage } from "@/pages/hymnals"
+import { AttachPage } from "@/pages/attach"
 import { Avatar, SettingsPage, ThemeChoice, useRoleLabel } from "@/pages/settings"
 import { useT } from "@/hooks/use-locale"
 
@@ -23,7 +26,7 @@ const PAGES = [
   { id: "practice", label: "nav.practice", icon: Headphones, el: PracticePage },
   { id: "export", label: "nav.export", icon: Share, el: ExportPage },
 ] as const
-export type PageId = (typeof PAGES)[number]["id"] | "settings"
+export type PageId = (typeof PAGES)[number]["id"] | "settings" | "library" | "hymnals" | "attach"
 
 export function App() {
   return (
@@ -39,8 +42,10 @@ export function App() {
 
 function Shell() {
   const t = useT()
+  // Owners, admins and editors can also edit the Exalto hymn library, like in the admin.
+  const { canUpload: canEditLibrary } = useAuth()
   const [page, setPage] = useState<PageId>("import")
-  const Page = page === "settings" ? SettingsPage : PAGES.find((p) => p.id === page)!.el
+  const Page = page === "settings" ? SettingsPage : page === "library" && canEditLibrary ? LibraryPage : page === "hymnals" && canEditLibrary ? HymnalsPage : page === "attach" && canEditLibrary ? AttachPage : PAGES.find((p) => p.id === page)?.el ?? ImportPage
   const navClass = (active: boolean) =>
     cn(
       "flex h-8 items-center gap-2.5 rounded-md px-2.5 text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent",
@@ -62,6 +67,24 @@ function Shell() {
               <div className="text-xs text-muted-foreground">{t("nav.subtitle")}</div>
             </div>
           </div>
+          {canEditLibrary && (
+            <>
+              <div className="px-2.5 pb-1 text-[11px] font-semibold tracking-wide text-muted-foreground">{t("nav.library")}</div>
+              <button onClick={() => setPage("library")} className={navClass(page === "library")}>
+                <Library className="size-4" />
+                {t("nav.hymnLibrary")}
+              </button>
+              <button onClick={() => setPage("hymnals")} className={navClass(page === "hymnals")}>
+                <LibraryBig className="size-4" />
+                {t("nav.hymnals")}
+              </button>
+              <button onClick={() => setPage("attach")} className={navClass(page === "attach")}>
+                <Music className="size-4" />
+                {t("nav.addNotes")}
+              </button>
+              <div className="h-3" />
+            </>
+          )}
           <div className="px-2.5 pb-1 text-[11px] font-semibold tracking-wide text-muted-foreground">{t("nav.workflow")}</div>
           {PAGES.map((p) => (
             <button key={p.id} onClick={() => setPage(p.id)} className={navClass(page === p.id)}>

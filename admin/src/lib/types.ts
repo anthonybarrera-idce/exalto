@@ -31,14 +31,21 @@ export type Hymn = {
 export type Hymnal = {
   id: string
   name: string
+  /** Shown on the mobile app's hymnal tabs. */
+  shortName: string
+  /** Artwork color for its hymns in the mobile app. */
+  color: string
   kind: "official" | "community"
   visible: boolean
+  /** Cached on the phone so it works offline. */
   offline: boolean
+  /** Display order, lowest first. */
+  order: number
 }
 
 /** Roles that may sign in to the admin. Set as a Firebase Auth custom claim `role`. */
-export type AdminRole = "owner" | "editor" | "moderator"
-export const ADMIN_ROLES: AdminRole[] = ["owner", "editor", "moderator"]
+export type AdminRole = "owner" | "admin" | "editor" | "moderator"
+export const ADMIN_ROLES: AdminRole[] = ["owner", "admin", "editor", "moderator"]
 
 export type AuditEntry = {
   id: string

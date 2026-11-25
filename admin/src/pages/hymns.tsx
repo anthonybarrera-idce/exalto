@@ -30,7 +30,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { canEditContent, useAuth } from "@/lib/auth"
 import { formatWhen } from "@/lib/format"
-import { HYMNALS, hymnalName, isOfficial } from "@/lib/hymnals"
+import { hymnalName, isOfficial, useHymnals } from "@/lib/hymnals"
 import { deleteHymn, setHymnStatus, useHymns } from "@/lib/hymns"
 import type { Hymn } from "@/lib/types"
 
@@ -47,6 +47,7 @@ function matches(h: Hymn, q: string) {
 
 export function HymnsPage() {
   const { data, loading, error } = useHymns()
+  const hymnals = useHymnals()
   const { role } = useAuth()
   const canEdit = canEditContent(role)
   const navigate = useNavigate()
@@ -61,10 +62,10 @@ export function HymnsPage() {
   const tabs = useMemo(
     () => [
       { value: "all", label: "All", count: data.length },
-      ...HYMNALS.map((hm) => ({ value: hm.id, label: hm.name, count: data.filter((h) => h.hymnalId === hm.id).length })),
+      ...hymnals.map((hm) => ({ value: hm.id, label: hm.name, count: data.filter((h) => h.hymnalId === hm.id).length })),
       { value: "draft", label: "Drafts", count: data.filter((h) => h.status === "draft").length },
     ],
-    [data],
+    [data, hymnals],
   )
 
   const rows = useMemo(() => {

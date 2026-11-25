@@ -6,7 +6,7 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
     function canEditContent() {
-      return request.auth != null && request.auth.token.role in ['owner', 'editor'];
+      return request.auth != null && request.auth.token.role in ['owner', 'admin', 'editor'];
     }
 
     match /hymns/{hymnId}/{allPaths=**} {

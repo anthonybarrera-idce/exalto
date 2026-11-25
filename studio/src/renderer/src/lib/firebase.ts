@@ -1,6 +1,7 @@
 import { initializeApp } from "firebase/app"
 import { connectAuthEmulator, getAuth } from "firebase/auth"
 import { connectFirestoreEmulator, initializeFirestore, persistentLocalCache } from "firebase/firestore"
+import { connectFunctionsEmulator, getFunctions } from "firebase/functions"
 import { connectStorageEmulator, getStorage } from "firebase/storage"
 
 const env = import.meta.env
@@ -20,9 +21,12 @@ export const auth = getAuth(app)
 // Cached on disk so the access check (and the last answer) works when Studio opens offline.
 export const db = initializeFirestore(app, { localCache: persistentLocalCache() })
 export const storage = getStorage(app)
+/** The admin's Cloud Functions (admin/functions), e.g. acceptInvite. */
+export const functions = getFunctions(app, "us-central1")
 
 if (usingEmulators) {
   connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true })
   connectFirestoreEmulator(db, "127.0.0.1", 8080)
   connectStorageEmulator(storage, "127.0.0.1", 9199)
+  connectFunctionsEmulator(functions, "127.0.0.1", 5001)
 }

@@ -56,10 +56,5 @@ export type HymnDoc = {
   source?: { hymnalCode?: string | null }
 }
 
-/** Same fixed list as the admin (admin/src/lib/hymnals.ts). */
-export const HYMNALS = [
-  { id: "idc-himnario", name: "IDC Himnario" },
-  { id: "canticos-espirituales", name: "Cánticos Espirituales" },
-  { id: "community", name: "Community" },
-] as const
-export const hymnalName = (id: string) => HYMNALS.find((h) => h.id === id)?.name ?? id
+/** Hymnals now live in Firestore, shared with the admin and the app (lib/hymnals.ts). */
+export { hymnalName } from "@/lib/hymnals"

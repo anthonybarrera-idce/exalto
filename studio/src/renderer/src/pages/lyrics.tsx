@@ -5,35 +5,56 @@ import { Empty, PageHeader } from "@/components/page-header"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Textarea } from "@/components/ui/textarea"
+import { LyricsEditor } from "@/components/lyrics-editor"
 import { useStudio } from "@/hooks/use-studio"
-import { parseLyrics } from "@/lib/lyrics"
-import { studio } from "@/lib/studio"
+import { cleanLyrics, lyricsToPlainText, parseLyricText } from "@/lib/lyric-blocks"
+import { studio, type HymnDetail, type LyricSection } from "@/lib/studio"
 import { SyllableEditor } from "@/components/syllable-editor"
 import { useT } from "@/hooks/use-locale"
+
+/** The saved lyrics as blocks: hymn.json's sections, or lyrics.txt split into blocks if those are empty. */
+const savedSections = (d: HymnDetail): LyricSection[] => (d.hymn.lyrics?.length ? d.hymn.lyrics : parseLyricText(d.lyricsText ?? ""))
 
 export function LyricsPage() {
   const { detail, refresh } = useStudio()
   const t = useT()
-  const [text, setText] = useState("")
+  const [sections, setSections] = useState<LyricSection[]>([])
+  const [repeatChorus, setRepeatChorus] = useState(false)
   const [reverted, setReverted] = useState<Set<number>>(new Set())
+  const reset = () => {
+    if (!detail) return
+    setSections(savedSections(detail))
+    setRepeatChorus(!!detail.hymn.repeatChorus)
+  }
   useEffect(() => {
-    setText(detail?.lyricsText ?? "")
+    reset()
     setReverted(new Set())
-  }, [detail?.slug, detail?.lyricsText])
+  }, [detail?.slug, detail?.lyricsText, detail?.hymn])
   if (!detail) return <Empty>{t("common.convertFirst")}</Empty>
   const { corrections, warnings } = detail.review
-  const dirty = text !== detail.lyricsText
+  const dirty = JSON.stringify(sections) !== JSON.stringify(savedSections(detail)) || repeatChorus !== !!detail.hymn.repeatChorus
   const otherNotes = warnings.filter((w) => !w.startsWith("Lyrics corrected"))
 
+  // Undo an OCR correction in the first line that still has the corrected word.
   const revert = (i: number) => {
     const c = corrections[i]
-    if (!text.includes(c.to)) return toast.error(t("lyrics.gone", { word: c.to }))
-    setText(text.replace(c.to, c.from))
+    let done = false
+    const next = sections.map((s) => ({
+      ...s,
+      lines: s.lines.map((l) => {
+        if (done || !l.includes(c.to)) return l
+        done = true
+        return l.replace(c.to, c.from)
+      }),
+    }))
+    if (!done) return toast.error(t("lyrics.gone", { word: c.to }))
+    setSections(next)
     setReverted(new Set([...reverted, i]))
   }
   const save = async () => {
-    await studio.saveLyrics(detail.slug, text, parseLyrics(text))
+    const clean = cleanLyrics(sections)
+    await studio.saveLyrics(detail.slug, lyricsToPlainText(clean), clean)
+    if (repeatChorus !== !!detail.hymn.repeatChorus) await studio.saveDetails(detail.slug, { repeatChorus })
     toast.success(t("lyrics.saved"))
     refresh()
   }
@@ -45,16 +66,16 @@ export function LyricsPage() {
         sub={detail.review.kind === "lyrics" ? t("lyrics.subTyped") : t("lyrics.subScanned")}
         badge={corrections.length ? <Badge className="bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300">{t("lyrics.corrected", { count: corrections.length })}</Badge> : undefined}
       >
-        <Button variant="outline" disabled={!dirty} onClick={() => setText(detail.lyricsText)}>{t("lyrics.discard")}</Button>
+        <Button variant="outline" disabled={!dirty} onClick={reset}>{t("lyrics.discard")}</Button>
         <Button disabled={!dirty} onClick={save}><Save />{t("lyrics.save")}</Button>
       </PageHeader>
       <div className="grid grid-cols-[1fr_340px] gap-5">
         <Card className="gap-3 p-5">
           <div className="flex items-center justify-between text-sm">
             <span className="font-semibold">{t("lyrics.text")}</span>
-            <span className="text-xs text-muted-foreground">{t("lyrics.textHelp")}</span>
+            <span className="text-xs text-muted-foreground">{t("lyricsEditor.order")}</span>
           </div>
-          <Textarea value={text} onChange={(e) => setText(e.target.value)} className="min-h-[420px] font-mono text-sm leading-relaxed" spellCheck lang="es" />
+          <LyricsEditor sections={sections} onChange={setSections} repeatChorus={repeatChorus} onRepeatChorusChange={setRepeatChorus} />
         </Card>
         <div className="flex flex-col gap-4">
           <Card className="gap-3 p-5">

@@ -1,4 +1,4 @@
-import { Link2, Loader2, Upload, X } from "lucide-react"
+import { Link2, Loader2, Trash2, Upload, X } from "lucide-react"
 import { useMemo, useState } from "react"
 import { toast } from "sonner"
 import type { PageId } from "@/App"
@@ -15,7 +15,7 @@ import { studio } from "@/lib/studio"
 import { useLocale } from "@/hooks/use-locale"
 
 export function ImportPage({ go }: { go: (p: PageId) => void }) {
-  const { job, startJob, hymns, select } = useStudio()
+  const { job, startJob, hymns, select, remove } = useStudio()
   const { t, plural, hymnal: hymnalLabel } = useLocale()
   const [inputs, setInputs] = useState<string[]>([])
   const [link, setLink] = useState("")
@@ -148,7 +148,24 @@ export function ImportPage({ go }: { go: (p: PageId) => void }) {
               ) : (
                 <Badge className="bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300">{t("import.done")}</Badge>
               ),
-              <Button variant="outline" size="sm" onClick={() => (select(h.slug), go(h.kind === "lyrics" ? "lyrics" : "review"))}>{t("import.review")}</Button>,
+              <div className="flex items-center gap-1">
+                <Button variant="outline" size="sm" onClick={() => (select(h.slug), go(h.kind === "lyrics" ? "lyrics" : "review"))}>{t("import.review")}</Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label={t("import.delete", { title: h.title })}
+                  title={t("import.delete", { title: h.title })}
+                  disabled={job.running}
+                  onClick={() =>
+                    remove(h.slug).then(
+                      (done) => done && toast.success(t("import.deleted", { title: h.title })),
+                      (e) => toast.error(t("import.deleteFailed", { error: String(e?.message ?? e) })),
+                    )
+                  }
+                >
+                  <Trash2 />
+                </Button>
+              </div>,
             ]}
           />
         ))}
@@ -186,7 +203,7 @@ function Name({ title, sub }: { title: string; sub: string }) {
 
 function Row({ cells, head }: { cells: React.ReactNode[]; head?: boolean }) {
   return (
-    <div className={`grid grid-cols-[1fr_90px_220px_110px] items-center gap-3 border-t px-5 first:border-t-0 ${head ? "bg-muted/50 py-2.5 text-xs font-medium text-muted-foreground" : "py-3.5 text-sm"}`}>
+    <div className={`grid grid-cols-[1fr_90px_220px_150px] items-center gap-3 border-t px-5 first:border-t-0 ${head ? "bg-muted/50 py-2.5 text-xs font-medium text-muted-foreground" : "py-3.5 text-sm"}`}>
       {cells.map((c, i) => (
         <div key={i} className={i === 3 ? "flex justify-end" : "min-w-0"}>{c}</div>
       ))}

@@ -161,7 +161,7 @@ export function PlayerModal() {
       </Animated.View>
 
       {/* Full sheet */}
-      <Animated.View pointerEvents="box-none" style={[styles.sheet, { top: sheetTop, height: SCREEN_HEIGHT - sheetTop - H_INSET }, sheetStyle]}>
+      <Animated.View pointerEvents="box-none" style={[styles.sheet, { top: sheetTop, height: SCREEN_HEIGHT - sheetTop }, sheetStyle]}>
         <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, sheetBgStyle]}>
           <LinearGradient colors={BrandGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[StyleSheet.absoluteFill, styles.sheetBorder]}>
             <LinearGradient colors={[Palette.sheetTop, Palette.sheetTop, "#2E2318", Palette.sheetBottom]} style={styles.sheetFill} />
@@ -172,7 +172,7 @@ export function PlayerModal() {
           <FullPlayer onClose={collapsePlayer} dragGesture={drag} />
         </Animated.View>
 
-        <FloatingArtwork progress={progress} seed={currentHymn.id} hideWhenOpen={viewMode === "hymnal"} />
+        <FloatingArtwork progress={progress} seed={currentHymn.id} hideWhenOpen={viewMode !== "audio"} />
       </Animated.View>
     </>
   );
@@ -183,7 +183,8 @@ const styles = StyleSheet.create({
   miniBorder: { flex: 1, borderRadius: 16, padding: 1 },
   miniInner: { flex: 1, borderRadius: 15, backgroundColor: Palette.surface, overflow: "hidden" },
   sheet: { position: "absolute", left: H_INSET, right: H_INSET },
-  sheetBorder: { borderRadius: 22, padding: 1 },
-  sheetFill: { flex: 1, borderRadius: 21 },
+  // The sheet runs into the bottom of the screen: rounded on top only, so content can scroll to the edge.
+  sheetBorder: { borderTopLeftRadius: 22, borderTopRightRadius: 22, paddingTop: 1, paddingHorizontal: 1 },
+  sheetFill: { flex: 1, borderTopLeftRadius: 21, borderTopRightRadius: 21 },
   art: { position: "absolute", left: FULL_ART_LEFT, top: FULL_ART_TOP, width: FULL_ART_SIZE, height: FULL_ART_SIZE, overflow: "hidden" },
 });

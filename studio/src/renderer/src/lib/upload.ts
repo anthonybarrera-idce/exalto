@@ -3,7 +3,7 @@ import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage"
 import { auth, db, storage } from "@/lib/firebase"
 import { studio, type HymnDetail } from "@/lib/studio"
 
-const VOICES = ["soprano", "alto", "tenor", "bass"] as const
+export const VOICES = ["soprano", "alto", "tenor", "bass"] as const
 export type UploadStep = { label: string; done: boolean; progress: number }
 
 /** Firestore id the admin import script also uses, so re-uploads update the same hymn. */
@@ -33,29 +33,21 @@ const contentTypeOf = (file: string) => {
   return "application/vnd.recordare.musicxml+xml"
 }
 
-/**
- * Uploads the piano audio, the four voice tracks, the score and the practice notes to Storage, then writes the hymn
- * (lyrics + file URLs) to Firestore with an audit-log entry, in one batch like the admin does.
- * New hymns start as drafts; an existing hymn keeps its status.
- */
-export async function uploadHymn(detail: HymnDetail, onStep: (steps: UploadStep[]) => void) {
-  const user = auth.currentUser
-  if (!user) throw new Error("Sign in first.")
-  const { slug, hymn } = detail
-  const id = hymnDocId(hymn.hymnalId, slug)
+/** The converter files that go to Storage `hymns/{id}/`, in upload order (only those this hymn has). */
+export function hymnFiles(detail: HymnDetail, id: string) {
+  const { slug } = detail
   const names = new Set(detail.files.map((f) => f.name))
   const pick = (m4a: string) => (names.has(m4a) ? m4a : m4a.replace(/\.m4a$/, ".wav"))
-  const files = [
+  return [
     { key: "audio", file: pick(`${slug}-piano.m4a`), path: `hymns/${id}/piano`, label: "Piano · all voices" },
     ...VOICES.map((v) => ({ key: v, file: pick(`${slug}-piano-${v}.m4a`), path: `hymns/${id}/voices/${v}`, label: `Piano · ${v}` })),
     { key: "score", file: `${slug}.musicxml`, path: `hymns/${id}/score.musicxml`, label: "Score (MusicXML)" },
     { key: "practice", file: PRACTICE_FILE, path: `hymns/${id}/${PRACTICE_FILE}`, label: "Practice notes" },
   ].filter((f) => names.has(f.file))
+}
 
-  const steps: UploadStep[] = [...files.map((f) => ({ label: f.label, done: false, progress: 0 })), { label: "Hymn and lyrics", done: false, progress: 0 }]
-  const report = () => onStep(steps.map((s) => ({ ...s })))
-  report()
-
+/** Uploads `files` (from hymnFiles) one by one, marking steps[i] as it goes. Returns their download URLs by key. */
+export async function uploadFiles(slug: string, files: ReturnType<typeof hymnFiles>, steps: UploadStep[], report: () => void) {
   const urls: Record<string, string> = {}
   let practiceVersion: number | null = null
   for (const [i, f] of files.entries()) {
@@ -77,6 +69,26 @@ export async function uploadHymn(detail: HymnDetail, onStep: (steps: UploadStep[
     steps[i] = { ...steps[i], done: true, progress: 1 }
     report()
   }
+  return { urls, practiceVersion }
+}
+
+/**
+ * Uploads the piano audio, the four voice tracks, the score and the practice notes to Storage, then writes the hymn
+ * (lyrics + file URLs) to Firestore with an audit-log entry, in one batch like the admin does.
+ * New hymns start as drafts; an existing hymn keeps its status.
+ */
+export async function uploadHymn(detail: HymnDetail, onStep: (steps: UploadStep[]) => void) {
+  const user = auth.currentUser
+  if (!user) throw new Error("Sign in first.")
+  const { slug, hymn } = detail
+  const id = hymnDocId(hymn.hymnalId, slug)
+  const files = hymnFiles(detail, id)
+
+  const steps: UploadStep[] = [...files.map((f) => ({ label: f.label, done: false, progress: 0 })), { label: "Hymn and lyrics", done: false, progress: 0 }]
+  const report = () => onStep(steps.map((s) => ({ ...s })))
+  report()
+
+  const { urls, practiceVersion } = await uploadFiles(slug, files, steps, report)
 
   const prev = await existingHymn(hymn.hymnalId, slug)
   const batch = writeBatch(db)
