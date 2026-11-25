@@ -16,3 +16,4 @@ __pycache__/
 
 # Hymn Studio converter output (generated locally)
 services/hymn-studio/storage/
+exalto/.git-empty-backup/
