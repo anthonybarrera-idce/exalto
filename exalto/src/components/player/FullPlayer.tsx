@@ -26,6 +26,7 @@ import { LyricSection } from '@/context/audio-context';
 import { AccentColor, BrandGradient, Palette, Spacing } from '@/constants/theme';
 import { HymnArt } from '@/components/ui/hymn-art';
 import { PracticePanel } from '@/components/practice/PracticeModal';
+import { SoundStyleToggle } from '@/components/player/SoundStyleToggle';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const ARTWORK_SIZE = SCREEN_WIDTH - 68; // SCREEN_WIDTH - H_INSET*2 - paddingHorizontal*2
@@ -64,6 +65,7 @@ function AudioView({ onClose }: FullPlayerProps) {
     setRepeatMode,
     toggleShuffle,
   } = useAudio();
+  const [trackWidth, setTrackWidth] = useState(0);
   const { isLiked, toggleLike } = useLike(currentHymn?.id);
   const { t } = useLocale();
 
@@ -99,6 +101,9 @@ function AudioView({ onClose }: FullPlayerProps) {
         <ThemedText style={styles.artistName}>{currentHymn.artist}</ThemedText>
       </View>
 
+      {/* Piano / A cappella, when the hymn has both recordings */}
+      <SoundStyleToggle />
+
       {/* Action pills */}
       <ScrollView
         horizontal
@@ -114,11 +119,11 @@ function AudioView({ onClose }: FullPlayerProps) {
       <View style={styles.progressSection}>
         <Pressable
           style={styles.progressTrack}
+          hitSlop={{ top: 12, bottom: 12 }}
+          onLayout={(e) => setTrackWidth(e.nativeEvent.layout.width)}
           onPress={(e) => {
-            const ratio = Math.min(
-              Math.max(e.nativeEvent.locationX / (SCREEN_WIDTH - 68), 0),
-              1,
-            );
+            if (!trackWidth || !durationSecs) return;
+            const ratio = Math.min(Math.max(e.nativeEvent.locationX / trackWidth, 0), 1);
             seekTo(ratio * durationSecs);
           }}>
           <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />

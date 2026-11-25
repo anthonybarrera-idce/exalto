@@ -54,6 +54,9 @@ export const en = {
   'player.close': 'Close',
   'player.play': 'Play',
   'player.pause': 'Pause',
+  'player.piano': 'Piano',
+  'player.acapella': 'A cappella',
+  'player.recording': 'Recording',
   'mode.read': 'Read lyrics',
   'mode.listen': 'Listen',
 
@@ -155,6 +158,9 @@ export const es: Record<StringKey, string> = {
   'player.close': 'Cerrar',
   'player.play': 'Reproducir',
   'player.pause': 'Pausar',
+  'player.piano': 'Piano',
+  'player.acapella': 'A cappella',
+  'player.recording': 'Grabación',
   'mode.read': 'Leer la letra',
   'mode.listen': 'Escuchar',
 

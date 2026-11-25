@@ -8,7 +8,7 @@ import { useLocale } from "@/context/locale-context";
 
 // Pure content — no background or border radius; the parent container handles shape.
 export function MiniPlayer() {
-  const { currentHymn, isPlaying, play, pause } = useAudio();
+  const { currentHymn, isPlaying, play, pause, activeSoundStyle } = useAudio();
   const { t } = useLocale();
 
   if (!currentHymn) return null;
@@ -24,13 +24,14 @@ export function MiniPlayer() {
         </ThemedText>
         <ThemedText numberOfLines={1} style={styles.artist}>
           {currentHymn.artist}
+          {currentHymn.acapellaUri && activeSoundStyle === "acapella" ? ` · ${t("player.acapella")}` : ""}
         </ThemedText>
       </View>
 
       <Pressable
         onPress={(e) => {
           e.stopPropagation();
-          if (!currentHymn.audioUri) return;
+          if (!currentHymn.audioUri && !currentHymn.acapellaUri) return;
           isPlaying ? pause() : play();
         }}
         style={styles.btn}

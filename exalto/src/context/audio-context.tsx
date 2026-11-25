@@ -1,5 +1,5 @@
 import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
-import { createContext, useCallback, useContext, useEffect, useReducer } from 'react';
+import { createContext, useCallback, useContext, useEffect, useReducer, useRef } from 'react';
 
 import { useViewMode } from '@/context/view-mode-context';
 
@@ -19,11 +19,21 @@ export interface Hymn {
   hymnalId?: string;
   artworkColor?: string;
   artworkUri?: string;
-  /** Hymns from the hymnal may have no recording yet; they open as lyrics. */
+  /** Hymns from the hymnal may have no recording yet; they open as lyrics. This is the piano recording. */
   audioUri?: string;
+  /** Optional a cappella (voices only) recording of the same hymn. */
+  acapellaUri?: string;
   lyrics?: LyricSection[];
   /** practice.json from Hymn Studio: notes the Practice screen draws and plays on the phone. */
   practice?: { url: string; version: number };
+}
+
+/** Which recording of a hymn to play. */
+export type SoundStyle = 'piano' | 'acapella';
+
+/** The recording to play for a hymn in a style, falling back to piano when that style is missing. */
+export function resolveAudioUri(hymn: Hymn, style: SoundStyle): string | undefined {
+  return (style === 'acapella' && hymn.acapellaUri) || hymn.audioUri || hymn.acapellaUri;
 }
 
 interface AudioState {
@@ -35,6 +45,7 @@ interface AudioState {
   isExpanded: boolean;
   repeatMode: 'off' | 'one' | 'all';
   shuffleEnabled: boolean;
+  soundStyle: SoundStyle;
 }
 
 type AudioAction =
@@ -44,7 +55,8 @@ type AudioAction =
   | { type: 'COLLAPSE' }
   | { type: 'SET_REPEAT'; mode: AudioState['repeatMode'] }
   | { type: 'TOGGLE_SHUFFLE' }
-  | { type: 'SET_QUEUE_INDEX'; index: number };
+  | { type: 'SET_QUEUE_INDEX'; index: number }
+  | { type: 'SET_SOUND_STYLE'; style: SoundStyle };
 
 function reducer(state: AudioState, action: AudioAction): AudioState {
   switch (action.type) {
@@ -68,6 +80,8 @@ function reducer(state: AudioState, action: AudioAction): AudioState {
       return { ...state, shuffleEnabled: !state.shuffleEnabled };
     case 'SET_QUEUE_INDEX':
       return { ...state, queueIndex: action.index };
+    case 'SET_SOUND_STYLE':
+      return { ...state, soundStyle: action.style };
     default:
       return state;
   }
@@ -82,6 +96,7 @@ const initialState: AudioState = {
   isExpanded: false,
   repeatMode: 'off',
   shuffleEnabled: false,
+  soundStyle: 'piano',
 };
 
 interface AudioContextValue {
@@ -97,6 +112,11 @@ interface AudioContextValue {
   isExpanded: boolean;
   repeatMode: AudioState['repeatMode'];
   shuffleEnabled: boolean;
+  /** The listener's preferred recording. */
+  soundStyle: SoundStyle;
+  /** The recording actually playing (piano when the hymn has no a cappella one). */
+  activeSoundStyle: SoundStyle;
+  setSoundStyle: (style: SoundStyle) => void;
   play: () => void;
   pause: () => void;
   seekTo: (seconds: number) => Promise<void>;
@@ -117,6 +137,11 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const player = useAudioPlayer(null, { updateInterval: 500 });
   const status = useAudioPlayerStatus(player);
   const { setViewMode } = useViewMode();
+  // Callbacks read the latest state through refs, so they stay stable between status ticks.
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  const positionRef = useRef(0);
+  positionRef.current = status.currentTime;
 
   useEffect(() => {
     setAudioModeAsync({
@@ -128,8 +153,9 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const loadHymn = useCallback(
     (hymn: Hymn, queue: Hymn[] = [hymn], startIndex = 0) => {
       dispatch({ type: 'LOAD', hymn, queue, queueIndex: startIndex });
-      if (hymn.audioUri) {
-        player.replace({ uri: hymn.audioUri });
+      const uri = resolveAudioUri(hymn, stateRef.current.soundStyle);
+      if (uri) {
+        player.replace({ uri });
         player.play();
       } else {
         // No recording yet: stop any playback and open the lyrics.
@@ -145,32 +171,71 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const pause = useCallback(() => player.pause(), [player]);
   const seekTo = useCallback((secs: number) => player.seekTo(secs), [player]);
 
-  const skipNext = useCallback(() => {
-    const { queue, queueIndex, repeatMode, shuffleEnabled } = state;
-    if (!queue.length) return;
+  /** Move to the next hymn in the queue. Returns false when there's nothing to move to. */
+  const advance = useCallback((): boolean => {
+    const { queue, queueIndex, repeatMode, shuffleEnabled } = stateRef.current;
+    if (!queue.length) return false;
     let nextIndex: number;
-    if (shuffleEnabled) {
-      nextIndex = Math.floor(Math.random() * queue.length);
+    if (shuffleEnabled && queue.length > 1) {
+      // Any hymn other than the current one.
+      nextIndex = Math.floor(Math.random() * (queue.length - 1));
+      if (nextIndex >= queueIndex) nextIndex += 1;
     } else if (queueIndex < queue.length - 1) {
       nextIndex = queueIndex + 1;
     } else if (repeatMode === 'all') {
       nextIndex = 0;
     } else {
-      return;
+      return false;
     }
     loadHymn(queue[nextIndex], queue, nextIndex);
-  }, [state, loadHymn]);
+    return true;
+  }, [loadHymn]);
+
+  const skipNext = useCallback(() => {
+    advance();
+  }, [advance]);
 
   const skipPrevious = useCallback(() => {
-    const { queue, queueIndex } = state;
+    const { queue, queueIndex } = stateRef.current;
     if (!queue.length) return;
-    if (status.currentTime > 3) {
+    if (positionRef.current > 3 || queueIndex === 0) {
       player.seekTo(0);
       return;
     }
-    const prevIndex = queueIndex > 0 ? queueIndex - 1 : 0;
-    loadHymn(queue[prevIndex], queue, prevIndex);
-  }, [state, player, loadHymn, status.currentTime]);
+    loadHymn(queue[queueIndex - 1], queue, queueIndex - 1);
+  }, [player, loadHymn]);
+
+  // End of a hymn: repeat-one plays it again; otherwise continue through the queue.
+  useEffect(() => {
+    if (!status.didJustFinish) return;
+    if (stateRef.current.repeatMode === 'one') {
+      player.seekTo(0);
+      player.play();
+      return;
+    }
+    if (!advance()) {
+      player.pause();
+      player.seekTo(0);
+    }
+  }, [status.didJustFinish, advance, player]);
+
+  const setSoundStyle = useCallback(
+    (style: SoundStyle) => {
+      const { currentHymn, soundStyle } = stateRef.current;
+      if (style === soundStyle) return;
+      dispatch({ type: 'SET_SOUND_STYLE', style });
+      if (!currentHymn) return;
+      const prevUri = resolveAudioUri(currentHymn, soundStyle);
+      const nextUri = resolveAudioUri(currentHymn, style);
+      if (!nextUri || prevUri === nextUri) return;
+      // Two recordings don't line up note for note, so the hymn restarts in the new style,
+      // keeping play/pause as it was.
+      const wasPlaying = player.playing;
+      player.replace({ uri: nextUri });
+      if (wasPlaying) player.play();
+    },
+    [player],
+  );
 
   const expandPlayer = useCallback(() => dispatch({ type: 'EXPAND' }), []);
   const collapsePlayer = useCallback(() => dispatch({ type: 'COLLAPSE' }), []);
@@ -194,6 +259,9 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     isExpanded: state.isExpanded,
     repeatMode: state.repeatMode,
     shuffleEnabled: state.shuffleEnabled,
+    soundStyle: state.soundStyle,
+    activeSoundStyle: state.soundStyle === 'acapella' && state.currentHymn?.acapellaUri ? 'acapella' : 'piano',
+    setSoundStyle,
     play,
     pause,
     seekTo,
