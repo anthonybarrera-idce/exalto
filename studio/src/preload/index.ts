@@ -9,7 +9,7 @@ const on = (channel: string) => (cb: (v: any) => void) => {
 }
 
 const api = {
-  env: (): Promise<{ serviceDir: string; outDir: string; pythonReady: boolean; version: string }> => ipcRenderer.invoke("env:info"),
+  env: (): Promise<{ serviceDir: string; outDir: string; pythonReady: boolean; tesseractReady: boolean; version: string }> => ipcRenderer.invoke("env:info"),
   setTheme: (mode: "system" | "light" | "dark") => ipcRenderer.invoke("theme:set", mode),
   isDark: () => ipcRenderer.invoke("theme:isDark"),
   setLanguage: (lang: "es" | "en") => ipcRenderer.invoke("language:set", lang),

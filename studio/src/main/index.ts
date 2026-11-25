@@ -17,7 +17,30 @@ const REPO = resolve(app.getAppPath(), "..")
 const SERVICE_DIR = process.env.HYMN_STUDIO_DIR ?? join(REPO, "services", "hymn-studio")
 // (virtualenvs put the interpreter in Scripts\\python.exe on Windows, bin/python elsewhere)
 const PYTHON = process.platform === "win32" ? join(SERVICE_DIR, ".venv", "Scripts", "python.exe") : join(SERVICE_DIR, ".venv", "bin", "python")
-const OUT_DIR = join(SERVICE_DIR, "storage", "decks")
+/**
+ * The installed app carries the converter as a standalone program (PyInstaller, see
+ * services/hymn-studio/packaging) in its resources, so the music team needs no Python.
+ * Converted hymns then live in the user's app-data folder, never inside the app.
+ */
+const BUNDLED_CLI = join(process.resourcesPath ?? "", "hymn-cli", process.platform === "win32" ? "hymn-cli.exe" : "hymn-cli")
+const PACKAGED = app.isPackaged
+const OUT_DIR = PACKAGED ? join(app.getPath("userData"), "decks") : join(SERVICE_DIR, "storage", "decks")
+const CLI_CWD = PACKAGED ? app.getPath("userData") : SERVICE_DIR
+
+/** Start the converter with CLI arguments (e.g. ["deck", …]): the bundled program when installed, Python in development. */
+function runCli(args: string[], env: Record<string, string> = {}): ChildProcess {
+  if (PACKAGED) return spawn(BUNDLED_CLI, args, { cwd: CLI_CWD, env: { ...process.env, ...env, PYTHONUNBUFFERED: "1" } })
+  return spawn(PYTHON, ["-m", "hymn_processor.cli", ...args], {
+    cwd: SERVICE_DIR,
+    env: { ...process.env, ...env, PYTHONPATH: SERVICE_DIR, PYTHONUNBUFFERED: "1" },
+  })
+}
+const converterReady = () => existsSync(PACKAGED ? BUNDLED_CLI : PYTHON)
+/** Tesseract reads lyrics from scanned slides (PDFs with typed text don't need it). Same places the converter looks. */
+const tesseractReady = () =>
+  [process.env.HYMN_TESSERACT, "/opt/homebrew/bin/tesseract", "/usr/local/bin/tesseract", "C:\\Program Files\\Tesseract-OCR\\tesseract.exe"]
+    .some((p) => !!p && existsSync(p)) ||
+  (process.env.PATH ?? "").split(process.platform === "win32" ? ";" : ":").some((d) => d && existsSync(join(d, process.platform === "win32" ? "tesseract.exe" : "tesseract")))
 
 // App name in the menu bar, Dock and About panel (dev builds would otherwise say "Electron").
 app.setName("Exalto Hymn Studio")
@@ -168,7 +191,8 @@ ipcMain.handle("theme:isDark", () => nativeTheme.shouldUseDarkColors)
 ipcMain.handle("env:info", () => ({
   serviceDir: SERVICE_DIR,
   outDir: OUT_DIR,
-  pythonReady: existsSync(PYTHON),
+  pythonReady: converterReady(),
+  tesseractReady: tesseractReady(),
   version: app.getVersion(),
 }))
 
@@ -242,10 +266,11 @@ ipcMain.handle("convert:start", async (_e, o: ConvertOptions) => {
   const keyEnv: Record<string, string> = {}
   for (const [p, v] of Object.entries(await readKeys()) as [KeyProvider, string][]) keyEnv[KEY_ENV[p]] = v
   if (job) throw new Error(TEXT[lang].busy)
-  const args = ["-m", "hymn_processor.cli", "deck", ...o.inputs, "--out", OUT_DIR, "--engine", o.engine,
+  const args = ["deck", ...o.inputs, "--out", OUT_DIR, "--engine", o.engine,
     "--hymnal", o.hymnal, "--tempo", String(o.tempo)]
   if (!o.correct) args.push("--no-correct")
-  job = spawn(PYTHON, args, { cwd: SERVICE_DIR, env: { ...process.env, ...keyEnv, PYTHONPATH: SERVICE_DIR, PYTHONUNBUFFERED: "1" } })
+  await mkdir(OUT_DIR, { recursive: true })
+  job = runCli(args, keyEnv)
   const send = (line: string) => line.trim() && win?.webContents.send("convert:log", line)
   let buf = ""
   const onData = (d: Buffer) => {
@@ -325,12 +350,9 @@ ipcMain.handle("hymns:saveSyllables", async (_e, slug: string, pages: unknown[])
   t.pages = pages
   await writeFile(file, JSON.stringify(t, null, 2))
   await new Promise<void>((ok, fail) => {
-    const p = spawn(PYTHON, ["-m", "hymn_processor.cli", "rebuild", "--dir", dir], {
-      cwd: SERVICE_DIR,
-      env: { ...process.env, PYTHONPATH: SERVICE_DIR },
-    })
+    const p = runCli(["rebuild", "--dir", dir])
     let log = ""
-    p.stderr.on("data", (d) => (log += d))
+    p.stderr?.on("data", (d) => (log += d))
     p.on("close", (code) => (code === 0 ? ok() : fail(new Error(log.slice(-500)))))
   })
   return true
@@ -344,12 +366,12 @@ ipcMain.handle("hymns:saveEdits", async (_e, slug: string, pages: unknown[], res
   const t = JSON.parse(await readFile(file, "utf8"))
   t.pages = pages
   await writeFile(file, JSON.stringify(t, null, 2))
-  const args = ["-m", "hymn_processor.cli", "edit", "--dir", dir]
+  const args = ["edit", "--dir", dir]
   if (typeof respellFrom === "number") args.push("--respell-from", String(respellFrom))
   await new Promise<void>((ok, fail) => {
-    const p = spawn(PYTHON, args, { cwd: SERVICE_DIR, env: { ...process.env, PYTHONPATH: SERVICE_DIR } })
+    const p = runCli(args)
     let log = ""
-    p.stderr.on("data", (d) => (log += d))
+    p.stderr?.on("data", (d) => (log += d))
     p.on("close", (code) => (code === 0 ? ok() : fail(new Error(log.slice(-500)))))
   })
   return true
@@ -370,12 +392,9 @@ ipcMain.handle("hymns:ensureTones", async (_e, slug: string) => {
   const dir = inOutDir(slug)
   if (existsSync(join(dir, `${slug}-tone-soprano.wav`))) return true
   await new Promise<void>((ok, fail) => {
-    const p = spawn(PYTHON, ["-m", "hymn_processor.cli", "tones", "--dir", dir], {
-      cwd: SERVICE_DIR,
-      env: { ...process.env, PYTHONPATH: SERVICE_DIR },
-    })
+    const p = runCli(["tones", "--dir", dir])
     let log = ""
-    p.stderr.on("data", (d) => (log += d))
+    p.stderr?.on("data", (d) => (log += d))
     p.on("close", (code) => (code === 0 ? ok() : fail(new Error(log.slice(-400)))))
   })
   return true

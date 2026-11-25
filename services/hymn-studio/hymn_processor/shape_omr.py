@@ -1038,7 +1038,7 @@ class ShapeNotePage:
         syllable on the soprano note it sits under. Returns one text line per system."""
         import shutil
 
-        if not self.chars and not shutil.which("tesseract"):
+        if not self.chars and not tesseract_path():
             self.warnings.append("Tesseract not installed: lyrics not read (brew install tesseract tesseract-lang).")
             return []
         sp = self.sp
@@ -1302,8 +1302,7 @@ def _ocr_words(band: np.ndarray) -> list[tuple[str, float]]:
         padded = Image.new("L", (im.width + 80, im.height + 80), 255)
         padded.paste(im, (40, 40))
         padded.resize((padded.width // 2, padded.height // 2), Image.LANCZOS).save(f.name)
-        out = subprocess.run(["tesseract", f.name, "-", "-l", "spa", "--psm", "7", "tsv"],
-                             capture_output=True, text=True).stdout
+        out = _run_tesseract([f.name, "-", "-l", "spa", "--psm", "7", "tsv"])
     words = []
     for row in out.splitlines()[1:]:
         cols = row.split("\t")
@@ -1373,8 +1372,7 @@ def _ocr_digits(glyph: np.ndarray, scale: int = 1, psm: str = "10") -> int | Non
     padded.paste(im, (pad, pad))
     with tempfile.NamedTemporaryFile(suffix=".png") as f:
         padded.save(f.name)
-        out = subprocess.run(["tesseract", f.name, "-", "--psm", psm, "-c", "tessedit_char_whitelist=0123456789"],
-                             capture_output=True, text=True).stdout.strip()
+        out = _run_tesseract([f.name, "-", "--psm", psm, "-c", "tessedit_char_whitelist=0123456789"]).strip()
     return int(out) if out.isdigit() else None
 
 
@@ -1390,8 +1388,7 @@ def _ocr_chars(band: np.ndarray) -> list[tuple[str, float, float]]:
         padded = Image.new("L", (im.width + 80, im.height + 80), 255)
         padded.paste(im, (40, 40))
         padded.resize((padded.width // 2, padded.height // 2), Image.LANCZOS).save(f.name)
-        out = subprocess.run(["tesseract", f.name, "-", "-l", "spa", "--psm", "7", "-c", "hocr_char_boxes=1", "hocr"],
-                             capture_output=True, text=True).stdout
+        out = _run_tesseract([f.name, "-", "-l", "spa", "--psm", "7", "-c", "hocr_char_boxes=1", "hocr"])
     import html
 
     chars = []
@@ -1534,3 +1531,27 @@ def _place_syllables(syl: list[dict], notes: list[dict], sp: float) -> None:
         notes[j]["syllable"] = text
         notes[j]["syllabic"] = ("middle" if cont else "end") if prev_cont else ("begin" if cont else "single")
         prev_cont = cont
+
+
+def tesseract_path() -> str | None:
+    """Where Tesseract is. Apps opened from Finder get a bare PATH without Homebrew, so look in the
+    usual install folders too (or use HYMN_TESSERACT if set)."""
+    import os
+    import shutil
+
+    for c in (os.environ.get("HYMN_TESSERACT"), shutil.which("tesseract"), "/opt/homebrew/bin/tesseract",
+              "/usr/local/bin/tesseract", r"C:\Program Files\Tesseract-OCR\tesseract.exe"):
+        if c and os.path.isfile(c):
+            return c
+    return None
+
+
+def _run_tesseract(args: list[str]) -> str:
+    """Run Tesseract and return its text output ('' if it isn't installed). Its messages can contain
+    non-text bytes in some environments, so decode leniently instead of crashing."""
+    import subprocess
+
+    exe = tesseract_path()
+    if not exe:
+        return ""
+    return subprocess.run([exe, *args], capture_output=True, encoding="utf-8", errors="replace").stdout
