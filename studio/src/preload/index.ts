@@ -38,6 +38,9 @@ const api = {
     ipcRenderer.invoke("keys:status"),
   setKey: (provider: "anthropic" | "gemini", value: string): Promise<boolean> => ipcRenderer.invoke("keys:set", provider, value),
   clearKey: (provider: "anthropic" | "gemini"): Promise<boolean> => ipcRenderer.invoke("keys:clear", provider),
+  /** Ask the hymn assistant (Gemini, else Claude; main process makes the call). Edits come back as proposals only. */
+  aiChat: (turns: { role: "user" | "assistant"; text: string }[], context: string): Promise<import("../main/ai-chat").ChatResult> =>
+    ipcRenderer.invoke("ai:chat", turns, context),
   reveal: (slug: string) => ipcRenderer.invoke("hymns:reveal", slug),
   revealFolder: (): Promise<string> => ipcRenderer.invoke("hymns:revealFolder"),
 }

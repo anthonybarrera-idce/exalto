@@ -10,6 +10,7 @@ import { basename, extname, join, resolve } from "node:path"
 import { Readable } from "node:stream"
 import { pathToFileURL } from "node:url"
 import { app, BrowserWindow, dialog, ipcMain, nativeTheme, net, protocol, safeStorage, shell, systemPreferences } from "electron"
+import { hymnChat, setChatLog } from "./ai-chat"
 import { googleSignIn } from "./google-signin"
 
 const isDev = !!process.env.ELECTRON_RENDERER_URL
@@ -257,6 +258,15 @@ ipcMain.handle("keys:clear", async (_e, provider: KeyProvider) => {
   delete keys[provider]
   await writeKeys(keys)
   return true
+})
+
+// The hymn assistant (ai-chat.ts): the conversation and a summary of the open hymn go out with the
+// saved key; only the answer and proposed edits come back, never the key.
+ipcMain.handle("ai:chat", async (_e, turns: unknown, context: unknown) => {
+  const logs = join(app.getPath("userData"), "logs")
+  await mkdir(logs, { recursive: true })
+  setChatLog(join(logs, "ai-chat.log"))
+  return hymnChat(await readKeys(), turns, context, lang)
 })
 
 // ---- convert: runs `python -m hymn_processor.cli deck …` and streams its log lines

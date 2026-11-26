@@ -4,9 +4,11 @@
  * `{name}` placeholders are filled by `t()`; keys ending in `.one` / `.other` are picked by `plural()`.
  */
 import { attachEn, attachEs } from "@/lib/i18n-attach"
+import { chatEn, chatEs } from "@/lib/i18n-chat"
 
 export const en = {
   ...attachEn,
+  ...chatEn,
   // App shell
   "app.name": "Exalto Hymn Studio",
   "app.tagline": "Turn hymn slides into scores, lyrics and practice tracks.",
@@ -493,6 +495,7 @@ export type StringKey = keyof typeof en
 
 export const es: Record<StringKey, string> = {
   ...attachEs,
+  ...chatEs,
   "app.name": "Exalto Hymn Studio",
   "app.tagline": "Convierte las diapositivas de himnos en partituras, letras y pistas de ensayo.",
   "nav.subtitle": "Exalto · escritorio",

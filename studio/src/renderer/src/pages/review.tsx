@@ -1,7 +1,8 @@
-import { Check, Loader2, RotateCcw, TriangleAlert, Undo2 } from "lucide-react"
+import { Check, Loader2, RotateCcw, Sparkles, TriangleAlert, Undo2 } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 import type { PageId } from "@/App"
+import { AiChatPanel } from "@/components/ai-chat-panel"
 import { NoteEditor, type Sel } from "@/components/note-editor"
 import { ScanView } from "@/components/scan-view"
 import { Empty, PageHeader } from "@/components/page-header"
@@ -16,14 +17,19 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useSound } from "@/hooks/use-sound"
 import { useStudio } from "@/hooks/use-studio"
 import { barLength, barStatus, groupBars } from "@/lib/notes"
+import type { HymnState, Plan } from "@/lib/ai-chat"
+import { cleanLyrics, lyricsToPlainText, parseLyricText } from "@/lib/lyric-blocks"
 import { useLocale } from "@/hooks/use-locale"
-import { asset, studio, type HymnDetail, type Page } from "@/lib/studio"
+import { asset, studio, type HymnDetail, type LyricSection, type Page } from "@/lib/studio"
 import { cn } from "@/lib/utils"
 
 const TIMES = ["2/4", "3/4", "4/4", "6/8", "9/8", "12/8", "2/2", "3/2"]
 const KEYS = [-6, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6]
 
-type Draft = { pages: Page[]; fifths: number; ts: string; bpm: number; respell: boolean; history: Page[][]; dirty: boolean }
+/** What Undo restores: the notes, plus key and tempo (the assistant's transpose and tempo edits change those too). */
+type Snap = { pages: Page[]; fifths: number; bpm: number; respell: boolean }
+type Draft = { pages: Page[]; fifths: number; ts: string; bpm: number; respell: boolean; history: Snap[]; dirty: boolean }
+const snap = (d: Draft): Snap => ({ pages: d.pages, fifths: d.fifths, bpm: d.bpm, respell: d.respell })
 
 // Unsaved edits survive moving to another screen and back (until the hymn is saved or re-converted).
 const drafts = new Map<string, { stamp: string; draft: Draft }>()
@@ -106,10 +112,35 @@ function Review({ detail, go }: { detail: HymnDetail; go: (p: PageId) => void })
     setDraft((d) => {
       const next = structuredClone(d.pages)
       mutate(next)
-      return { ...d, pages: next, history: [...d.history.slice(-99), d.pages], dirty: true }
+      return { ...d, pages: next, history: [...d.history.slice(-99), snap(d)], dirty: true }
     })
   const undo = () =>
-    setDraft((d) => (d.history.length ? { ...d, pages: d.history[d.history.length - 1], history: d.history.slice(0, -1), dirty: true } : d))
+    setDraft((d) => (d.history.length ? { ...d, ...d.history[d.history.length - 1], history: d.history.slice(0, -1), dirty: true } : d))
+  // An edit accepted from the assistant: same draft and Undo as a manual edit. A transpose already
+  // moves the notes, so the key change must not re-read them (respell off).
+  const applyAssistant = (plan: Extract<Plan, { kind: "score" }>) =>
+    setDraft((d) => {
+      const next = structuredClone(d.pages)
+      plan.apply(next)
+      const s = plan.settings ?? {}
+      return {
+        ...d,
+        pages: next,
+        ...(s.fifths != null ? { fifths: s.fifths, respell: false } : {}),
+        ...(s.bpm != null ? { bpm: s.bpm } : {}),
+        history: [...d.history.slice(-99), snap(d)],
+        dirty: true,
+      }
+    })
+  const [side, setSide] = useState<"score" | "assistant">("score")
+  const sections: LyricSection[] = hymn.lyrics?.length ? hymn.lyrics : parseLyricText(detail.lyricsText ?? "")
+  const selIndex = sel && current ? current.pieces.slice(0, sel.piece).reduce((a, x) => a + (pages[x.pi]?.measures[x.mi]?.[sel.voice].length ?? 0), 0) + sel.i : undefined
+  const hymnState: HymnState = { title: review.title, pages, fifths, ts, bpm, sections, selection: { bar: barIdx, voice: sel?.voice, index: selIndex } }
+  const saveAssistantLyrics = async (next: LyricSection[]) => {
+    const clean = cleanLyrics(next)
+    await studio.saveLyrics(slug, lyricsToPlainText(clean), clean)
+    await refresh()
+  }
   const discard = () => {
     drafts.delete(slug)
     setDraftState(fresh(detail))
@@ -248,6 +279,23 @@ function Review({ detail, go }: { detail: HymnDetail; go: (p: PageId) => void })
         </div>
 
         <div className="flex flex-col gap-4">
+          <Tabs value={side} onValueChange={(v) => setSide(v as "score" | "assistant")}>
+            <TabsList className="w-full">
+              <TabsTrigger value="score">{t("chat.settingsTab")}</TabsTrigger>
+              <TabsTrigger value="assistant"><Sparkles /> {t("chat.tab")}</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          {side === "assistant" ? (
+            <AiChatPanel
+              slug={slug}
+              state={hymnState}
+              applyScore={applyAssistant}
+              saveLyrics={saveAssistantLyrics}
+              showBar={pickBar}
+              openSettings={() => go("settings")}
+            />
+          ) : (
+          <>
           <Card className="gap-3 p-5 text-sm">
             <div className="font-semibold">{t("review.scoreSettings")}</div>
             <Field label={t("review.key")}>
@@ -340,6 +388,8 @@ function Review({ detail, go }: { detail: HymnDetail; go: (p: PageId) => void })
               </div>
             ))}
           </Card>
+          </>
+          )}
         </div>
       </div>
     </>
