@@ -44,7 +44,10 @@ export function AiChatPanel({ slug, state, applyScore, saveLyrics, showBar, open
   const [busy, setBusy] = useState(false)
   const [failure, setFailure] = useState<Failure | null>(null)
   const end = useRef<HTMLDivElement>(null)
-  useEffect(() => end.current?.scrollIntoView({ block: "end" }), [msgs.length, busy, failure])
+  useEffect(() => {
+    // Braces matter: scrollIntoView returns a Promise in current Chromium, and an effect may only return a cleanup.
+    void end.current?.scrollIntoView({ block: "nearest" })
+  }, [msgs.length, busy, failure])
 
   const ask = async (history: Msg[]) => {
     setBusy(true)
@@ -111,7 +114,7 @@ export function AiChatPanel({ slug, state, applyScore, saveLyrics, showBar, open
   const examples: StringKey[] = ["chat.example1", "chat.example2", "chat.example3", "chat.example4"]
 
   return (
-    <Card className="flex h-[calc(100vh-9rem)] min-h-[480px] flex-col gap-0 p-0">
+    <Card className="flex h-[calc(100vh-12rem)] min-h-[440px] flex-col gap-0 p-0">
       <div className="flex items-start gap-2 border-b px-4 py-3">
         <Sparkles className="mt-0.5 size-4 text-sky-600" />
         <div className="flex-1">
