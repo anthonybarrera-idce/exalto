@@ -189,6 +189,11 @@ def build_practice(pages: list[dict], extra_verses: list[list[dict]] | None = No
                 note.update(note_type(dur))
                 tie = item.get("tie")
                 note["tie"] = tie if tie in ("start", "stop", "continue") else None
+                # Tenor and bass may have words of their own (an echo printed under the main line).
+                own = (item.get("syllable") or "").strip().strip("-_").strip()
+                if v in ("tenor", "bass") and own and "rest" not in note:
+                    syl = item.get("syllabic") if item.get("syllabic") in ("single", "begin", "middle", "end") else "single"
+                    note["_own"] = [{"verse": 1, "text": own, "syllabic": syl}]
                 if v == "soprano" and "rest" not in note:
                     lyr = []
                     for verse_no, src in [(1, item)] + [
@@ -207,8 +212,11 @@ def build_practice(pages: list[dict], extra_verses: list[list[dict]] | None = No
             per_voice[v] = notes
 
         for v in VOICES:
+            # A voice with its own words in this measure sings only those (not the soprano's).
+            has_own = any("_own" in note for _, note in per_voice[v])
             for t, note in per_voice[v]:
-                lyr = sop_lyrics.get(t)
+                own = note.pop("_own", None)
+                lyr = own if has_own else sop_lyrics.get(t)
                 if lyr and "rest" not in note and note["tie"] not in ("stop", "continue"):
                     note["lyrics"] = lyr
 

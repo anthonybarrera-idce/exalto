@@ -136,3 +136,33 @@ def test_unison_heads_sharp_and_natural_are_not_extra_notes():
     for m in (zo, anuncia, constante):
         for v in ("soprano", "alto", "tenor", "bass"):
             assert sum(n["dur"] for n in m[v]) == 3, (v, notes(m, v))
+
+
+def test_double_flags_and_dots_past_a_flag():
+    """A La Tierra De Canaán (Finale-style compact flags): dotted eighth + sixteenth pairs.
+    The double flag is barely taller than a single one, its body used to pass for a notehead
+    (and the white between its strokes for a half note), and the dot sits right of the flag.
+    """
+    measures = read_page(str(PAGES / "canaan_double_flags.png"))["measures"]
+    do_el, alma, vivira = measures
+    assert notes(do_el, "soprano") == ["C5/0.75", "Bb4/0.25"]
+    assert notes(do_el, "alto") == ["F4/0.75", "E4/0.25"]
+    assert notes(do_el, "tenor") == ["C4/0.75", "C4/0.25"]
+    assert notes(do_el, "bass") == ["A3/0.75", "G3/0.25"]
+    assert notes(alma, "soprano") == ["A4/3", "G4/0.75", "A4/0.25"]
+    for v in ("soprano", "alto", "tenor", "bass"):
+        assert sum(n["dur"] for n in alma[v]) == 4, (v, notes(alma, v))
+        assert sum(n["dur"] for n in vivira[v]) == 3
+
+
+def test_chorus_with_a_second_line_for_the_lower_voices():
+    """A La Tierra De Canaán, chorus: under "A-llí no ha-brá" the lower voices sing their own words
+    in italics ("Se-pa-ra-ción a-llí no ha-brá"). The two lines touch; they used to be read as one
+    garbled line. The second goes on the tenor and bass notes."""
+    d = read_page(str(PAGES / "canaan_chorus_two_lines.png"))
+    assert "habrá" in d["lyric_lines"][0] and "Se" not in d["lyric_lines"][0]
+    lower = d["lower_lyric_lines"][0]
+    assert lower.startswith("Se") and "habrá" in lower
+    tenor = [n["syllable"] for m in d["measures"] for n in m["tenor"] if n.get("syllable")]
+    assert tenor[:2] == ["Se", "pa"]
+    assert len(tenor) > len([n for m in d["measures"] for n in m["soprano"] if n.get("syllable")])

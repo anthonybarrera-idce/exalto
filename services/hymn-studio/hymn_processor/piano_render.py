@@ -19,7 +19,9 @@ import soundfile as sf
 RATE = 44100
 
 
-VOICE_NAMES = {(0, "1"): "soprano", (0, "2"): "alto", (1, "1"): "tenor", (1, "2"): "bass"}
+VOICE_NAMES = {(0, "1"): "soprano", (0, "2"): "alto", (1, "1"): "tenor", (1, "2"): "bass",
+               # (newer scores number the left hand's voices 3 and 4)
+               (1, "3"): "tenor", (1, "4"): "bass"}
 
 
 def voice_events(musicxml_path: str | Path, bpm: float) -> dict[str, list[tuple[float, float, int]]]:

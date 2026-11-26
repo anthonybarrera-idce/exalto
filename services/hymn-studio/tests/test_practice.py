@@ -153,3 +153,25 @@ def test_cli_subcommand(tmp_path):
                        cwd=ROOT, env={"PYTHONPATH": str(ROOT)}, capture_output=True, text=True)
     assert r.returncode == 0, r.stderr
     assert (d / "practice.json").exists()
+
+
+def test_lower_voices_keep_their_own_words():
+    """Where tenor and bass have words of their own (a chorus echo), they sing those, not the soprano's."""
+    pages = [{
+        "key_fifths": -1, "time_signature": "4/4", "tempo_bpm": 90,
+        "measures": [measure(
+            [n("C5", 2.0, syllable="llí", syllabic="end"), n("C5", 2.0, syllable="no", syllabic="single")],
+            a=[n("A4", 2.0), n("A4", 2.0)],
+            t=[n("F3", 1.0, syllable="Se", syllabic="begin"), n("F3", 1.0, syllable="pa", syllabic="middle"),
+               n("F3", 1.0, syllable="ra", syllabic="middle"), n("F3", 1.0, syllable="ción", syllabic="end")],
+            b=[n("F2", 1.0, syllable="Se", syllabic="begin"), n("F2", 1.0, syllable="pa", syllabic="middle"),
+               n("F2", 1.0, syllable="ra", syllabic="middle"), n("F2", 1.0, syllable="ción", syllabic="end")],
+        )],
+    }]
+    p = build_practice(pages)
+    words = lambda v: [x["lyrics"][0]["text"] for x in p["voices"][v]["notes"] if x.get("lyrics")]  # noqa: E731
+    assert words("soprano") == ["llí", "no"]
+    assert words("alto") == ["llí", "no"]  # follows the soprano
+    assert words("tenor") == ["Se", "pa", "ra", "ción"]
+    assert words("bass") == ["Se", "pa", "ra", "ción"]
+    assert all("_own" not in x for v in V for x in p["voices"][v]["notes"])

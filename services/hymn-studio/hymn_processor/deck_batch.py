@@ -16,6 +16,7 @@ import json
 import os
 import time
 import re
+import shutil
 import unicodedata
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -23,7 +24,7 @@ from typing import Callable
 
 from music21 import clef, instrument, key, layout, metadata, meter, note, stream, tempo, tie
 
-from .slides import DeckHymn, SlidePage, download_deck, group_hymns, is_url, read_pptx
+from .slides import DeckHymn, SlidePage, VerseSlides, download_deck, group_hymns, is_url, read_pptx
 
 VOICES = ("soprano", "alto", "tenor", "bass")
 ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"]
@@ -380,7 +381,10 @@ def build_piano_score(title: str, credits: list[str], pages: list[dict], extra_v
             mr.insert(0, tempo.MetronomeMark(number=bpm))
         for m_, (upper, lower) in ((mr, ("soprano", "alto")), (ml, ("tenor", "bass"))):
             for vid, part in ((1, upper), (2, lower)):
-                v = stream.Voice(id=str(vid))
+                # Voices are numbered across the whole piano part (S 1, A 2, T 3, B 4): readers
+                # link lyric syllables per voice number, so a shared "1" would chain the tenor's
+                # words onto the soprano's and draw stray hyphens under the bass staff.
+                v = stream.Voice(id=str(vid if part in ("soprano", "alto") else vid + 2))
                 for j, item in enumerate(meas.get(part, [])):
                     n = _make_note(item)
                     if part == "soprano":
@@ -390,6 +394,8 @@ def build_piano_score(title: str, credits: list[str], pages: list[dict], extra_v
                                 sop = verse_measures[i - 1].get("soprano", [])
                                 if j < len(sop):
                                     _add_lyric(n, sop[j], vn)
+                    elif part == "tenor" and (item.get("syllable") or "").strip():
+                        _add_lyric(n, item, 1)  # the lower voices' own words (an echo in the chorus)
                     v.append(n)
                 m_.insert(0, v)
         if i == 1 and meas.get("pickup"):
@@ -408,6 +414,71 @@ def build_piano_score(title: str, credits: list[str], pages: list[dict], extra_v
 
 # --------------------------------------------------------------------------- lyrics
 
+# Short words a line shouldn't end on ("…de / la tierra" reads badly).
+_WEAK_ENDS = {
+    "a", "al", "con", "de", "del", "el", "en", "la", "las", "lo", "los", "mi", "mis", "por", "que",
+    "se", "su", "sus", "te", "tu", "tus", "un", "una", "y", "o", "me", "nos", "le", "para", "sin",
+    "este", "esta", "estos", "estas", "ese", "esa", "aquel", "gran", "santo", "santa", "nuestro", "nuestra",
+    "the", "of", "and", "to", "my", "thy", "in", "on", "for", "with", "his", "our", "your", "an", "this", "that",
+}
+
+
+def balance_lines(lines: list[str], max_len: int = 44) -> list[str]:
+    """Reflow a verse's words into lines of even length, no longer than max_len where possible.
+
+    Prefers breaking after punctuation and never after a short word like "de" or "la", so the
+    lines read like the printed hymn rather than wherever the music's systems happened to end.
+    The same rules run in Studio's "Even out lines" (studio/src/renderer/src/lib/lyric-blocks.ts).
+    """
+    words = " ".join(lines).split()
+    if not words:
+        return []
+    total = len(" ".join(words))
+    if total <= max_len:
+        return [" ".join(words)]
+    best: tuple[float, list[str]] | None = None
+    n0 = max(1, -(-total // max_len))
+    for n in (n0, n0 + 1, n0 + 2):
+        if n > len(words):
+            break
+        target = total / n
+        # cost[i][k]: best cost of words[:i] in k lines
+        INF = float("inf")
+        cost = [[INF] * (n + 1) for _ in range(len(words) + 1)]
+        back = [[0] * (n + 1) for _ in range(len(words) + 1)]
+        cost[0][0] = 0.0
+        for i in range(1, len(words) + 1):
+            for j in range(i - 1, -1, -1):
+                length = len(" ".join(words[j:i]))
+                if length > max_len and i - j > 1:
+                    break
+                c = ((length - target) / target) ** 2 * 100
+                # A sentence ending inside a line: the next sentence should start a line.
+                c += 60 * sum(1 for w in words[j : i - 1] if re.search(r"[.!?]$", w))
+                last = words[i - 1]
+                if i < len(words):
+                    if re.search(r"[.!?;:]$", last):
+                        c -= 50
+                    elif last.endswith(","):
+                        c -= 30
+                    elif last.lower().strip("¡¿\"“") in _WEAK_ENDS:
+                        c += 40
+                for k in range(1, n + 1):
+                    if cost[j][k - 1] + c < cost[i][k]:
+                        cost[i][k], back[i][k] = cost[j][k - 1] + c, j
+        if cost[len(words)][n] == INF:
+            continue
+        out, i = [], len(words)
+        for k in range(n, 0, -1):
+            j = back[i][k]
+            out.append(" ".join(words[j:i]))
+            i = j
+        score = cost[len(words)][n] / n
+        if best is None or score < best[0]:
+            best = (score, out[::-1])
+    return best[1] if best else [" ".join(words)]
+
+
 def verse_lines(pages: list[dict]) -> list[str]:
     lines: list[str] = []
     for p in pages:
@@ -425,7 +496,7 @@ def verse_lines(pages: list[dict]) -> list[str]:
                         cur = ""
             raw = [" ".join(words)] if words else []
         lines.extend(clean_line(l) for l in raw if clean_line(l))
-    return lines
+    return balance_lines(lines)
 
 
 def admin_text(sections: list[dict]) -> str:
@@ -449,14 +520,23 @@ def convert_hymn(
     tempo: float = 80,
     render_audio: bool = True,
     correct_lyrics: bool = True,
+    slug: str | None = None,
+    keep_extra: list[list[dict]] | None = None,
 ) -> HymnResult:
-    res = HymnResult(title=hymn.title, slug=slugify(hymn.title), out_dir=out_root / slugify(hymn.title))
+    """Convert one hymn. `slug` keeps an existing folder's name (reprocessing); `keep_extra` adds
+    verse transcriptions already made, for verses whose slide images weren't kept."""
+    slug = slug or slugify(hymn.title)
+    res = HymnResult(title=hymn.title, slug=slug, out_dir=out_root / slug)
     res.out_dir.mkdir(parents=True, exist_ok=True)
 
     music_shas = [p.sha for p in hymn.music_pages]
     log(f"  • {len(hymn.music_pages)} score pages, {len(hymn.verses)} verse group(s)")
     pages = []
     (res.out_dir / "pages").mkdir(exist_ok=True)
+    # A re-run may have fewer slides (e.g. the chorus is now kept once): drop the old run's images.
+    for old in (res.out_dir / "pages").iterdir():
+        if re.fullmatch(r"(page\d+|verse\d+-\d+)\.\w+", old.name):
+            old.unlink()
     for n, p in enumerate(hymn.music_pages, start=1):
         log(f"    transcribing slide {p.index} …")
         (res.out_dir / "pages" / f"page{n}.{p.image_ext}").write_bytes(p.image)
@@ -471,7 +551,19 @@ def convert_hymn(
                 f"Verse {v.number} slides are the same images as verse 1 — no separate lyrics for it in this deck."
             )
             continue
+        # Keep the verse's slides too, so the hymn can be read again later (reprocess with AI).
+        for k, p in enumerate(v.pages, start=1):
+            (res.out_dir / "pages" / f"verse{v.number}-{k}.{p.image_ext}").write_bytes(p.image)
         extra_pages.append([transcribe(p) for p in v.pages])
+    if keep_extra:
+        extra_pages += keep_extra
+
+    # Words split across systems or pages ("Evan-" / "gelio") become whole words first.
+    from .lyrics_fix import join_broken_words, join_syllables_across_pages
+
+    for group in [pages, *extra_pages]:
+        join_broken_words(group)
+        join_syllables_across_pages(group)
 
     corrections: list[dict] = []
     if correct_lyrics:
@@ -520,7 +612,12 @@ def convert_hymn(
         for name, wav in render_tones(xml_path, res.out_dir, res.slug, bpm=bpm).items():
             res.files["tone_wav" if name == "all" else f"tone_{name}_wav"] = wav
 
-    sections = [{"type": "verse", "number": 1, "lines": verse_lines(pages)}]
+    # Verse 1 is sung on the score's verse pages, the chorus on the rest; verses 2+ come from
+    # their own slides (they only cover the verse part of the score).
+    n_verse = len(hymn.verse_pages) if hymn.chorus else len(pages)
+    sections = [{"type": "verse", "number": 1, "lines": verse_lines(pages[:n_verse])}]
+    if hymn.chorus:
+        sections.append({"type": "chorus", "lines": verse_lines(pages[n_verse:])})
     for n, vp in enumerate(extra_pages, start=2):
         sections.append({"type": "verse", "number": n, "lines": verse_lines(vp)})
     sections = [s for s in sections if s["lines"]]
@@ -537,10 +634,12 @@ def convert_hymn(
         "author": "; ".join(credits),
         "tags": [],
         "lyrics": sections,
-        "repeatChorus": False,
+        "repeatChorus": hymn.chorus_times > 1,
         "status": "draft",
         "recordingCount": 0,
-        "source": {"slides": [p.index for v in hymn.verses for p in v.pages]},
+        # (chorusPages: how many of the score's pages are the chorus, so a re-read keeps the split)
+        "source": {"slides": sorted({p.index for v in hymn.verses for p in v.pages} | {p.index for p in hymn.chorus}),
+                   "chorusPages": len(hymn.chorus)},
     }
     json_path = res.out_dir / "hymn.json"
     json_path.write_text(json.dumps(hymn_doc, ensure_ascii=False, indent=2))
@@ -574,6 +673,120 @@ def convert_hymn(
     else:
         warn.unlink(missing_ok=True)  # don't leave an older run's warnings behind
     return res
+
+
+_PAGE_IMG = re.compile(r"^(?:page(\d+)|verse(\d+)-(\d+))\.(png|jpe?g)$", re.I)
+# Details people set in Studio (Details page) that a new reading must not overwrite.
+_KEEP_DETAILS = ("title", "hymnalId", "number", "label", "author", "language", "tags", "repeatChorus", "status", "source")
+
+
+def reprocess_hymn(
+    hymn_dir: str | Path,
+    engine: str,
+    api_key: str | None = None,
+    correct_lyrics: bool = True,
+    log: Callable[[str], None] = print,
+    render_audio: bool = True,
+    transcriber: Transcriber | None = None,
+) -> HymnResult:
+    """Read an imported hymn again from its saved slide images with another reader (Claude or
+    Gemini vision), keeping its folder, file names and the details set in Studio.
+
+    The previous hymn.json, lyrics.txt, transcription.json and review.json are copied to
+    .before-reprocess/ first. Verses imported before their slides were kept keep their old lyrics.
+    """
+    d = Path(hymn_dir)
+    if not (d / "review.json").exists() or not (d / "transcription.json").exists():
+        raise ValueError(f"{d} isn't an imported hymn with music")
+    old_doc = json.loads((d / "hymn.json").read_text())
+    old_t = json.loads((d / "transcription.json").read_text())
+    old_review = json.loads((d / "review.json").read_text())
+
+    music: list[tuple[int, Path]] = []
+    verses: dict[int, list[tuple[int, Path]]] = {}
+    for f in (d / "pages").iterdir() if (d / "pages").exists() else []:
+        m = _PAGE_IMG.match(f.name)
+        if not m:
+            continue
+        if m.group(1):
+            music.append((int(m.group(1)), f))
+        else:
+            verses.setdefault(int(m.group(2)), []).append((int(m.group(3)), f))
+    if not music:
+        raise ValueError("No saved slide images to read again")
+    page = lambda i, f: SlidePage(index=i, heading=old_doc.get("title") or d.name, image=f.read_bytes(),
+                                  image_ext=f.suffix.lstrip(".").lower())
+    deck_verses = [VerseSlides(1, [page(i, f) for i, f in sorted(music)])]
+    for v in sorted(verses):
+        deck_verses.append(VerseSlides(v, [page(100 * v + i, f) for i, f in sorted(verses[v])]))
+    # Verses whose slides weren't saved (imported before that): keep their earlier reading.
+    old_extra = old_t.get("extra_verses") or []
+    keep = old_extra[len(verses):] if len(old_extra) > len(verses) else []
+
+    backup = d / ".before-reprocess"
+    backup.mkdir(exist_ok=True)
+    for name in ("hymn.json", "lyrics.txt", "transcription.json", "review.json"):
+        if (d / name).exists():
+            shutil.copy2(d / name, backup / name)
+
+    if transcriber is None:
+        transcriber = make_transcriber(engine, api_key)
+    transcribe = cached(transcriber, d.parent / ".cache" / engine, True)
+    hymn = DeckHymn(title=old_doc.get("title") or old_review.get("title") or d.name, verses=deck_verses)
+    n_chorus = int((old_doc.get("source") or {}).get("chorusPages") or 0)
+    if 0 < n_chorus < len(deck_verses[0].pages):  # the score's last pages are the chorus
+        hymn.chorus = deck_verses[0].pages[-n_chorus:]
+        deck_verses[0].pages = deck_verses[0].pages[:-n_chorus]
+        hymn.chorus_times = 2 if old_doc.get("repeatChorus") else 1
+    log(f"  ♪ {hymn.title} — reading again with {engine}")
+    tempo = float(old_review.get("bpm") or 80)
+    res = convert_hymn(hymn, transcribe, d.parent, old_doc.get("hymnalId", "community"), old_doc.get("language", "es"),
+                       log, tempo=tempo, render_audio=render_audio, correct_lyrics=correct_lyrics,
+                       slug=d.name, keep_extra=keep)
+
+    # Keep what was set in Studio; the new reading only replaces notes and lyrics.
+    doc = json.loads((d / "hymn.json").read_text())
+    for k in _KEEP_DETAILS:
+        if k in old_doc and (old_doc[k] or k not in doc or not doc[k]):
+            doc[k] = old_doc[k]
+    doc["id"] = old_doc.get("id", d.name)
+    (d / "hymn.json").write_text(json.dumps(doc, ensure_ascii=False, indent=2))
+    review = json.loads((d / "review.json").read_text())
+    review["title"] = doc["title"]
+    (d / "review.json").write_text(json.dumps(review, ensure_ascii=False, indent=2))
+
+    manifest = d.parent / "hymns.json"
+    if manifest.exists():
+        try:
+            items = json.loads(manifest.read_text())
+            if isinstance(items, list):
+                items = [doc if isinstance(h, dict) and h.get("id") == doc["id"] else h for h in items]
+                manifest.write_text(json.dumps(items, ensure_ascii=False, indent=2))
+        except ValueError:
+            pass
+    for w in res.warnings:
+        log(f"    ⚠ {w}")
+    log(f"\nDone: {doc['title']} read again with {engine}. Earlier files are in {backup.name}/.")
+    return res
+
+
+def make_transcriber(engine: str, api_key: str | None = None) -> Transcriber:
+    """The page reader for an engine name ("local", "claude", "gemini")."""
+    load_env_file(Path(__file__).resolve().parent.parent / ".env")
+    if engine == "local":
+        return local_transcriber()
+    if engine == "gemini":
+        key_ = api_key or os.environ.get("GEMINI_API_KEY")
+        if not key_:
+            raise SystemExit("Set GEMINI_API_KEY (or pass --api-key) to transcribe slide images.")
+        return gemini_transcriber(key_)
+    has_profile = (Path.home() / ".config" / "anthropic").exists()
+    if not (os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN") or has_profile):
+        raise SystemExit(
+            "No Anthropic credentials: add ANTHROPIC_API_KEY to services/hymn-studio/.env, "
+            "export it, or run `ant auth login`."
+        )
+    return claude_transcriber()
 
 
 def measure_warnings(pages: list[dict]) -> list[str]:
@@ -730,8 +943,14 @@ def pdf_slides(path: Path) -> list[SlidePage]:
     from .shape_omr import ShapeNotePage, load_binary
     from .slides import read_pdf
 
+    from .slides import CHORUS_HEADING, SLIDE_SUFFIX
+
     pages = read_pdf(path)
-    title = re.sub(r"[_-]+", " ", Path(path).stem).strip().title()
+    # (macOS file names keep accents as separate marks: join them first, or title() reads
+    # "Canaán" as two words and gives "CanaáN")
+    stem = unicodedata.normalize("NFC", re.sub(r"[_-]+", " ", Path(path).stem).strip())
+    title = stem if any(ch.isupper() for ch in stem) else stem.title()
+    fold = lambda t: unicodedata.normalize("NFKD", t).encode("ascii", "ignore").decode().lower().split()  # noqa: E731
     for p in pages:
         sp = ShapeNotePage(load_binary(p.image))
         sp.find_staves()
@@ -739,7 +958,16 @@ def pdf_slides(path: Path) -> list[SlidePage]:
         has_text = sum(len(x) for x in p.paragraphs if x) > 20
         if not has_music:
             p.image = None if has_text else p.image
-        p.heading = f"{title} 1"
+        # PDFs exported from a slide deck keep each slide's title ("<Hymn> 2A", "CORO 1") in the
+        # text layer: use it when it names this hymn or the chorus, so verses and chorus separate.
+        heading = unicodedata.normalize("NFC", p.heading or "").strip()
+        m = SLIDE_SUFFIX.match(heading)
+        if CHORUS_HEADING.match(heading):
+            p.heading = heading
+        elif m and fold(m.group("title")) == fold(title):
+            p.heading = f"{title} {m.group('verse')}{m.group('page')}"
+        else:
+            p.heading = f"{title} 1"
     return [p for p in pages if p.image or any(p.paragraphs)]
 
 
@@ -771,22 +999,7 @@ def run_batch(
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     if transcriber is None:
-        load_env_file(Path(__file__).resolve().parent.parent / ".env")
-        if engine == "local":
-            transcriber = local_transcriber()
-        elif engine == "gemini":
-            key_ = api_key or os.environ.get("GEMINI_API_KEY")
-            if not key_:
-                raise SystemExit("Set GEMINI_API_KEY (or pass --api-key) to transcribe slide images.")
-            transcriber = gemini_transcriber(key_)
-        else:
-            has_profile = (Path.home() / ".config" / "anthropic").exists()
-            if not (os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN") or has_profile):
-                raise SystemExit(
-                    "No Anthropic credentials: add ANTHROPIC_API_KEY to services/hymn-studio/.env, "
-                    "export it, or run `ant auth login`."
-                )
-            transcriber = claude_transcriber()
+        transcriber = make_transcriber(engine, api_key)
     # Cache per engine so switching engines never reuses the other one's notes.
     transcribe = cached(transcriber, out / ".cache" / engine, use_cache)
 

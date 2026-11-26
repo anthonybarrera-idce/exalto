@@ -24,6 +24,8 @@ type Props = {
   follow: boolean
   /** Changes when the selection changes, to re-run "follow" */
   focusKey?: string
+  /** A click (not a drag) on the page, in page pixels: select the note or measure there */
+  onPick?: (x: number, y: number) => void
 }
 
 const MAX = 8
@@ -32,7 +34,7 @@ const MAX = 8
  * The page image with the detected noteheads drawn on top, zoomable and pannable:
  * pinch or ⌘/Ctrl + scroll to zoom at the pointer, scroll or drag to pan, buttons to zoom/fit.
  */
-export function ScanView({ src, alt, size: [W, H], heads, showOk, measure, note, label, pulse = 0, follow, focusKey }: Props) {
+export function ScanView({ src, alt, size: [W, H], heads, showOk, measure, note, label, pulse = 0, follow, focusKey, onPick }: Props) {
   const t = useT()
   const box = useRef<HTMLDivElement>(null)
   const [cw, setCw] = useState(0)
@@ -140,20 +142,34 @@ export function ScanView({ src, alt, size: [W, H], heads, showOk, measure, note,
     <div className="flex flex-col gap-2">
       <div
         ref={box}
-        className={cn("relative overflow-hidden rounded-md border bg-white select-none", view.s > MIN + 0.001 && "cursor-grab active:cursor-grabbing")}
+        className={cn(
+          "relative overflow-hidden rounded-md border bg-white select-none",
+          onPick ? "cursor-pointer" : view.s > MIN + 0.001 && "cursor-grab active:cursor-grabbing",
+          onPick && view.s > MIN + 0.001 && "active:cursor-grabbing",
+        )}
         style={{ height: ch || undefined }}
         onPointerDown={(e) => {
-          if (view.s <= MIN + 0.001) return
+          if (e.button !== 0) return
           drag.current = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y, moved: false }
           ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
         }}
         onPointerMove={(e) => {
           const d = drag.current
           if (!d) return
+          if (Math.hypot(e.clientX - d.x, e.clientY - d.y) > 4) d.moved = true
+          if (!d.moved || view.s <= MIN + 0.001) return
           setAnimate(false)
           setView(clamp({ s: view.s, x: d.vx + e.clientX - d.x, y: d.vy + e.clientY - d.y }))
         }}
-        onPointerUp={() => (drag.current = null)}
+        onPointerUp={(e) => {
+          const d = drag.current
+          drag.current = null
+          // A click (no drag) picks what's under the pointer.
+          if (d && !d.moved && onPick && e.detail < 2) {
+            const r = e.currentTarget.getBoundingClientRect()
+            onPick((e.clientX - r.left - view.x) / k, (e.clientY - r.top - view.y) / k)
+          }
+        }}
         onDoubleClick={(e) => {
           const r = e.currentTarget.getBoundingClientRect()
           zoomAt(view.s > 2.5 ? MIN / view.s : 2, e.clientX - r.left, e.clientY - r.top, true)

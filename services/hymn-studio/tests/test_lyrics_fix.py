@@ -34,3 +34,19 @@ def test_fixes_syllables_on_notes_when_count_matches():
     changes = correct_page(page)
     assert ("letta", "letra") in changes
     assert [n["syllable"] for n in notes] == ["le", "tra", "Glo", "ria,"]
+
+
+def test_keeps_prefixed_verbs_and_past_tense_whole():
+    from hymn_processor.lyrics_fix import correct_word
+
+    assert correct_word("reanima") == "reanima"  # not "re anima"
+    assert correct_word("trazó") == "trazó"  # past tense of trazar, not "trazo"
+    assert correct_word("venció") == "venció"
+
+
+def test_lowercase_letter_misread_as_capital_mid_word():
+    from hymn_processor.lyrics_fix import correct_word
+
+    assert correct_word("traZó") == "trazó"  # z/Z look alike: not "tra Zó"
+    assert correct_word("eresRey") == "eres Rey"  # a real capital still marks two words
+    assert correct_word("aTí") == "a Tí"

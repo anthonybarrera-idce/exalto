@@ -12,6 +12,8 @@ type Ctx = {
   remove: (slug: string) => Promise<boolean>
   job: Job
   startJob: (o: { inputs: string[]; engine: string; hymnal: string; tempo: number; correct: boolean }) => Promise<void>
+  /** Confirms, then reads an import again from its saved slides with Claude or Gemini; false if cancelled. */
+  reprocess: (slug: string, engine: "claude" | "gemini", correct: boolean) => Promise<boolean>
 }
 const StudioContext = createContext<Ctx>(null!)
 
@@ -57,8 +59,21 @@ export function StudioProvider({ children }: { children: ReactNode }) {
     await studio.convert(o)
   }
 
+  const reprocess: Ctx["reprocess"] = async (target, engine, correct) => {
+    const before = job
+    setJob({ running: true, log: [] })
+    try {
+      const started = await studio.reprocessHymn(target, engine, correct)
+      if (!started) setJob(before)
+      return started
+    } catch (e) {
+      setJob(before)
+      throw e
+    }
+  }
+
   return (
-    <StudioContext.Provider value={{ hymns, slug, detail, select: setSlug, refresh, remove, job, startJob }}>
+    <StudioContext.Provider value={{ hymns, slug, detail, select: setSlug, refresh, remove, job, startJob, reprocess }}>
       {children}
     </StudioContext.Provider>
   )
