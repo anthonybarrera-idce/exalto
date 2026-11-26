@@ -37,12 +37,17 @@ type Props = {
   shapesFifths?: number | null
   /** Scroll the view to keep the playback cursor in sight (off: the view stays where the user put it) */
   follow?: boolean
+  /**
+   * Sideways score only: keep the playhead in view by scrolling the score ourselves (instantly),
+   * e.g. while playing. Works when the window isn't focused, unlike OSMD's smooth follow.
+   */
+  followPlayhead?: boolean
 }
 
 const ACCENT = "#0ea5e9"
 
 /** Renders the score with OpenSheetMusicDisplay and moves a note cursor and a measure shade to `beat`. */
-export function ScoreView({ xml, beat, onHit, hint, voiceColors, horizontal = false, shapesFifths = null, follow = true }: Props) {
+export function ScoreView({ xml, beat, onHit, hint, voiceColors, horizontal = false, shapesFifths = null, follow = true, followPlayhead = false }: Props) {
   const host = useRef<HTMLDivElement>(null)
   const osmd = useRef<OpenSheetMusicDisplay | null>(null)
   const steps = useRef<number[]>([])
@@ -150,7 +155,20 @@ export function ScoreView({ xml, beat, onHit, hint, voiceColors, horizontal = fa
       o.cursors.forEach((k) => k.next())
       at.current++
     }
-  }, [beat, ready])
+    // Keep the playhead between 15% and 70% of the view; when it leaves, put it back at 30%.
+    // A direct scrollLeft (no smooth scrolling), so it keeps up when the window isn't focused.
+    if (followPlayhead && horizontal) {
+      const scroller = host.current?.closest(".overflow-x-auto") as HTMLElement | null
+      const el = o.cursors[0]?.cursorElement
+      if (scroller && el) {
+        const r = el.getBoundingClientRect()
+        const s = scroller.getBoundingClientRect()
+        if (r.width && (r.left < s.left + s.width * 0.15 || r.right > s.left + s.width * 0.7)) {
+          scroller.scrollLeft += r.left - (s.left + s.width * 0.3)
+        }
+      }
+    }
+  }, [beat, ready, followPlayhead, horizontal])
 
   // Shape notes: draw each notehead's shape over it (OSMD only draws round heads).
   useEffect(() => {

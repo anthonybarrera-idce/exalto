@@ -257,6 +257,7 @@ export function PracticePage() {
         <ScoreView
           horizontal
           follow={false}
+          followPlayhead={playing}
           shapesFifths={shapes ? (detail.review.key_fifths ?? 0) : null}
           xml={xml}
           beat={(time * base) / 60}
