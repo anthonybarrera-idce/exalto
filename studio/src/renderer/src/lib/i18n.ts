@@ -211,6 +211,8 @@ export const en = {
   "review.flagPage": "Page {page} · {pitch}",
   "review.shapeMismatch": "Its shape doesn’t match this note",
   "review.show": "Show",
+  "review.looksRightFlag": "Looks right",
+  "review.looksRightHint": "The note is already correct: take it off this list",
 
   // Note editor
   "voice.soprano": "Soprano",
@@ -737,6 +739,8 @@ export const es: Record<StringKey, string> = {
   "review.flagPage": "Página {page} · {pitch}",
   "review.shapeMismatch": "Su figura no coincide con esta nota",
   "review.show": "Mostrar",
+  "review.looksRightFlag": "Está bien",
+  "review.looksRightHint": "La nota ya es correcta: quitarla de esta lista",
 
   "voice.soprano": "Soprano",
   "voice.alto": "Contralto",

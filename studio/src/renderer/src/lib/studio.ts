@@ -11,7 +11,9 @@ export type Box = [number, number, number, number]
 export type Note = { pitch: string; dur: number; box?: Box; tie?: "start" | "stop" | "continue" | null; syllable?: string | null; syllabic?: "single" | "begin" | "middle" | "end" | null }
 export type Measure = { soprano: Note[]; alto: Note[]; tenor: Note[]; bass: Note[]; pickup?: boolean; box?: Box }
 export type Head = { x0: number; y0: number; x1: number; y1: number; pitch: string; ok: boolean; staff: number }
-export type Page = { measures: Measure[]; heads?: Head[]; size?: [number, number]; key_fifths?: number; time_signature?: string; tempo_bpm?: number; lyric_lines?: string[] }
+/** A notehead whose shape didn't match its pitch (centre point on the page image). */
+export type Flag = { x: number; y: number; pitch: string }
+export type Page = { measures: Measure[]; heads?: Head[]; review?: Flag[]; size?: [number, number]; key_fifths?: number; time_signature?: string; tempo_bpm?: number; lyric_lines?: string[] }
 export type Review = {
   /** "lyrics" for typed-lyrics decks (no score or audio) */
   kind?: "lyrics"

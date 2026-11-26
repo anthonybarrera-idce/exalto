@@ -17,6 +17,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useSound } from "@/hooks/use-sound"
 import { useStudio } from "@/hooks/use-studio"
 import { barLength, barStatus, groupBars } from "@/lib/notes"
+import { dismissFlag, displayHeads, openFlags, type OpenFlag } from "@/lib/flags"
 import type { HymnState, Plan } from "@/lib/ai-chat"
 import { cleanLyrics, lyricsToPlainText, parseLyricText } from "@/lib/lyric-blocks"
 import { useLocale } from "@/hooks/use-locale"
@@ -36,8 +37,13 @@ const drafts = new Map<string, { stamp: string; draft: Draft }>()
 const stampOf = (d: HymnDetail) => JSON.stringify([d.review.bpm, d.review.key_fifths, d.review.time_signature, d.transcription.pages.length, d.files.find((f) => f.name === "transcription.json")?.size])
 
 function fresh(d: HymnDetail): Draft {
+  const pages = structuredClone(d.transcription.pages)
+  // Older conversions keep flags only in review.json: give each page its list so they can be fixed here too.
+  if (!pages.some((p) => p.review)) {
+    pages.forEach((p, i) => (p.review = d.review.flagged.filter((f) => f.page === i + 1).map(({ x, y, pitch }) => ({ x, y, pitch }))))
+  }
   return {
-    pages: structuredClone(d.transcription.pages),
+    pages,
     fifths: d.review.key_fifths ?? 0,
     ts: d.review.time_signature || "4/4",
     bpm: d.review.bpm || 80,
@@ -90,7 +96,8 @@ function Review({ detail, go }: { detail: HymnDetail; go: (p: PageId) => void })
   const [W, H] = p.size ?? [2047, 1535]
   const barIdx = Math.min(selBar, bars.length - 1)
   const current = bars[barIdx]
-  const flagged = review.flagged
+  // Still-open flags, live from the draft: fixing the note (or "Looks right") takes one off the list.
+  const flagged = useMemo(() => openFlags(pages), [pages])
 
   // What to show on the page: the selected note (and its measure piece), else the measure's piece on this page.
   const selPiece = sel && current ? current.pieces[sel.piece] : undefined
@@ -179,6 +186,15 @@ function Review({ detail, go }: { detail: HymnDetail; go: (p: PageId) => void })
     setSelBar(i)
     setSel(null)
     setPage(bars[i].page)
+  }
+  // Jump to a flagged note: its page, its measure, and the note itself selected in the editor.
+  const showFlag = (f: OpenFlag) => {
+    setPage(f.pi)
+    const n = f.notes[0]
+    const bi = n ? bars.findIndex((b) => b.pieces.some((x) => x.pi === n.pi && x.mi === n.mi)) : -1
+    if (bi < 0) return
+    setSelBar(bi)
+    setSel({ piece: bars[bi].pieces.findIndex((x) => x.pi === n.pi && x.mi === n.mi), voice: n.voice, i: n.i })
   }
 
   // A click on the page image: the note under the pointer (clicking it again moves to the next
@@ -270,7 +286,7 @@ function Review({ detail, go }: { detail: HymnDetail; go: (p: PageId) => void })
               src={asset(slug, `pages/page${page + 1}.png`)}
               alt={t("review.page", { n: page + 1 })}
               size={[W, H]}
-              heads={p.heads ?? []}
+              heads={displayHeads(p, flagged, page)}
               showOk={showOk}
               measure={focus.measure}
               note={focus.note}
@@ -418,10 +434,13 @@ function Review({ detail, go }: { detail: HymnDetail; go: (p: PageId) => void })
               <div key={i} className="flex items-center gap-2.5 text-sm">
                 <TriangleAlert className="size-4 text-fuchsia-600" />
                 <div className="flex-1">
-                  <div className="font-medium">{t("review.flagPage", { page: f.page, pitch: noteName(f.pitch) })}</div>
+                  <div className="font-medium">{t("review.flagPage", { page: f.pi + 1, pitch: noteName(f.pitch) })}</div>
                   <div className="text-xs text-muted-foreground">{t("review.shapeMismatch")}</div>
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => setPage(f.page - 1)}>{t("review.show")}</Button>
+                <Button variant="ghost" size="sm" onClick={() => showFlag(f)}>{t("review.show")}</Button>
+                <Button variant="ghost" size="sm" title={t("review.looksRightHint")} onClick={() => change((ps) => dismissFlag(ps, f.pi, f.fi))}>
+                  <Check /> {t("review.looksRightFlag")}
+                </Button>
               </div>
             ))}
           </Card>

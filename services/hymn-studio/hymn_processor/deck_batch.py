@@ -809,6 +809,46 @@ def measure_warnings(pages: list[dict]) -> list[str]:
     return out
 
 
+FLAG_TOLERANCE = 6  # pixels: a flagged head's centre may sit just outside its note's box
+
+
+def notes_at(page: dict, x: float, y: float) -> list[dict]:
+    """The notes (any voice) whose box on this page holds the point (a flagged notehead's centre)."""
+    t = FLAG_TOLERANCE
+    return [
+        n for m in page.get("measures", []) for v in VOICES for n in m.get(v, [])
+        if n.get("box") and n["box"][0] - t <= x <= n["box"][2] + t and n["box"][1] - t <= y <= n["box"][3] + t
+    ]
+
+
+def flag_fixed(page: dict, flag: dict) -> bool:
+    """A shape/pitch mismatch counts as fixed once the reviewer changed a note under it. Any voice
+    counts: a unison head is two voices' notes, and the reviewer edits one of them."""
+    return any(n.get("pitch") != flag.get("pitch") for n in notes_at(page, flag["x"], flag["y"]))
+
+
+def resolve_flags(pages: list[dict]) -> list[dict]:
+    """Drop the flags whose note was edited (and mark their heads as checked); return what's left,
+    with page numbers, for review.json."""
+    out: list[dict] = []
+    for pi, p in enumerate(pages, start=1):
+        keep = []
+        for f in p.get("review", []) or []:
+            if flag_fixed(p, f):
+                for h in p.get("heads", []) or []:
+                    if h["x0"] <= f["x"] <= h["x1"] and h["y0"] <= f["y"] <= h["y1"]:
+                        h["ok"] = True
+            else:
+                keep.append(f)
+        p["review"] = keep
+        out += [dict(f, page=pi) for f in keep]
+    return out
+
+
+def flag_warnings(flagged: list[dict]) -> list[str]:
+    return [f"Page {f['page']}: notehead at x={f['x']}, y={f['y']} ({f['pitch']}) doesn't match its shape — check it." for f in flagged]
+
+
 _LETTERS = "FCGDAEB"  # order sharps are added; flats are added in reverse
 
 
@@ -885,16 +925,21 @@ def apply_edits(hymn_dir: str | Path, respell_from: int | None = None, audio: bo
                 for v in VOICES:
                     for n in m.get(v, []):
                         n["pitch"] = respell(str(n.get("pitch", "REST")), respell_from, fifths)
+            # Flags name pitches too: re-read them the same way, so a key fix alone doesn't clear them.
+            for f in pg.get("review", []) or []:
+                f["pitch"] = respell(str(f.get("pitch", "")), respell_from, fifths)
         pg["key_fifths"], pg["time_signature"] = fifths, ts
     first["tempo_bpm"] = bpm
+    # Pages without a "review" list (very old conversions) keep review.json's flags as they were.
+    flagged = resolve_flags(pages) if any("review" in p for p in pages) else review.get("flagged", [])
     tfile.write_text(json.dumps(t, ensure_ascii=False, indent=2))
     files = rebuild_score(d)
 
     bar = _bar_length(ts)
     joined = join_split_measures([m for p in pages for m in p.get("measures", [])], bar)
-    keep = [w for w in review.get("warnings", []) if not w.startswith("Measure ")]
-    review.update(bpm=bpm, key_fifths=fifths, time_signature=ts, measures=len(joined),
-                  warnings=keep + measure_warnings(pages), edited=True)
+    keep = [w for w in review.get("warnings", []) if not w.startswith("Measure ") and "doesn't match its shape" not in w]
+    review.update(bpm=bpm, key_fifths=fifths, time_signature=ts, measures=len(joined), flagged=flagged,
+                  warnings=keep + flag_warnings(flagged) + measure_warnings(pages), edited=True)
     rfile.write_text(json.dumps(review, ensure_ascii=False, indent=2))
     warn = d / "WARNINGS.txt"
     if review["warnings"]:
