@@ -155,20 +155,50 @@ export function ScoreView({ xml, beat, onHit, hint, voiceColors, horizontal = fa
       o.cursors.forEach((k) => k.next())
       at.current++
     }
-    // Keep the playhead between 15% and 70% of the view; when it leaves, put it back at 30%.
-    // A direct scrollLeft (no smooth scrolling), so it keeps up when the window isn't focused.
+    // The staff moves along with the music: once the playhead passes 40% of the view (or falls
+    // behind 10%), glide it back to 30%. Short, frequent glides read as one steady motion. Driven by
+    // our own frames (not CSS smooth scrolling), so it keeps going when the window isn't focused.
     if (followPlayhead && horizontal) {
       const scroller = host.current?.closest(".overflow-x-auto") as HTMLElement | null
       const el = o.cursors[0]?.cursorElement
       if (scroller && el) {
         const r = el.getBoundingClientRect()
         const s = scroller.getBoundingClientRect()
-        if (r.width && (r.left < s.left + s.width * 0.15 || r.right > s.left + s.width * 0.7)) {
-          scroller.scrollLeft += r.left - (s.left + s.width * 0.3)
+        // (Not again while a glide is under way: restarting it every frame would only creep.)
+        if (!gliding.current && r.width && (r.left < s.left + s.width * 0.1 || r.left > s.left + s.width * 0.4)) {
+          glideTo(scroller, scroller.scrollLeft + r.left - (s.left + s.width * 0.3), s.width)
         }
       }
     }
   }, [beat, ready, followPlayhead, horizontal])
+  useEffect(() => () => cancelAnimationFrame(glide.current), [])
+  const glide = useRef(0)
+  const gliding = useRef(false)
+  // Pausing stops a glide where it is.
+  useEffect(() => {
+    if (!followPlayhead) (cancelAnimationFrame(glide.current), (gliding.current = false))
+  }, [followPlayhead])
+  const glideTo = (el: HTMLElement, to: number, view: number) => {
+    cancelAnimationFrame(glide.current)
+    gliding.current = false
+    const from = el.scrollLeft
+    // A seek far away, or reduced motion: no glide, just go there.
+    if (Math.abs(to - from) > view || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      el.scrollLeft = to
+      return
+    }
+    const t0 = performance.now()
+    const ms = 450
+    const step = (now: number) => {
+      const k = Math.min(1, (now - t0) / ms)
+      const ease = k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2 // ease in-out
+      el.scrollLeft = from + (to - from) * ease
+      if (k < 1) glide.current = requestAnimationFrame(step)
+      else gliding.current = false
+    }
+    gliding.current = true
+    glide.current = requestAnimationFrame(step)
+  }
 
   // Shape notes: draw each notehead's shape over it (OSMD only draws round heads).
   useEffect(() => {
