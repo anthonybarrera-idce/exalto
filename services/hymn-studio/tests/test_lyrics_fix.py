@@ -50,3 +50,24 @@ def test_lowercase_letter_misread_as_capital_mid_word():
     assert correct_word("traZó") == "trazó"  # z/Z look alike: not "tra Zó"
     assert correct_word("eresRey") == "eres Rey"  # a real capital still marks two words
     assert correct_word("aTí") == "a Tí"
+
+
+def test_rejoins_words_that_lost_their_hyphen():
+    # Más De Jesús: OCR drops the hyphen and leaves the pieces; each piece alone became a wrong word.
+    page = {"lyric_lines": ["Más de Jesús deseo sab er,", "Más de su salvación g0zar,", "Más semejantea él set é,", "Más su gran nombre alab ar."], "measures": []}
+    changes = correct_page(page)
+    assert page["lyric_lines"] == ["Más de Jesús deseo saber,", "Más de su salvación gozar,", "Más semejante a él seré,", "Más su gran nombre alabar."]
+    assert ("set é", "seré") in changes and ("sab er", "saber") in changes
+
+
+def test_keeps_verbs_with_an_attached_pronoun():
+    assert correct_line("Más quiero honrarle,")[0] == "Más quiero honrarle,"
+
+
+def test_repairs_split_syllables_on_the_notes():
+    raw = [("sa b", "single"), ("er,", "single"), ("go z", "single"), ("ar,", "single"), ("a", "begin"), ("la b", "end"), ("ar.", "single")]
+    notes = [{"pitch": "A4", "dur": 1, "syllable": s, "syllabic": sy} for s, sy in raw]
+    page = {"lyric_lines": ["sab er, goz ar, alab ar."], "measures": [{"soprano": notes}]}
+    correct_page(page)
+    assert [(n["syllable"], n["syllabic"]) for n in notes] == [
+        ("sa", "begin"), ("ber,", "end"), ("go", "begin"), ("zar,", "end"), ("a", "begin"), ("la", "middle"), ("bar.", "end")]

@@ -510,6 +510,48 @@ def admin_text(sections: list[dict]) -> str:
 
 # --------------------------------------------------------------------------- pipeline
 
+def _music(page: dict) -> list[tuple[str, float]]:
+    """A page's melody and bass line, to compare pages by their music (lyrics differ per verse)."""
+    return [(str(n.get("pitch")), float(n.get("dur") or 0)) for m in page.get("measures", []) for v in ("soprano", "bass") for n in m.get(v, [])]
+
+
+def same_music(a: dict, b: dict, threshold: float = 0.85) -> bool:
+    """Two pages with the same notes (allowing a few misread ones)."""
+    from difflib import SequenceMatcher
+
+    x, y = _music(a), _music(b)
+    return bool(x and y) and SequenceMatcher(None, x, y, autojunk=False).ratio() >= threshold
+
+
+def split_by_repeats(pages: list[dict]) -> tuple[int, int, list[int], int] | None:
+    """Verses and chorus of a deck whose slides don't say which is which, from the music itself.
+
+    Each verse starts again on the first page's music. Returns (verse pages, chorus pages, the page
+    index where each verse starts, how many times the chorus is shown), or None when the pages don't
+    repeat that way. Example: verse A B, chorus C B, then verses A B, A B → (2, 2, [0, 4, 6], 1).
+    """
+    n = len(pages)
+    starts = [0] + [i for i in range(1, n) if same_music(pages[i], pages[0])]
+    if len(starts) < 2:
+        return None
+    lens = [b - a for a, b in zip(starts, starts[1:] + [n])]
+    verse = min(lens[1:])
+    chorus = lens[0] - verse
+    if verse < 1 or chorus < 0:
+        return None
+    times = 1 if chorus else 0
+    for s, length in zip(starts[1:], lens[1:]):
+        if length not in (verse, verse + chorus):
+            return None
+        if not all(same_music(pages[s + k], pages[k]) for k in range(verse)):
+            return None
+        if length == verse + chorus and chorus:
+            if not all(same_music(pages[s + verse + k], pages[verse + k]) for k in range(chorus)):
+                return None
+            times += 1
+    return verse, chorus, starts, times
+
+
 def convert_hymn(
     hymn: DeckHymn,
     transcribe: Transcriber,
@@ -542,6 +584,35 @@ def convert_hymn(
         (res.out_dir / "pages" / f"page{n}.{p.image_ext}").write_bytes(p.image)
         pages.append(transcribe(p))
 
+    # Slides without verse/chorus headings all land in verse 1. When the music repeats (verse 2
+    # starts on verse 1's first page again), split them into verses and a chorus. Headings with
+    # page letters ("Himno 1", "Himno 1A") already say how the deck is laid out: trust those. The
+    # same "Himno 1" on every slide says nothing.
+    read: dict[str | None, dict] = {}
+    from .slides import SLIDE_SUFFIX
+
+    heads = [SLIDE_SUFFIX.match(unicodedata.normalize("NFC", p.heading or "").strip()) for p in hymn.verse_pages]
+    numbered = any(m and m.group("page") for m in heads)
+    if (len(hymn.verses) == 1 and not hymn.chorus and not numbered and not keep_extra
+            and (layout := split_by_repeats(pages))):
+        n_verse, n_chorus, starts, times = layout
+        slides = hymn.verses[0].pages
+        read = {s.sha: t for s, t in zip(slides, pages)}
+        hymn.verses = [VerseSlides(1, slides[:n_verse])] + [
+            VerseSlides(k, slides[s : s + n_verse]) for k, s in enumerate(starts[1:], start=2)
+        ]
+        hymn.chorus = slides[n_verse : n_verse + n_chorus]
+        hymn.chorus_times = times
+        pages = pages[: n_verse + n_chorus]
+        for old in (res.out_dir / "pages").iterdir():
+            if re.fullmatch(r"page\d+\.\w+", old.name):
+                old.unlink()
+        for n, p in enumerate(hymn.music_pages, start=1):
+            (res.out_dir / "pages" / f"page{n}.{p.image_ext}").write_bytes(p.image)
+        music_shas = [p.sha for p in hymn.music_pages]
+        log(f"  • slides have no verse headings: the music repeats, so {len(hymn.verses)} verses"
+            + (f" and a chorus ({n_chorus} pages)" if n_chorus else ""))
+
     # Only verses whose slides differ from verse 1 carry new lyrics.
     extra_pages: list[list[dict]] = []
     for v in hymn.verses[1:]:
@@ -554,7 +625,7 @@ def convert_hymn(
         # Keep the verse's slides too, so the hymn can be read again later (reprocess with AI).
         for k, p in enumerate(v.pages, start=1):
             (res.out_dir / "pages" / f"verse{v.number}-{k}.{p.image_ext}").write_bytes(p.image)
-        extra_pages.append([transcribe(p) for p in v.pages])
+        extra_pages.append([read.get(p.sha) or transcribe(p) for p in v.pages])
     if keep_extra:
         extra_pages += keep_extra
 

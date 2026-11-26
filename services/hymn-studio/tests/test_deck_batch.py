@@ -231,3 +231,24 @@ def test_chorus_lyrics_get_their_own_section(tmp_path):
     assert [(s["type"], s.get("number")) for s in doc["lyrics"]] == [("verse", 1), ("chorus", None), ("verse", 2)]
     assert doc["lyrics"][1]["lines"] == ["allí no habrá llanto"]
     assert doc["repeatChorus"] is True
+
+
+def _music_page(tune: str) -> dict:
+    notes = [{"pitch": p, "dur": 1.0} for p in tune.split()]
+    return {"measures": [{"soprano": notes, "alto": [], "tenor": [], "bass": notes}]}
+
+
+def test_untitled_slides_split_into_verses_and_chorus_by_repeated_music():
+    from hymn_processor.deck_batch import split_by_repeats
+
+    A, B, C = "C4 D4 E4 F4", "G4 A4 B4 C5", "E4 E4 D4 D4"
+    # Más De Jesús: verse A B, chorus C B, then verses 2-4 as A B with no chorus slides.
+    assert split_by_repeats([_music_page(t) for t in (A, B, C, B, A, B, A, B, A, B)]) == (2, 2, [0, 4, 6, 8], 1)
+    # A chorus shown after every verse can't be told from a 2-page verse: it stays part of it.
+    assert split_by_repeats([_music_page(t) for t in (A, C, A, C)]) == (2, 0, [0, 2], 0)
+    # A plain strophic hymn: one page per verse.
+    assert split_by_repeats([_music_page(A)] * 3) == (1, 0, [0, 1, 2], 0)
+    # One long score that never repeats stays as it is.
+    assert split_by_repeats([_music_page(t) for t in (A, B, C)]) is None
+    # Music coming back mid-score (A B A C) isn't a new verse.
+    assert split_by_repeats([_music_page(t) for t in (A, B, A, C)]) is None

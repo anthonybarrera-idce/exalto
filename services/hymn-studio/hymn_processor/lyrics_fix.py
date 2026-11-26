@@ -96,6 +96,13 @@ def correct_word(word: str) -> str:
     m = re.match(r"^(.+)([aei])d$", lower)
     if m and is_known(m.group(1) + m.group(2) + "r"):
         return word
+    # A verb with its pronoun attached ("honrarle", "amarte", "seguirlo") is one word.
+    m = re.match(r"^(.+?[aeiáéí]r)(les|los|las|nos|le|la|lo|me|te|se)$", lower)
+    if m and is_known(m.group(1)):
+        return word
+    # A one-letter word run onto the end ("semejantea" → "semejante a") beats dropping the letter.
+    if lower[-1:] in ("a", "y", "o", "e") and len(lower) > 4 and is_known(lower[:-1]):
+        return f"{word[:-1]} {word[-1]}"
     # Two common words run together ("deél" → "de él") beat a one-letter change ("del").
     hymn, _ = _vocab()
     for i in range(1, len(word)):
@@ -130,6 +137,93 @@ def _distance(a: str, b: str) -> int:
             cur.append(min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (ca != cb)))
         prev = cur
     return prev[-1]
+
+
+LETTER = "A-Za-zÁÉÍÓÚÑÜáéíóúñü"
+
+
+def fix_digits(text: str) -> str:
+    """OCR reads an o inside a word as a zero ("g0zar")."""
+    return re.sub(rf"(?<=[{LETTER}])0|0(?=[{LETTER}])", "o", text)
+
+
+def _should_join(a: str, b: str) -> bool:
+    """Whether two neighbouring OCR pieces are one word that lost its hyphen ("sab er", "set é")."""
+    joined = a + b
+    if is_known(joined) and not (is_known(a) and is_known(b)):
+        return True
+    fragment = (len(a) <= 2 and not is_known(a)) or (len(b) <= 2 and not is_known(b))
+    if fragment:
+        fixed = correct_word(joined)
+        return " " not in fixed and fixed.lower() != joined.lower() and is_known(fixed) and _distance(joined.lower(), fixed.lower()) <= 1
+    return False
+
+
+def rejoin_fragments(line: str) -> tuple[str, list[tuple[str, str]]]:
+    """Join the pieces of a word OCR split apart when it lost the hyphen ("sab er" → "saber",
+    "goz ar" → "gozar", "set é" → "seté", which the spell check then makes "seré"). Run before
+    correcting: on its own each piece would be "corrected" into a different word ("sabe el").
+    Returns the line and the joins made."""
+    chunks = fix_digits(line).split(" ")
+    changes: list[tuple[str, str]] = []
+    i = 0
+    while i < len(chunks) - 1:
+        a = re.fullmatch(rf"([^{LETTER}]*)([{LETTER}]+)", chunks[i])  # no punctuation after a
+        b = re.fullmatch(rf"([{LETTER}]+)([^{LETTER}]*)", chunks[i + 1])  # none before b
+        if a and b and _should_join(a.group(2), b.group(1)):
+            changes.append((f"{a.group(2)} {b.group(1)}", a.group(2) + b.group(1)))
+            chunks[i : i + 2] = [chunks[i] + chunks[i + 1]]
+            continue
+        i += 1
+    return " ".join(chunks), changes
+
+
+def _fragment(s: str) -> bool:
+    """A lone consonant: a piece of a word, never a word itself (unlike "a", "y", "o", "e")."""
+    return len(s) == 1 and s.isalpha() and s.lower() not in "aeiouyáéíóú"
+
+
+def repair_note_syllables(notes: list[dict], line_words: set[str]) -> None:
+    """Fix OCR splits on the soprano syllables, using the corrected lyric lines as the reference.
+
+    - A stray letter inside a syllable goes where it belongs: "sa b" / "er," → "sa" / "ber,";
+      "d er," → "der,".
+    - Neighbouring words that form one word of the lines become one word on the notes
+      ("go" "zar" → go-zar, "a-la" "bar" → a-la-bar).
+    """
+    for n in notes:
+        n["syllable"] = fix_digits(n["syllable"])
+    for k, n in enumerate(notes):
+        parts = n["syllable"].split(" ")
+        if len(parts) == 2 and _fragment(parts[1].strip()) and k + 1 < len(notes):
+            n["syllable"] = parts[0]
+            notes[k + 1]["syllable"] = parts[1].strip() + notes[k + 1]["syllable"].lstrip()
+        elif len(parts) == 2 and _fragment(parts[0].strip()):
+            n["syllable"] = parts[0].strip() + parts[1]
+
+    # Words on the notes: runs of begin/middle… end, or a single.
+    words: list[list[dict]] = []
+    for n in notes:
+        if words and words[-1][-1].get("syllabic") in ("begin", "middle") and n.get("syllabic") in ("middle", "end"):
+            words[-1].append(n)
+        else:
+            words.append([n])
+    text = lambda w: "".join(x["syllable"] for x in w)
+    alpha = lambda s: re.fullmatch(rf"[^{LETTER}]*([{LETTER}]+)[^{LETTER}]*", s)
+    k = 0
+    while k < len(words) - 1:
+        a, b = text(words[k]), text(words[k + 1])
+        ma, mb = alpha(a), alpha(b)
+        ok = ma and mb and re.fullmatch(rf"[^{LETTER}]*[{LETTER}]+", a)  # no punctuation between
+        if ok:
+            wa, wb = ma.group(1).lower(), mb.group(1).lower()
+            if (wa + wb) in line_words and not (wa in line_words and wb in line_words):
+                merged = words[k] + words[k + 1]
+                for i, x in enumerate(merged):
+                    x["syllabic"] = "begin" if i == 0 else "end" if i == len(merged) - 1 else "middle"
+                words[k : k + 2] = [merged]
+                continue
+        k += 1
 
 
 def correct_line(line: str) -> tuple[str, list[tuple[str, str]]]:
@@ -238,13 +332,18 @@ def correct_page(page: dict) -> list[tuple[str, str]]:
     for line in page.get("lyric_lines") or []:
         # Join printed syllables first ("Se-ñor" -> "Señor") so whole words are checked.
         line = re.sub(r"(?<=\w)\s*-\s*(?=\w)", "", line).replace("_", " ")
-        new, ch = correct_line(line)
+        joined, joins = rejoin_fragments(line)
+        new, ch = correct_line(joined)
         fixed_lines.append(new)
-        changes += ch
+        # Report a join that was then corrected once: "set é" → "seré", not "set é" → "seté" → "seré".
+        fixed = dict(ch)
+        changes += [(old, fixed.pop(mid, mid)) for old, mid in joins]
+        changes += [(old, new) for old, new in ch if old in fixed]
     page["lyric_lines"] = fixed_lines
 
     # Rebuild words from the soprano syllables and fix them on the notes.
     notes = [n for m in page.get("measures", []) for n in m.get("soprano", []) if n.get("syllable")]
+    repair_note_syllables(notes, {w.lower() for l in fixed_lines for w in WORD.findall(l)})
     i = 0
     while i < len(notes):
         j = i
