@@ -13,7 +13,7 @@
     "converter": "node scripts/build-converter.cjs",
     "dist:mac": "electron-vite build && node scripts/build-converter.cjs && electron-builder --mac",
     "dist:win": "electron-vite build && node scripts/build-converter.cjs && electron-builder --win",
-    "dist:mac:signed": "electron-vite build && node scripts/build-converter.cjs && electron-builder --mac -c.mac.notarize=true"
+    "dist:mac:signed": "node scripts/notarize-lib.cjs --check && electron-vite build && node scripts/build-converter.cjs && electron-builder --mac -c.mac.notarize=false -c.afterSign=scripts/notarize.cjs -c.afterAllArtifactBuild=scripts/notarize-dmg.cjs"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.5",

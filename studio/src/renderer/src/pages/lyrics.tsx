@@ -10,22 +10,31 @@ import { useStudio } from "@/hooks/use-studio"
 import { cleanLyrics, lyricsToPlainText, parseLyricText } from "@/lib/lyric-blocks"
 import { studio, type HymnDetail, type LyricSection } from "@/lib/studio"
 import { SyllableEditor } from "@/components/syllable-editor"
+import { AiSpellcheckCard } from "@/components/ai-spellcheck-card"
+import { applyToNotes, applyToSections, type ReviewItem } from "@/lib/ai-spellcheck"
+import type { PageId } from "@/App"
 import { useT } from "@/hooks/use-locale"
 
 /** The saved lyrics as blocks: hymn.json's sections, or lyrics.txt split into blocks if those are empty. */
 const savedSections = (d: HymnDetail): LyricSection[] => (d.hymn.lyrics?.length ? d.hymn.lyrics : parseLyricText(d.lyricsText ?? ""))
 
-export function LyricsPage() {
+export function LyricsPage({ go }: { go?: (p: PageId) => void }) {
   const { detail, refresh } = useStudio()
   const t = useT()
   const [sections, setSections] = useState<LyricSection[]>([])
   const [repeatChorus, setRepeatChorus] = useState(false)
   const [reverted, setReverted] = useState<Set<number>>(new Set())
+  // AI fixes the user accepted since the last save: also put on the notes' syllables when saving.
+  const [aiFixes, setAiFixes] = useState<{ original: string; suggestion: string }[]>([])
+  const [aiReset, setAiReset] = useState(0)
   const reset = () => {
     if (!detail) return
     setSections(savedSections(detail))
     setRepeatChorus(!!detail.hymn.repeatChorus)
+    setAiFixes([])
   }
+  // Discarding edits also clears the AI list (its accepted fixes were among the edits).
+  const discard = () => (reset(), setAiReset((n) => n + 1))
   useEffect(() => {
     reset()
     setReverted(new Set())
@@ -51,11 +60,39 @@ export function LyricsPage() {
     setSections(next)
     setReverted(new Set([...reverted, i]))
   }
+  // Accepted AI fixes go into the text now (saved with "Save lyrics"); returns the ones whose word is gone.
+  const acceptAi = (items: ReviewItem[]) => {
+    let next = sections
+    const missed: ReviewItem[] = []
+    const applied: { original: string; suggestion: string }[] = []
+    for (const i of items) {
+      const r = applyToSections(next, i)
+      if (r) (next = r, applied.push({ original: i.original, suggestion: i.suggestion }))
+      else missed.push(i)
+    }
+    setSections(next)
+    setAiFixes([...aiFixes, ...applied])
+    if (missed.length) toast.error(t("lyrics.gone", { word: missed.map((i) => i.original).join(", ") }))
+    return missed
+  }
   const save = async () => {
     const clean = cleanLyrics(sections)
     await studio.saveLyrics(detail.slug, lyricsToPlainText(clean), clean)
     if (repeatChorus !== !!detail.hymn.repeatChorus) await studio.saveDetails(detail.slug, { repeatChorus })
-    toast.success(t("lyrics.saved"))
+    let notesChanged = 0
+    if (aiFixes.length && detail.review.kind !== "lyrics") {
+      const r = applyToNotes(detail.transcription.pages, aiFixes)
+      if (r.changed) {
+        try {
+          await studio.saveSyllables(detail.slug, r.pages)
+          notesChanged = r.changed
+        } catch (e) {
+          toast.error(t("ai.notesFailed"), { description: String(e).slice(0, 300) })
+        }
+      }
+    }
+    setAiFixes([])
+    toast.success(t("lyrics.saved"), notesChanged ? { description: t("ai.notesUpdated", { count: notesChanged }) } : undefined)
     refresh()
   }
 
@@ -66,7 +103,7 @@ export function LyricsPage() {
         sub={detail.review.kind === "lyrics" ? t("lyrics.subTyped") : t("lyrics.subScanned")}
         badge={corrections.length ? <Badge className="bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300">{t("lyrics.corrected", { count: corrections.length })}</Badge> : undefined}
       >
-        <Button variant="outline" disabled={!dirty} onClick={reset}>{t("lyrics.discard")}</Button>
+        <Button variant="outline" disabled={!dirty} onClick={discard}>{t("lyrics.discard")}</Button>
         <Button disabled={!dirty} onClick={save}><Save />{t("lyrics.save")}</Button>
       </PageHeader>
       <div className="grid grid-cols-[1fr_340px] gap-5">
@@ -78,6 +115,13 @@ export function LyricsPage() {
           <LyricsEditor sections={sections} onChange={setSections} repeatChorus={repeatChorus} onRepeatChorusChange={setRepeatChorus} />
         </Card>
         <div className="flex flex-col gap-4">
+          <AiSpellcheckCard
+            sections={sections}
+            language={detail.hymn.language === "en" ? "en" : "es"}
+            resetKey={`${detail.slug}:${aiReset}`}
+            onAccept={acceptAi}
+            openSettings={go && (() => go("settings"))}
+          />
           <Card className="gap-3 p-5">
             <div className="flex items-center gap-2 text-sm font-semibold">{t("lyrics.corrections")} <Badge variant="secondary">{corrections.length}</Badge></div>
             {corrections.length === 0 && <div className="text-sm text-muted-foreground">{t("lyrics.noCorrections")}</div>}

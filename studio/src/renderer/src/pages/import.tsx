@@ -1,5 +1,5 @@
-import { Link2, Loader2, Trash2, Upload, X } from "lucide-react"
-import { useMemo, useState } from "react"
+import { Link2, Loader2, Sparkles, Trash2, Upload, X } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 import type { PageId } from "@/App"
 import { PageHeader } from "@/components/page-header"
@@ -15,7 +15,18 @@ import { studio } from "@/lib/studio"
 import { useLocale } from "@/hooks/use-locale"
 
 export function ImportPage({ go }: { go: (p: PageId) => void }) {
-  const { job, startJob, hymns, select, remove } = useStudio()
+  const { job, startJob, hymns, select, remove, reprocess } = useStudio()
+  // Reading an import again with AI uses Claude when its key is saved, else Gemini.
+  const [aiEngine, setAiEngine] = useState<"claude" | "gemini" | null>(null)
+  useEffect(() => {
+    studio.keyStatus().then((s) => setAiEngine(s.anthropic ? "claude" : s.gemini ? "gemini" : null), () => setAiEngine(null))
+  }, [])
+  const aiName = aiEngine === "claude" ? "Claude" : "Gemini"
+  const readAgain = (slug: string, title: string) =>
+    reprocess(slug, aiEngine!, correct).then(
+      (started) => started && toast(t("import.reprocessStarted", { title, provider: aiName })),
+      (e) => toast.error(t("import.reprocessFailed", { error: String(e?.message ?? e).replace(/^Error invoking remote method '[^']+': (Error: )?/, "") })),
+    )
   const { t, plural, hymnal: hymnalLabel } = useLocale()
   const [inputs, setInputs] = useState<string[]>([])
   const [link, setLink] = useState("")
@@ -150,6 +161,18 @@ export function ImportPage({ go }: { go: (p: PageId) => void }) {
               ),
               <div className="flex items-center gap-1">
                 <Button variant="outline" size="sm" onClick={() => (select(h.slug), go(h.kind === "lyrics" ? "lyrics" : "review"))}>{t("import.review")}</Button>
+                {h.kind !== "lyrics" && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label={aiEngine ? t("import.reprocess", { title: h.title, provider: aiName }) : t("import.reprocessNeedsKey")}
+                    title={aiEngine ? t("import.reprocess", { title: h.title, provider: aiName }) : t("import.reprocessNeedsKey")}
+                    disabled={job.running || !aiEngine}
+                    onClick={() => readAgain(h.slug, h.title)}
+                  >
+                    <Sparkles />
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   size="icon"

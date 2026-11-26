@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react"
+import { ArrowDown, ArrowUp, Plus, Trash2, WrapText } from "lucide-react"
 import { useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { useLocale } from "@/hooks/use-locale"
-import { lyricsToPlainText, parseLyricText, renumber } from "@/lib/lyric-blocks"
+import { balanceLines, lyricsToPlainText, parseLyricText, renumber } from "@/lib/lyric-blocks"
 import type { LyricSection } from "@/lib/studio"
 
 const TYPES = ["verse", "chorus", "bridge"] as const
@@ -68,6 +68,18 @@ export function LyricsEditor({
             <div className="flex items-center gap-2">
               <Badge variant={s.type === "chorus" ? "default" : "secondary"}>{label(s)}</Badge>
               <div className="ml-auto flex">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="size-7"
+                  aria-label={t("lyricsEditor.balance")}
+                  title={t("lyricsEditor.balance")}
+                  disabled={s.lines.join(" ").trim() === "" || balanceLines(s.lines).join("\n") === s.lines.join("\n")}
+                  onClick={() => setSections((all) => all.map((x, j) => (j === i ? { ...x, lines: balanceLines(x.lines) } : x)))}
+                >
+                  <WrapText />
+                </Button>
                 <Button type="button" variant="ghost" size="icon" className="size-7" disabled={i === 0} aria-label={t("lyricsEditor.moveUp")} onClick={() => move(i, -1)}><ArrowUp /></Button>
                 <Button type="button" variant="ghost" size="icon" className="size-7" disabled={i === sections.length - 1} aria-label={t("lyricsEditor.moveDown")} onClick={() => move(i, 1)}><ArrowDown /></Button>
                 <Button type="button" variant="ghost" size="icon" className="size-7" aria-label={t("lyricsEditor.remove")} onClick={() => setSections((all) => all.filter((_, j) => j !== i))}><Trash2 /></Button>

@@ -181,6 +181,41 @@ function Review({ detail, go }: { detail: HymnDetail; go: (p: PageId) => void })
     setPage(bars[i].page)
   }
 
+  // A click on the page image: the note under the pointer (clicking it again moves to the next
+  // voice sharing that notehead, e.g. a unison), else the measure there.
+  const pickOnPage = (x: number, y: number) => {
+    const pad = 6
+    const inside = (b?: number[] | null, d = 0) => !!b && x >= b[0] - d && x <= b[2] + d && y >= b[1] - d && y <= b[3] + d
+    const hits: { bar: number; sel: Sel; area: number }[] = []
+    let measureHit: number | null = null
+    bars.forEach((b, bi) =>
+      b.pieces.forEach((pc, piece) => {
+        if (pc.pi !== page) return
+        const m = pages[pc.pi].measures[pc.mi]
+        if (!m) return
+        if (inside(m.box)) measureHit ??= bi
+        for (const voice of ["soprano", "alto", "tenor", "bass"] as const) {
+          m[voice].forEach((n, i) => {
+            if (n.pitch !== "REST" && inside(n.box, pad)) hits.push({ bar: bi, sel: { piece, voice, i }, area: (n.box![2] - n.box![0]) * (n.box![3] - n.box![1]) })
+          })
+        }
+      }),
+    )
+    if (hits.length) {
+      hits.sort((a, b) => a.area - b.area)
+      const same = (a: Sel, b: Sel | null) => !!b && a.piece === b.piece && a.voice === b.voice && a.i === b.i
+      const at = hits.findIndex((h) => h.bar === barIdx && same(h.sel, sel))
+      const next = hits[at >= 0 ? (at + 1) % hits.length : 0]
+      setSelBar(next.bar)
+      setSel(next.sel)
+      return
+    }
+    if (measureHit !== null) {
+      setSelBar(measureHit)
+      setSel(null)
+    }
+  }
+
   return (
     <>
       <PageHeader
@@ -243,7 +278,9 @@ function Review({ detail, go }: { detail: HymnDetail; go: (p: PageId) => void })
               pulse={pulse}
               follow={follow}
               focusKey={`${page}:${barIdx}:${sel ? `${sel.piece}.${sel.voice}.${sel.i}` : "-"}`}
+              onPick={pickOnPage}
             />
+            <div className="text-xs text-muted-foreground">{t("review.clickToSelect")}</div>
             {!focus.measure && current?.pieces.some((x) => x.pi === page) && (
               <div className="text-xs text-muted-foreground">{t("review.noBoxes")}</div>
             )}

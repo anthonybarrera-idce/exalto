@@ -1,4 +1,4 @@
-import { Download, Headphones, Music, Settings, Share, Type, BookOpen, ChevronRight, Library, LibraryBig } from "lucide-react"
+import { Download, Headphones, Music, Settings, Share, Smartphone, Type, BookOpen, ChevronRight, Library, LibraryBig } from "lucide-react"
 import { useState } from "react"
 import { cn } from "@/lib/utils"
 import exaltoMark from "@/assets/exalto-mark.svg"
@@ -9,6 +9,7 @@ import { usingEmulators } from "@/lib/firebase"
 import { ImportPage } from "@/pages/import"
 import { ReviewPage } from "@/pages/review"
 import { LyricsPage } from "@/pages/lyrics"
+import { PreviewPage } from "@/pages/preview"
 import { PracticePage } from "@/pages/practice"
 import { ExportPage } from "@/pages/export"
 import { DetailsPage } from "@/pages/details"
@@ -22,6 +23,7 @@ const PAGES = [
   { id: "import", label: "nav.import", icon: Download, el: ImportPage },
   { id: "review", label: "nav.review", icon: Music, el: ReviewPage },
   { id: "lyrics", label: "nav.lyrics", icon: Type, el: LyricsPage },
+  { id: "preview", label: "nav.preview", icon: Smartphone, el: PreviewPage },
   { id: "details", label: "nav.details", icon: BookOpen, el: DetailsPage },
   { id: "practice", label: "nav.practice", icon: Headphones, el: PracticePage },
   { id: "export", label: "nav.export", icon: Share, el: ExportPage },

@@ -69,11 +69,29 @@ def _split(word: str) -> str | None:
     return best[1] if best and best[0] > 0 else None
 
 
+# Prefixes that make a real word from a known one: "reanima", "renace", "desata". The word lists
+# lack many of these forms, and "re" on its own is a word too, so they were split ("re anima").
+PREFIXES = ("re", "des", "in", "con", "sobre", "ante")
+
+
 def correct_word(word: str) -> str:
     """Best correction for one word (may become two words), or the word unchanged."""
     if is_known(word):
         return word
     lower = word.lower()
+    # OCR reads some lowercase letters as their capitals, which look the same but bigger
+    # ("traZó" for "trazó"). Other capitals mid-word mark two words run together ("eresRey").
+    if re.search(r"(?<=[a-záéíóúñü])[COSVWXZÓ]", word):
+        fixed = word[0] + re.sub(r"(?<=[a-záéíóúñü])[COSVWXZÓ]", lambda m: m.group(0).lower(), word[1:])
+        if not re.search(r"[a-záéíóúñü][A-ZÁÉÍÓÚÑÜ]", fixed):
+            return correct_word(fixed)
+    # Past tense ("trazó", "venció") isn't in most word lists: keep it when the verb is known.
+    m = re.match(r"^(.+?)(i?)ó$", lower)
+    if m and any(is_known(m.group(1) + end) for end in (("er", "ir") if m.group(2) else ("ar",))):
+        return word
+    for p in PREFIXES:
+        if lower.startswith(p) and len(lower) - len(p) >= 4 and is_known(lower[len(p):]):
+            return word
     # Imperatives like "temed", "adorad", "venid" aren't in most word lists: keep them when the verb is known.
     m = re.match(r"^(.+)([aei])d$", lower)
     if m and is_known(m.group(1) + m.group(2) + "r"):
@@ -170,6 +188,43 @@ def syllabify(word: str) -> list[str]:
         last = c
     parts.append(w[last:])
     return [p for p in parts if p]
+
+
+def join_broken_words(pages: list[dict]) -> None:
+    """Join words split across systems or pages: a line ending "Evan-" takes the first word of
+    the next line ("gelio que…" -> "…Evangelio" / "que…"). Run before correcting, so the spell
+    check sees whole words instead of fragments ("Evan" would become "Van")."""
+    refs = [(p, i) for p in pages for i in range(len(p.get("lyric_lines") or []))]
+    for k, (p, i) in enumerate(refs):
+        line = p["lyric_lines"][i].rstrip()
+        if not re.search(r"\w-$", line):
+            continue
+        for q, j in refs[k + 1 :]:
+            nxt = q["lyric_lines"][j].strip()
+            if not nxt:
+                continue
+            first, _, rest = nxt.partition(" ")
+            p["lyric_lines"][i] = line[:-1] + first
+            q["lyric_lines"][j] = rest
+            break
+        else:
+            p["lyric_lines"][i] = line[:-1]
+    for p in pages:
+        if p.get("lyric_lines"):
+            p["lyric_lines"] = [l for l in p["lyric_lines"] if l.strip()]
+
+
+def join_syllables_across_pages(pages: list[dict]) -> None:
+    """A word that runs on from one page to the next ("a-" / "mor") keeps going on the notes:
+    the next page's first syllable becomes the word's middle or end, not a new word."""
+    prev = None
+    for p in pages:
+        notes = [n for m in p.get("measures", []) for n in m.get("soprano", []) if n.get("syllable")]
+        if notes and prev in ("begin", "middle"):
+            first = notes[0]
+            first["syllabic"] = {"begin": "middle", "single": "end", None: "end"}.get(first.get("syllabic"), first.get("syllabic"))
+        if notes:
+            prev = notes[-1].get("syllabic")
 
 
 def correct_page(page: dict) -> list[tuple[str, str]]:

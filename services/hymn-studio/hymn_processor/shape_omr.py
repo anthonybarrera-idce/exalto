@@ -466,6 +466,25 @@ class ShapeNotePage:
                 touching = [h for h in touching if h.cy <= st.y1 - 1.5 * sp]
             if not touching:
                 continue
+            # A double flag's body is one tall blob hanging from the stem's tip on its right; cut
+            # into pieces, it can pass for filled heads. Real heads sit at the stem's base.
+            mid = (st.y0 + st.y1) / 2
+            flagged = [h for h in touching if h.cx > st.x and ((h.cy < mid) if st.up else (h.cy > mid)) and self._tip_blob(h, st)]
+            if flagged and self._flag_roots(st, [h for h in touching if h not in flagged]) < 2:
+                flagged = []
+            for h in flagged:
+                touching.remove(h)
+                if h in self.heads:
+                    self.heads.remove(h)
+            if not touching:
+                continue
+            # One stem never carries both filled and hollow heads (quarters and halves don't
+            # share a stem): a "hollow head" there is the white between a double flag's strokes.
+            if any(h.filled for h in touching) and any(not h.filled and not h.rest for h in touching):
+                for h in [h for h in touching if not h.filled and not h.rest]:
+                    touching.remove(h)
+                    if h in self.heads:
+                        self.heads.remove(h)
             # Up-stems sit on a head's right side, down-stems on its left. A small hollow shape
             # with a stem rising from its LEFT edge is a flat sign, not a note.
             on_left = [h for h in touching if st.x < h.cx]
@@ -491,6 +510,9 @@ class ShapeNotePage:
                     span = (rows[-1] - rows[0] + 1) / sp
                     st.flag_span = span
                     st.flags = 0 if span < 1.2 else 1 if span < 3.6 else 2
+                # Compact fonts draw a double flag barely taller than a single one, so count the
+                # flag strokes leaving the stem instead: two separate runs of ink beside it = 2.
+                st.flags = max(st.flags, self._flag_roots(st, touching))
 
         # Dots: small round blobs just right of a head.
         lbl, n = ndi.label(self.residue)
@@ -510,9 +532,69 @@ class ShapeNotePage:
                 if not any(h.x0 - 2 <= dx <= h.x1 + 2 and h.y0 - 0.4 * sp <= dy <= h.y1 + 0.4 * sp for h in self.heads)]
         self._dots = dots
         for h in self.heads:
+            # A flag on an up-stem pushes the dot further right, past the flag.
+            reach = 1.3 * sp
+            for st in h.stems:
+                if st.up and st.flags and st.x > h.cx:
+                    reach = max(reach, st.x - h.x1 + 2.1 * sp)
             for dx, dy in dots:
-                if h.x1 < dx < h.x1 + 1.3 * sp and abs(dy - h.cy) < 0.75 * sp:
+                if h.x1 < dx < h.x1 + reach and abs(dy - h.cy) < 0.75 * sp:
                     h.dotted = True
+
+    def _tip_blob(self, h: Head, st: Stem) -> bool:
+        """True if `h` was cut from a tall blob (over 2.6 spacings) that starts at the stem's tip:
+        a flag, not a notehead."""
+        sp = self.sp
+        if not hasattr(self, "_res_lbl"):
+            self._res_lbl, _ = ndi.label(self.residue, structure=np.ones((3, 3)))
+            self._res_objs = ndi.find_objects(self._res_lbl)
+        ids = np.unique(self._res_lbl[int(h.y0) : int(h.y1), int(h.x0) : int(h.x1)])
+        for i in ids[ids > 0]:
+            o = self._res_objs[i - 1]
+            top, bottom = o[0].start, o[0].stop
+            if bottom - top <= 2.6 * sp:
+                continue
+            # A real head can merge with its own flag into one blob, but it's then the blob's end
+            # nearest the stem's base (its bottom for an up-stem, top for a down-stem).
+            if (st.up and abs(h.y1 - bottom) <= 0.3 * sp) or (not st.up and abs(h.y0 - top) <= 0.3 * sp):
+                continue
+            if (st.up and abs(top - st.y0) <= 0.6 * sp) or (not st.up and abs(bottom - st.y1) <= 0.6 * sp):
+                return True
+        return False
+
+    def _flag_roots(self, st: Stem, heads: list[Head]) -> int:
+        """Separate flag strokes leaving the stem's right side near its tip (2 for a sixteenth's
+        double flag). Only counts 2 or more: a single run is left to the flag-span test."""
+        sp = self.sp
+        reach = int(3.2 * sp)
+        ya, yb = (st.y0, st.y0 + reach) if st.up else (st.y1 - reach, st.y1)
+        # stay clear of the note's own heads at the other end of the stem
+        for h in heads:
+            if st.up:
+                yb = min(yb, int(h.y0) - 2)
+            else:
+                ya = max(ya, int(h.y1) + 2)
+        if yb - ya < sp:
+            return 0
+        # (just beside the stem: further out, a flag's curl bridges the gap between the strokes)
+        x0, x1 = st.x + 2, st.x + 3
+        col = self.residue[max(0, ya) : yb, x0 : x1 + 1].any(axis=1)
+        # Runs of ink split by gaps of 2+ rows; a flag stroke is thick where it meets the stem,
+        # unlike a leftover sliver of staff or ledger line.
+        lengths, cur, gap = [], 0, 0
+        for on in col:
+            if on:
+                cur += 1
+                gap = 0
+            else:
+                gap += 1
+                if gap >= 2 and cur:
+                    lengths.append(cur)
+                    cur = 0
+        if cur:
+            lengths.append(cur)
+        runs = sum(1 for n in lengths if n >= 0.25 * sp)
+        return runs if runs >= 2 else 0
 
     def find_rests(self) -> None:
         """Quarter rests: a tall zig-zag about 2.5 spacings high and 1 wide, inside the staff, touching no stem."""
@@ -1011,6 +1093,8 @@ class ShapeNotePage:
             "tempo_bpm": meta.get("tempo_bpm"),
             "measures": measures_out,
             "lyric_lines": lyric_lines,
+            # Words the lower voices sing on their own (also on their notes), when printed
+            "lower_lyric_lines": getattr(self, "lower_lyric_lines", []),
             "review": [
                 {"x": int(h.cx), "y": int(h.cy), "pitch": _pitch_name(h)}
                 for h in self.heads if not h.shape_ok and not h.rest
@@ -1043,6 +1127,9 @@ class ShapeNotePage:
             return []
         sp = self.sp
         lines = []
+        self.lower_lyric_lines: list[str] = []
+        self._lower_carry: dict[str, bool] = {}
+        carry = False  # the last syllable of the previous system continues its word ("Evan-")
         for sys_i in range(len(self.staves) // 2):
             treble, bass = self.staves[sys_i * 2], self.staves[sys_i * 2 + 1]
             # The text band: between the treble's lowest notes and the bass's highest notes.
@@ -1074,7 +1161,14 @@ class ShapeNotePage:
             if not merged_runs:
                 continue
             a, b = max(merged_runs, key=lambda r: band[r[0] : r[1]].sum())
-            band = band[max(0, a - 4) : b + 4]
+            # Two lines of words (e.g. a chorus whose lower voices sing their own words in italics,
+            # printed under the main line) can touch: let Tesseract find the lines in that case.
+            # (only when the words aren't typed text in a PDF's text layer)
+            typed = bool(self.chars) and bool(self._lyric_chars(y0 + max(0, a - 4), y0 + b + 4))
+            text_rows = [(a, b)] if typed else (_text_line_rows(band, sp) or [(a, b)])
+            a, b = text_rows[0]
+            full = band
+            band = full[max(0, a - 4) : b + 4]
             text_chars = self._lyric_chars(y0 + max(0, a - 4), y0 + b + 4) if self.chars else []
             syl = _syllables_from_chars([(c["ch"], c["x0"], c["x1"]) for c in text_chars]) if text_chars else _ocr_syllables(band)
             if text_chars:
@@ -1083,8 +1177,27 @@ class ShapeNotePage:
                 continue
             lines.append(_line_text(syl))
             notes = [n for m in measures if m.get("_system") == sys_i for n in m["soprano"] if n["pitch"] != "REST"]
-            _place_syllables(syl, notes, sp)
+            _place_syllables(syl, notes, sp, carry)
+            carry = syl[-1]["cont"]
+            if len(text_rows) > 1:
+                self._read_lower_line(full, text_rows[1], measures, sys_i, len(notes), sp)
         return lines
+
+    def _read_lower_line(self, band: np.ndarray, rows: tuple[int, int], measures: list[dict], sys_i: int,
+                         n_soprano: int, sp: float) -> None:
+        """A second line of words under the first. When it has more syllables than the soprano has
+        notes, it's the lower voices' own words (an echo): put it on the tenor and bass notes.
+        Otherwise it's another verse printed underneath, which isn't read here."""
+        a, b = rows
+        syl = _ocr_syllables(band[max(0, a - 4) : b + 4])
+        if not syl or len(syl) <= n_soprano:
+            return
+        for part in ("tenor", "bass"):
+            notes = [n for m in measures if m.get("_system") == sys_i for n in m[part] if n["pitch"] != "REST"]
+            if len(notes) >= 0.7 * len(syl):
+                _place_syllables(syl, notes, sp, self._lower_carry.get(part, False))
+                self._lower_carry[part] = syl[-1]["cont"]
+        self.lower_lyric_lines.append(_line_text(syl))
 
     def _duration(self, h: Head, stem: Stem | None) -> float:
         if not h.filled:
@@ -1376,6 +1489,45 @@ def _ocr_digits(glyph: np.ndarray, scale: int = 1, psm: str = "10") -> int | Non
     return int(out) if out.isdigit() else None
 
 
+def _text_line_rows(band: np.ndarray, sp: float) -> list[tuple[int, int]]:
+    """The text lines in a lyric band, top to bottom, as (top, bottom) rows: Tesseract's own line
+    finding, so two lines that touch are still told apart. Specks (stray marks read as a "line")
+    are dropped by how much ink their rows hold. Empty if Tesseract finds nothing."""
+    import subprocess
+    import tempfile
+
+    if not band.any():
+        return []
+    with tempfile.NamedTemporaryFile(suffix=".png") as f:
+        im = Image.fromarray(((~band) * 255).astype(np.uint8))
+        padded = Image.new("L", (im.width + 80, im.height + 80), 255)
+        padded.paste(im, (40, 40))
+        padded.resize((padded.width // 2, padded.height // 2), Image.LANCZOS).save(f.name)
+        out = subprocess.run([tesseract_path() or "tesseract", f.name, "-", "-l", "spa", "--psm", "6", "tsv"],
+                             capture_output=True, text=True).stdout
+    found: dict[tuple[str, str, str], list[int]] = {}
+    for row in out.splitlines()[1:]:
+        c = row.split("\t")
+        if len(c) == 12 and c[0] == "5" and c[11].strip():
+            top, h = int(c[7]) * 2 - 40, int(c[9]) * 2
+            box = found.setdefault((c[2], c[3], c[4]), [10**9, 0])
+            box[0], box[1] = min(box[0], top), max(box[1], top + h)
+    boxes = sorted((max(0, t), min(band.shape[0], b)) for t, b in found.values() if b > t)
+    if not boxes:
+        return []
+    ink = [int(band[t:b].sum()) for t, b in boxes]
+    boxes = [(t, b) for (t, b), k in zip(boxes, ink) if k >= 0.35 * max(ink) and b - t >= 0.6 * sp]
+    # Overlapping boxes (accents, descenders) split halfway, so each row belongs to one line.
+    rows: list[tuple[int, int]] = []
+    for t, b in boxes:
+        if rows and t < rows[-1][1]:
+            mid = (t + rows[-1][1]) // 2
+            rows[-1] = (rows[-1][0], mid)
+            t = mid
+        rows.append((t, b))
+    return rows
+
+
 def _ocr_chars(band: np.ndarray) -> list[tuple[str, float, float]]:
     """Letters with their left/right x in band pixels, from Tesseract's per-character boxes."""
     import subprocess
@@ -1399,9 +1551,137 @@ def _ocr_chars(band: np.ndarray) -> list[tuple[str, float, float]]:
     return chars
 
 
+HYPHENS = "-‐‑‒–—−"
+
+
+def _find_hyphens(band: np.ndarray) -> list[tuple[int, int, int, int]]:
+    """Hyphens in a lyric line picture, as (x0, x1, y0, y1), even when they touch a letter.
+
+    A hyphen is a short level bar half-way up the letters next to it, with nothing above or below
+    it in its columns. Tesseract misreads one that touches a letter ("nun-cia" -> "nun<c ia"), so
+    these are found from the pixels instead. Letter height is measured around each candidate,
+    because words on one line don't always sit on the same baseline.
+    """
+    if not band.any():
+        return []
+    rows = band.sum(axis=1)
+    text_rows = np.flatnonzero(rows >= 0.25 * rows.max())
+    ta, tb = int(text_rows[0]), int(text_rows[-1])
+    th = tb - ta + 1
+    if th < 8:
+        return []
+    text = band[ta : tb + 1]
+    tops = np.full(band.shape[1], -1)
+    bottoms = np.full(band.shape[1], -1)
+    single = np.zeros(band.shape[1], dtype=bool)
+    for x in range(band.shape[1]):
+        ys = np.flatnonzero(text[:, x])
+        if len(ys):
+            tops[x], bottoms[x] = ys[0], ys[-1]
+            # one solid run, thin, and no ink elsewhere in the column (stems below the text included)
+            single[x] = ys[-1] - ys[0] + 1 == len(ys) and len(ys) <= 0.25 * th and band[:, x].sum() == len(ys)
+    out = []
+    x = 0
+    n = band.shape[1]
+    while x < n:
+        if not single[x]:
+            x += 1
+            continue
+        x0, cy = x, (tops[x] + bottoms[x]) / 2
+        y0, y1 = tops[x], bottoms[x]
+        while x < n and single[x] and abs((tops[x] + bottoms[x]) / 2 - cy) <= max(2.0, 0.06 * th):
+            y0, y1 = min(y0, tops[x]), max(y1, bottoms[x])
+            x += 1
+        x1 = x - 1
+        # A hyphen is a straight bar of even thickness (a curve, like the hook of a "J", is not).
+        thick = [bottoms[c] - tops[c] + 1 for c in range(x0, x1 + 1)]
+        if (y1 - y0 + 1) > np.median(thick) + 2 or max(thick) - min(thick) > 2:
+            continue
+        # A stroke that only turns up or down into a letter (the hook of a "J") isn't a hyphen.
+        if "part" in (_side_contact(band, x0 - 1, ta + int(y0), ta + int(y1), -1), _side_contact(band, x1 + 1, ta + int(y0), ta + int(y1), 1)):
+            continue
+        # The letters around it: median top and bottom of nearby inked columns.
+        win = [c for c in range(max(0, x0 - th), min(n, x1 + th + 1)) if (c < x0 or c > x1) and tops[c] >= 0 and not single[c]]
+        if len(win) < 4:
+            continue
+        lt, lb = float(np.median(tops[win])), float(np.median(bottoms[win]))
+        h = lb - lt
+        mid = (y0 + y1) / 2
+        if h > 4 and lt + 0.3 * h <= mid <= lb - 0.15 * h and 0.25 * h <= x1 - x0 + 1 <= 2.5 * h:
+            out.append((x0, x1, ta + int(y0), ta + int(y1)))
+    return out
+
+
+def _side_contact(band: np.ndarray, x: int, y0: int, y1: int, side: int) -> str:
+    """What a bar from rows y0..y1 meets in column x: "none", "letter" (a stroke crossing it,
+    reaching above and below, as a hyphen touching a stem or curve does) or "part" (ink that only
+    carries on up or down, as when the bar is itself part of a letter, like the hook of a "J")."""
+    if not (0 <= x < band.shape[1]) or not band[max(0, y0 - 1) : y1 + 2, x].any():
+        return "none"
+    # Look a few pixels either side of the joint: the edge of a round letter (the "c" in "nun-cia")
+    # only reaches up and down just past its tip, and a slanted one (the leg of an "A") runs on
+    # under the bar.
+    k = max(2, (y1 - y0 + 1) // 2)
+    cols = range(max(0, x - k), min(band.shape[1], x + k + 1))
+    above = band[: max(0, y0 - 2), cols].any()
+    below = band[y1 + 3 :, cols].any()
+    return "letter" if above and below else "part"
+
+
+def _touches_letter(band: np.ndarray, hyphen: tuple[int, int, int, int]) -> bool:
+    """Whether the hyphen's bar runs into a letter on its left or right."""
+    x0, x1, y0, y1 = hyphen
+    return "letter" in (_side_contact(band, x0 - 1, y0, y1, -1), _side_contact(band, x1 + 1, y0, y1, 1))
+
+
 def _ocr_syllables(band: np.ndarray) -> list[dict]:
-    """Lyric syllables from a picture of the text line (Tesseract letter positions)."""
-    return _syllables_from_chars(_ocr_chars(band))
+    """Lyric syllables from a picture of the text line (Tesseract letter positions).
+
+    Hyphens are taken out of the picture before reading (so a hyphen touching a letter can't turn
+    into a stray mark) and put back where they were, which keeps each word's syllables joined.
+    """
+    # Only hyphens that touch a letter need help; Tesseract reads free-standing ones fine, and
+    # reshaping the whole line changes how it reads everything else.
+    hyphens = [hy for hy in _find_hyphens(band) if _touches_letter(band, hy)]
+    if not hyphens:
+        return _syllables_from_chars(_ocr_chars(band))
+    clean = band.copy()
+    for x0, x1, y0, y1 in hyphens:
+        clean[y0 : y1 + 1, x0 : x1 + 1] = False
+    # Open a wide blank gap at each hyphen so Tesseract's letter boxes can't straddle it,
+    # then map the letters back to page positions.
+    gap = band.shape[0] // 2
+    cuts = [(x0 + x1 + 1) // 2 for x0, x1, _, _ in hyphens]
+    parts, last = [], 0
+    for c in cuts:
+        parts += [clean[:, last:c], np.zeros((band.shape[0], gap), dtype=bool)]
+        last = c
+    parts.append(clean[:, last:])
+    wide = np.hstack(parts)
+
+    def back(x: float) -> float:
+        for k, c in enumerate(cuts):
+            if x < c + k * gap:
+                return x - k * gap
+            if x < c + (k + 1) * gap:
+                return float(c)
+        return x - len(cuts) * gap
+
+    chars = []
+    for ch, x0, x1 in _ocr_chars(wide):
+        mid = (x0 + x1) / 2
+        if ch in HYPHENS and any(abs(mid - (c + k * gap + gap / 2)) < gap for k, c in enumerate(cuts)):
+            continue  # this hyphen was found from the pixels already
+        side = sum(1 for k, c in enumerate(cuts) if mid >= c + k * gap + gap / 2)  # hyphens to its left
+        half = (x1 - x0) / 2
+        m = back(mid)
+        # keep each letter on its side of its hyphens
+        lo = (hyphens[side - 1][1] + 1) if side else -1e9
+        hi = hyphens[side][0] if side < len(hyphens) else 1e9
+        m = min(max(m, lo + half), hi - half)
+        chars.append((ch, m - half, m + half))
+    chars += [("-", float(x0), float(x1 + 1)) for x0, x1, _, _ in hyphens]
+    return _syllables_from_chars(sorted(chars, key=lambda c: (c[1] + c[2]) / 2))
 
 
 def _is_music_font(font: str) -> bool:
@@ -1459,7 +1739,9 @@ def _syllables_from_chars(chars: list[tuple[str, float, float]]) -> list[dict]:
 
     prev = None
     for ch, x0, x1 in chars:
-        if ch == "-":
+        if ch == "|":
+            ch = "I"  # Tesseract reads a lone capital I (sans-serif) as a bar; lyrics never have one
+        if ch in HYPHENS:  # PDF text layers may use a typographic hyphen or dash
             flush(True)
             prev = None
             continue
@@ -1480,13 +1762,16 @@ def _syllables_from_chars(chars: list[tuple[str, float, float]]) -> list[dict]:
 
 
 def _line_text(syl: list[dict]) -> str:
+    """The line as words. A word that carries on to the next system keeps a trailing hyphen
+    ("Evan-"), so it can be joined back up ("Evangelio") instead of read as two words."""
     parts = []
     for s in syl:
         parts.append(s["text"] + ("" if s["cont"] else " "))
-    return re.sub(r"\s+", " ", "".join(parts)).strip()
+    text = re.sub(r"\s+", " ", "".join(parts)).strip()
+    return text + "-" if syl and syl[-1]["cont"] and text[-1:].isalpha() else text
 
 
-def _place_syllables(syl: list[dict], notes: list[dict], sp: float) -> None:
+def _place_syllables(syl: list[dict], notes: list[dict], sp: float, carry: bool = False) -> None:
     """Put syllables on soprano notes in order, each under the note nearest it.
 
     Dynamic programming: A[i][j] = best cost with syllable i sung on note j. A syllable either takes a
@@ -1523,7 +1808,7 @@ def _place_syllables(syl: list[dict], notes: list[dict], sp: float) -> None:
     groups: dict[int, list[dict]] = {}
     for i, j in enumerate(place):
         groups.setdefault(j, []).append(syl[i])
-    prev_cont = False
+    prev_cont = carry  # a word carried over from the previous system goes on ("ge" in "Evan-gelio")
     for j in sorted(groups):
         g = groups[j]
         text = " ".join(x["text"] for x in g)  # elided words share the note

@@ -1,3 +1,17 @@
 {
-  "projects": { "default": "exalto-fe127" }
+  "projects": {
+    "default": "exalto-fe127"
+  },
+  "targets": {
+    "exalto-fe127": {
+      "hosting": {
+        "admin": [
+          "exalto-admin"
+        ],
+        "web": [
+          "exalto-fe127"
+        ]
+      }
+    }
+  }
 }

@@ -84,11 +84,11 @@ def test_convert_hymn_writes_piano_score_and_lyrics(tmp_path):
     assert any(p.nameWithOctave == "B-2" for p in score.parts[1].pitches)
     assert res.files["midi"].stat().st_size > 0
 
-    assert res.files["lyrics_txt"].read_text() == "I\nTú eres mi\ncanto Señor.\n"
+    assert res.files["lyrics_txt"].read_text() == "I\nTú eres mi canto Señor.\n"  # short verse: one balanced line
     doc = json.loads(res.files["hymn_json"].read_text())
     assert doc["title"] == "Canto de Prueba"
     assert doc["author"] == "Autor Uno; Tr. Traductor Dos"
-    assert doc["lyrics"] == [{"type": "verse", "number": 1, "lines": ["Tú eres mi", "canto Señor."]}]
+    assert doc["lyrics"] == [{"type": "verse", "number": 1, "lines": ["Tú eres mi canto Señor."]}]
     assert doc["status"] == "draft"
 
 
@@ -145,3 +145,89 @@ def test_time_signature_stays_when_the_measures_are_unclear():
     assert choose_time_signature([page]) == ("4/4", None)
     # other transcribers state the time signature without time_found
     assert choose_time_signature([{"time_signature": "2/2", "measures": _bars(4, 4, 4)}]) == ("2/2", None)
+
+
+def test_reprocess_reads_saved_slides_again_and_keeps_studio_details(tmp_path):
+    import copy
+
+    from hymn_processor.deck_batch import reprocess_hymn
+
+    verse2 = {"measures": [_measure([("Dios", "single"), ("es", "single"), ("a", "begin"), ("mor", "end")])],
+              "lyric_lines": ["Dios es a-mor"]}
+    first = {**FAKE, b"v2": verse2}
+    hymn = group_hymns([_page(1, "Canto de Prueba 1", b"p1"), _page(2, "Canto de Prueba 1A", b"p2"),
+                        _page(3, "Canto de Prueba 2", b"v2")])[0]
+    res = convert_hymn(hymn, lambda p: copy.deepcopy(first[p.image]), tmp_path, "community", "es",
+                       log=lambda _: None, render_audio=False)
+    d = res.out_dir
+    assert (d / "pages" / "verse2-1.png").read_bytes() == b"v2"  # verse slides are kept now
+
+    # What someone set on Details in Studio
+    doc = json.loads((d / "hymn.json").read_text())
+    doc.update(title="Canto Corregido", number=42, tags=["Pascua"], hymnalId="idc-himnario")
+    (d / "hymn.json").write_text(json.dumps(doc))
+
+    # The "AI" reads the first page's lyrics differently
+    ai = copy.deepcopy(first)
+    ai[b"p1"]["lyric_lines"] = ["Tú e-res mi gran"]
+    seen = []
+    reprocess_hymn(d, "claude", transcriber=lambda p: (seen.append(p.image), copy.deepcopy(ai[p.image]))[1],
+                   log=lambda _: None, render_audio=False)
+
+    assert sorted(seen) == [b"p1", b"p2", b"v2"]  # every saved slide was read again
+    new = json.loads((d / "hymn.json").read_text())
+    assert (new["title"], new["number"], new["tags"], new["hymnalId"]) == ("Canto Corregido", 42, ["Pascua"], "idc-himnario")
+    assert new["lyrics"][0]["lines"] == ["Tú eres mi gran canto Señor."]
+    assert new["lyrics"][1]["lines"] == ["Dios es amor"]
+    assert json.loads((d / "review.json").read_text())["title"] == "Canto Corregido"
+    assert (d / f"{d.name}.musicxml").exists()  # same folder and file names
+    assert json.loads((d / ".before-reprocess" / "hymn.json").read_text())["number"] == 42  # the earlier files are kept
+
+
+def test_reprocess_keeps_lyrics_of_verses_whose_slides_were_not_saved(tmp_path):
+    import copy
+
+    from hymn_processor.deck_batch import reprocess_hymn
+
+    verse2 = {"measures": [_measure([("Dios", "single")])], "lyric_lines": ["Dios"]}
+    first = {**FAKE, b"v2": verse2}
+    hymn = group_hymns([_page(1, "Canto de Prueba 1", b"p1"), _page(2, "Canto de Prueba 1A", b"p2"),
+                        _page(3, "Canto de Prueba 2", b"v2")])[0]
+    d = convert_hymn(hymn, lambda p: copy.deepcopy(first[p.image]), tmp_path, "community", "es",
+                     log=lambda _: None, render_audio=False).out_dir
+    (d / "pages" / "verse2-1.png").unlink()  # as imported before verse slides were kept
+    reprocess_hymn(d, "gemini", transcriber=lambda p: copy.deepcopy(first[p.image]), log=lambda _: None, render_audio=False)
+    assert json.loads((d / "hymn.json").read_text())["lyrics"][1]["lines"] == ["Dios"]
+
+
+def test_chorus_slides_join_the_score_once():
+    """Decks show "<Hymn> 1", "<Hymn> 1A", "CORO 1", "CORO 2", then the next verse and the chorus again."""
+    from hymn_processor.slides import group_hymns
+
+    headings = ["Canaán 1", "Canaán 1A", "CORO 1", "CORO 2", "Canaán 2", "Canaán 2A", "CORO 1", "CORO 2",
+                "Canaán 3", "Canaán 3A", "CORO 1", "CORO 2"]
+    pages = [_page(i, h, f"img{i}".encode()) for i, h in enumerate(headings, start=1)]
+    (hymn,) = group_hymns(pages)
+    assert hymn.title == "Canaán"
+    assert [(v.number, [p.index for p in v.pages]) for v in hymn.verses] == [(1, [1, 2]), (2, [5, 6]), (3, [9, 10])]
+    assert [p.index for p in hymn.chorus] == [3, 4]
+    assert hymn.chorus_times == 3
+    assert [p.index for p in hymn.music_pages] == [1, 2, 3, 4]
+
+
+def test_chorus_lyrics_get_their_own_section(tmp_path):
+    from hymn_processor.slides import group_hymns
+
+    def page(syllables):
+        return {"title": None, "credits": [], "key_fifths": 0, "time_signature": "4/4", "tempo_bpm": 90,
+                "measures": [_measure([(s, "single") for s in syllables])], "lyric_lines": [" ".join(syllables)]}
+
+    texts = {"V 1": ["voy", "a", "la", "tierra"], "CORO": ["allí", "no", "habrá", "llanto"], "V 2": ["florece", "para", "mí", "flor"]}
+    slides = [_page(1, "V 1", b"a"), _page(2, "CORO", b"c"), _page(3, "V 2", b"b"), _page(4, "CORO", b"c")]
+    (hymn,) = group_hymns(slides)
+    res = convert_hymn(hymn, lambda p: page(texts[p.heading]), tmp_path, "test", "es", log=lambda *_: None,
+                       render_audio=False, correct_lyrics=False)
+    doc = json.loads(res.files["hymn_json"].read_text())
+    assert [(s["type"], s.get("number")) for s in doc["lyrics"]] == [("verse", 1), ("chorus", None), ("verse", 2)]
+    assert doc["lyrics"][1]["lines"] == ["allí no habrá llanto"]
+    assert doc["repeatChorus"] is True

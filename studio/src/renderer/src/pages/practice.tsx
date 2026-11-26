@@ -51,6 +51,22 @@ export function PracticePage() {
   const [on, setOn] = useState<Set<Voice>>(new Set(ALL))
   const [bpm, setBpm] = useState(80)
   const [clickMode, setClickMode] = useState<"play" | "note">("play")
+  // Shape notes (do triangle, re half-moon…) or round heads; remembered on this computer.
+  const [shapes, setShapesState] = useState(() => {
+    try {
+      return localStorage.getItem("studio.shapeNotes") === "1"
+    } catch {
+      return false
+    }
+  })
+  const setShapes = (on: boolean) => {
+    setShapesState(on)
+    try {
+      localStorage.setItem("studio.shapeNotes", on ? "1" : "0")
+    } catch {
+      // private storage unavailable: just this session
+    }
+  }
   const [sound, setSound] = useSound()
   const [tonesReady, setTonesReady] = useState(false)
   // When the sound changes mid-song, pick up at the same spot in the new tracks.
@@ -226,6 +242,10 @@ export function PracticePage() {
       <SoundSwitch sound={sound} onChange={setSound} />
       {sound === "tone" && !tonesReady && <span className="text-xs text-muted-foreground">{t("practice.preparing")}</span>}
       <label className="flex w-fit items-center gap-2 text-sm">
+        <Switch checked={shapes} onCheckedChange={setShapes} />
+        {t("practice.shapeNotes")}
+      </label>
+      <label className="flex w-fit items-center gap-2 text-sm">
         <Switch checked={clickMode === "note"} onCheckedChange={(on) => setClickMode(on ? "note" : "play")} />
         {t("practice.oneNote")}
         <span className="text-muted-foreground">
@@ -236,6 +256,8 @@ export function PracticePage() {
       <Card className="mb-4 gap-0 overflow-x-auto overflow-y-hidden bg-card p-3">
         <ScoreView
           horizontal
+          follow={false}
+          shapesFifths={shapes ? (detail.review.key_fifths ?? 0) : null}
           xml={xml}
           beat={(time * base) / 60}
           voiceColors={playing ? Object.fromEntries(ALL.filter((id) => on.has(id) && vol[id] > 0).map((id) => [id, VOICE_COLOR[id]])) : undefined}

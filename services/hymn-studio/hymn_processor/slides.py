@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+import unicodedata
 import urllib.request
 import zipfile
 from dataclasses import dataclass, field
@@ -26,6 +27,8 @@ NS = {
 GOOGLE_ID = re.compile(r"/(?:presentation|file)/d/([A-Za-z0-9_-]{10,})")
 # "Title 1", "Title 1A", "Title 2 B"
 SLIDE_SUFFIX = re.compile(r"^(?P<title>.*?)\s+(?P<verse>\d{1,2})\s*(?P<page>[A-Za-z]?)$")
+# Chorus slides: "CORO 1", "Coro 2" (its pages), "Coro", "Chorus", "Estribillo"
+CHORUS_HEADING = re.compile(r"^(coro|chorus|estribillo)\b\.?\s*(?P<page>\d{1,2}|[IVX]+)?\s*[A-Za-z]?$", re.I)
 
 
 @dataclass
@@ -53,11 +56,18 @@ class VerseSlides:
 class DeckHymn:
     title: str
     verses: list[VerseSlides]
+    chorus: list[SlidePage] = field(default_factory=list)  # the chorus's pages, once
+    chorus_times: int = 0  # how many times the deck shows the chorus (sung after each verse)
+
+    @property
+    def verse_pages(self) -> list[SlidePage]:
+        """Pages of the first verse."""
+        return self.verses[0].pages if self.verses else []
 
     @property
     def music_pages(self) -> list[SlidePage]:
-        """Pages of the first verse: the full score, in order."""
-        return self.verses[0].pages if self.verses else []
+        """The full score, in order: verse 1, then the chorus."""
+        return self.verse_pages + self.chorus
 
 
 def is_url(value: str) -> bool:
@@ -223,18 +233,37 @@ def read_pptx(path: Path) -> list[SlidePage]:
 
 
 def group_hymns(pages: list[SlidePage]) -> list[DeckHymn]:
-    """Group slides into hymns and verses using the slide headings."""
+    """Group slides into hymns and verses using the slide headings.
+
+    Chorus slides ("CORO 1", "CORO 2", "Coro"…) belong to the hymn before them. Decks repeat the
+    chorus after every verse: its pages join the score once and the repeats are counted.
+    """
     hymns: list[DeckHymn] = []
+    seen_chorus: set[str] = set()
     for page in pages:
         if not page.image:
             continue
-        m = SLIDE_SUFFIX.match(page.heading)
-        title = (m.group("title") if m else page.heading).strip() or "Untitled Hymn"
+        heading = unicodedata.normalize("NFC", page.heading or "").strip()
+        if (c := CHORUS_HEADING.match(heading)) and hymns:
+            hymn = hymns[-1]
+            key = (c.group("page") or "1").upper()
+            if key in seen_chorus or page.sha in {p.sha for p in hymn.chorus}:
+                if key == min(seen_chorus):  # the chorus starts over: another time through
+                    hymn.chorus_times += 1
+                continue
+            if not hymn.chorus:
+                hymn.chorus_times = 1
+            seen_chorus.add(key)
+            hymn.chorus.append(page)
+            continue
+        m = SLIDE_SUFFIX.match(heading)
+        title = (m.group("title") if m else heading).strip() or "Untitled Hymn"
         verse_no = int(m.group("verse")) if m else 1
         hymn = hymns[-1] if hymns and hymns[-1].title == title else None
         if hymn is None:
             hymn = DeckHymn(title=title, verses=[])
             hymns.append(hymn)
+            seen_chorus = set()
         verse = hymn.verses[-1] if hymn.verses and hymn.verses[-1].number == verse_no else None
         if verse is None:
             verse = VerseSlides(number=verse_no)

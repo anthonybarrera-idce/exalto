@@ -114,6 +114,12 @@ def main():
     audio_parser.add_argument("--dir", required=True, help="The hymn's output folder")
     practice_parser = subparsers.add_parser("practice", help="Write practice.json (notes for the mobile app's practice screen)")
     practice_parser.add_argument("--dir", nargs="+", required=True, help="Hymn output folder(s)")
+    re_parser = subparsers.add_parser("reprocess", help="Read an imported hymn again from its saved slides with Claude or Gemini")
+    re_parser.add_argument("--dir", required=True, help="The hymn's output folder")
+    re_parser.add_argument("--engine", choices=["claude", "gemini", "local"], default="claude")
+    re_parser.add_argument("--api-key", help="Gemini API key for --engine gemini (defaults to GEMINI_API_KEY / .env)")
+    re_parser.add_argument("--no-correct", action="store_true", help="Keep the lyrics exactly as read")
+    re_parser.add_argument("--no-audio", action="store_true", help="Skip rendering piano audio")
     tones_parser = subparsers.add_parser("tones", help="Render plain-tone ('just notes') practice tracks for a hymn")
     tones_parser.add_argument("--dir", required=True, help="The hymn's output folder")
 
@@ -163,6 +169,15 @@ def main():
 
         for k, v in rebuild_score(args.dir).items():
             print(f"{k}: {v}")
+    elif args.command == "reprocess":
+        from .deck_batch import reprocess_hymn
+
+        try:
+            reprocess_hymn(args.dir, args.engine, api_key=args.api_key, correct_lyrics=not args.no_correct,
+                           render_audio=not args.no_audio)
+        except Exception as e:  # the app shows this line to the user
+            print(f"  ✗ {e}")
+            raise SystemExit(1)
     elif args.command == "deck":
         from .deck_batch import run_batch
 

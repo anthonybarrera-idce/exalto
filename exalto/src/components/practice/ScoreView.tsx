@@ -4,6 +4,7 @@ import Svg, { Ellipse, G, Line, Path, Rect, Text as SvgText } from 'react-native
 
 import { FontFamily, Palette } from '@/constants/theme';
 import { VOICES, type PracticeData, type PracticeNote, type Voice } from '@/lib/practice';
+import { shapeOf, shapePath } from '@/lib/shape-notes';
 
 /** Draws practice.json as one long grand staff that scrolls sideways (no MusicXML renderer). */
 export const PX_PER_BEAT = 34;
@@ -57,9 +58,11 @@ type Props = {
   activeId: string | null;
   onNoteIn?: (voice: Voice, n: PracticeNote) => void;
   onNoteOut?: (voice: Voice, n: PracticeNote) => void;
+  /** Draw seven-shape noteheads (do triangle, re half-moon…) instead of round ones. */
+  shapes?: boolean;
 };
 
-export const ScoreView = memo(function ScoreView({ data, layout, faded, activeId, onNoteIn, onNoteOut }: Props) {
+export const ScoreView = memo(function ScoreView({ data, layout, faded, activeId, onNoteIn, onNoteOut, shapes = false }: Props) {
   const staticParts = useMemo(() => <Staff data={data} layout={layout} />, [data, layout]);
   // Plain views over the noteheads, so press-in / press-out (tap and hold) work on iOS, Android and web.
   const hitAreas = useMemo(
@@ -88,7 +91,7 @@ export const ScoreView = memo(function ScoreView({ data, layout, faded, activeId
         {staticParts}
         {VOICES.map((v) => (
           <G key={v} opacity={faded.has(v) ? 0.18 : 1}>
-            <VoiceNotes data={data} layout={layout} voice={v} activeId={activeId} />
+            <VoiceNotes data={data} layout={layout} voice={v} activeId={activeId} shapes={shapes} />
           </G>
         ))}
         <Lyrics data={data} layout={layout} />
@@ -125,7 +128,7 @@ function Staff({ data, layout }: { data: PracticeData; layout: Layout }) {
   return <G>{els}</G>;
 }
 
-function VoiceNotes({ data, layout, voice, activeId }: { data: PracticeData; layout: Layout; voice: Voice; activeId: string | null }) {
+function VoiceNotes({ data, layout, voice, activeId, shapes }: { data: PracticeData; layout: Layout; voice: Voice; activeId: string | null; shapes: boolean }) {
   const { notes, stem, staff } = data.voices[voice];
   const up = stem === 'up';
   const bottom = staffBottom(staff);
@@ -140,8 +143,13 @@ function VoiceNotes({ data, layout, voice, activeId }: { data: PracticeData; lay
     // ledger lines above/below the staff
     for (let s = -2; s >= (n.y ?? 0); s -= 2) els.push(<Line key={`${n.id}l${s}`} x1={x - 8} x2={x + 8} y1={bottom - s * STEP} y2={bottom - s * STEP} stroke={INK} strokeWidth={0.9} />);
     for (let s = 10; s <= (n.y ?? 0); s += 2) els.push(<Line key={`${n.id}l${s}`} x1={x - 8} x2={x + 8} y1={bottom - s * STEP} y2={bottom - s * STEP} stroke={INK} strokeWidth={0.9} />);
+    const shape = shapes && n.pitch ? shapePath(shapeOf(n.pitch, data.key.fifths), x, y, 11, 8.6, up) : null;
     els.push(
-      <Ellipse key={n.id} cx={x} cy={y} rx={5.2} ry={3.9} fill={hollow ? 'none' : color} stroke={color} strokeWidth={hollow ? 1.4 : 0} transform={`rotate(-20 ${x} ${y})`} />,
+      shape ? (
+        <Path key={n.id} d={shape} fill={hollow ? 'none' : color} stroke={color} strokeWidth={hollow ? 1.3 : 0.6} strokeLinejoin="round" />
+      ) : (
+        <Ellipse key={n.id} cx={x} cy={y} rx={5.2} ry={3.9} fill={hollow ? 'none' : color} stroke={color} strokeWidth={hollow ? 1.4 : 0} transform={`rotate(-20 ${x} ${y})`} />
+      ),
     );
     if (n.acc) els.push(<SvgText key={`${n.id}a`} x={x - 15} y={y + 4} fontSize={14} fill={color}>{ACC[n.acc] ?? ''}</SvgText>);
     for (let d = 0; d < n.dots; d++) els.push(<Ellipse key={`${n.id}d${d}`} cx={x + 9 + d * 4} cy={(n.y ?? 0) % 2 === 0 ? y - STEP / 2 - 0.5 : y} rx={1.4} ry={1.4} fill={color} />);

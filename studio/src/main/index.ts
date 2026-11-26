@@ -12,6 +12,7 @@ import { pathToFileURL } from "node:url"
 import { app, BrowserWindow, dialog, ipcMain, nativeTheme, net, protocol, safeStorage, shell, systemPreferences } from "electron"
 import { hymnChat, setChatLog } from "./ai-chat"
 import { googleSignIn } from "./google-signin"
+import { setSpellcheckLog, spellcheck } from "./spellcheck"
 
 const isDev = !!process.env.ELECTRON_RENDERER_URL
 const REPO = resolve(app.getAppPath(), "..")
@@ -63,6 +64,9 @@ const TEXT = {
     deleteTitle: "Delete “{title}”?",
     deleteDetail: "Its folder (page images, score, audio and edits) moves to the Trash, and its saved transcriptions are cleared. Copies already uploaded to Exalto aren’t affected.",
     deleteButton: "Move to Trash",
+    reprocessTitle: "Read “{title}” again with {provider}?",
+    reprocessDetail: "Its saved slides are sent to {provider} and its notes and lyrics are replaced with the new reading. Edits made in Review score and Lyrics are replaced too; details (title, hymnal, number, tags) stay. The current files are kept in the hymn’s folder (.before-reprocess). This uses your API key and may take a few minutes.",
+    reprocessButton: "Read again",
     cancel: "Cancel",
   },
   es: {
@@ -75,6 +79,9 @@ const TEXT = {
     deleteTitle: "¿Eliminar «{title}»?",
     deleteDetail: "Su carpeta (imágenes de las páginas, partitura, audio y cambios) se mueve a la Papelera y se borran sus transcripciones guardadas. Las copias ya subidas a Exalto no cambian.",
     deleteButton: "Mover a la Papelera",
+    reprocessTitle: "¿Leer «{title}» de nuevo con {provider}?",
+    reprocessDetail: "Sus diapositivas guardadas se envían a {provider} y sus notas y letra se reemplazan con la nueva lectura. Los cambios hechos en Revisar partitura y Letra también se reemplazan; los detalles (título, himnario, número, etiquetas) se conservan. Los archivos actuales quedan en la carpeta del himno (.before-reprocess). Usa tu clave de API y puede tardar unos minutos.",
+    reprocessButton: "Leer de nuevo",
     cancel: "Cancelar",
   },
 } satisfies Record<Lang, Record<string, string>>
@@ -259,6 +266,19 @@ ipcMain.handle("keys:clear", async (_e, provider: KeyProvider) => {
   await writeKeys(keys)
   return true
 })
+// AI spellcheck of lyric lines with the saved key (spellcheck.ts). Only suggestions come back, never the key.
+ipcMain.handle("lyrics:aiSpellcheck", async (_e, lines: unknown, lyricsLang: unknown) => {
+  const logs = join(app.getPath("userData"), "logs")
+  await mkdir(logs, { recursive: true })
+  const log = join(logs, "ai-spellcheck.log")
+  setSpellcheckLog(log)
+  const t0 = Date.now()
+  const keys = await readKeys() // can wait on a macOS keychain prompt the first time
+  await writeFile(log, `${new Date().toISOString()} keys read after ${Date.now() - t0}ms\n`, { flag: "a" })
+  const r = await spellcheck(keys, lines, lyricsLang, lang)
+  await writeFile(log, `${new Date().toISOString()} done ${r.ok ? `ok ${r.suggestions.length} suggestions` : `error ${r.code}`} after ${Date.now() - t0}ms\n`, { flag: "a" })
+  return r
+})
 
 // The hymn assistant (ai-chat.ts): the conversation and a summary of the open hymn go out with the
 // saved key; only the answer and proposed edits come back, never the key.
@@ -280,6 +300,11 @@ ipcMain.handle("convert:start", async (_e, o: ConvertOptions) => {
     "--hymnal", o.hymnal, "--tempo", String(o.tempo)]
   if (!o.correct) args.push("--no-correct")
   await mkdir(OUT_DIR, { recursive: true })
+  startJob(args, keyEnv)
+  return true
+})
+/** Run a converter command as the one background job, streaming its log lines to the screen. */
+function startJob(args: string[], keyEnv: Record<string, string>) {
   job = runCli(args, keyEnv)
   const send = (line: string) => line.trim() && win?.webContents.send("convert:log", line)
   let buf = ""
@@ -296,6 +321,33 @@ ipcMain.handle("convert:start", async (_e, o: ConvertOptions) => {
     job = null
     win?.webContents.send("convert:done", code)
   })
+}
+// Read an imported hymn again from its saved slides with Claude or Gemini (keys from Settings).
+// Asks first: the new reading replaces notes, lyrics and edits. Returns false if cancelled.
+ipcMain.handle("hymns:reprocess", async (_e, slug: string, engine: "claude" | "gemini", correct: boolean) => {
+  if (job) throw new Error(TEXT[lang].busy)
+  if (engine !== "claude" && engine !== "gemini") throw new Error("Unknown reader")
+  const dir = inOutDir(slug)
+  if (dir === OUT_DIR || basename(dir).startsWith(".") || !existsSync(join(dir, "transcription.json"))) throw new Error("Not an imported hymn with music")
+  const keys = await readKeys()
+  const provider: KeyProvider = engine === "claude" ? "anthropic" : "gemini"
+  if (!keys[provider]) throw new Error("No API key")
+  const keyEnv = { [KEY_ENV[provider]]: keys[provider]! }
+  const title = JSON.parse(await readFile(join(dir, "review.json"), "utf8")).title || slug
+  const name = engine === "claude" ? "Claude" : "Gemini"
+  const t = TEXT[lang]
+  const { response } = await dialog.showMessageBox(win!, {
+    type: "question",
+    message: t.reprocessTitle.replace("{title}", title).replace("{provider}", name),
+    detail: t.reprocessDetail.replaceAll("{provider}", name),
+    buttons: [t.reprocessButton, t.cancel],
+    defaultId: 0,
+    cancelId: 1,
+  })
+  if (response !== 0) return false
+  const args = ["reprocess", "--dir", dir, "--engine", engine]
+  if (!correct) args.push("--no-correct")
+  startJob(args, keyEnv)
   return true
 })
 ipcMain.handle("convert:cancel", () => {

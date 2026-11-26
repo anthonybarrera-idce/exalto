@@ -1,4 +1,5 @@
-import { AudioWaveform, Check, ChevronDown, ChevronLeft, Hand, Mic, Music, Pause, Piano, Play } from 'lucide-react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AudioWaveform, Check, ChevronDown, ChevronLeft, Hand, Mic, Music, Pause, Piano, Play, Shapes } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, Easing, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,6 +11,8 @@ import { useLocale } from '@/context/locale-context';
 import type { StringKey } from '@/i18n/strings';
 import { loadPractice, measureAt, VOICES, type PracticeData, type PracticeNote, type Voice } from '@/lib/practice';
 import { PracticePlayer, startNote, type Sound } from '@/lib/practice-audio';
+
+const SHAPES_KEY = 'exalto.practice.shapeNotes';
 
 const VOICE_LABEL: Record<Voice, StringKey> = { soprano: 'practice.soprano', alto: 'practice.alto', tenor: 'practice.tenor', bass: 'practice.bass' };
 const TAP_MS = 250; // shorter presses play the note's written length
@@ -86,6 +89,17 @@ function Player({ data, title, keyName, embedded }: { data: PracticeData; title:
   const [sound, setSound] = useState<Sound>('grand');
   const [preparing, setPreparing] = useState(true);
   const [tapMode, setTapMode] = useState(false);
+  // Shape notes (do triangle, re half-moon…) or round noteheads; remembered on this device.
+  const [shapes, setShapesState] = useState(false);
+  useEffect(() => {
+    AsyncStorage.getItem(SHAPES_KEY)
+      .then((v) => v === '1' && setShapesState(true))
+      .catch(() => {});
+  }, []);
+  const setShapes = (on: boolean) => {
+    setShapesState(on);
+    AsyncStorage.setItem(SHAPES_KEY, on ? '1' : '0').catch(() => {});
+  };
   const [active, setActive] = useState<{ voice: Voice; note: PracticeNote; holding: boolean; screenX: number } | null>(null);
   const press = useRef<{ release: (min?: number) => void; at: number; dur: number } | null>(null);
 
@@ -221,7 +235,7 @@ function Player({ data, title, keyName, embedded }: { data: PracticeData; title:
           scrollEventThrottle={16}
           onScroll={(e) => (scrollX.current = e.nativeEvent.contentOffset.x)}>
           <View style={{ width: layout.width, height: SCORE_HEIGHT }}>
-            <ScoreView data={data} layout={layout} faded={faded} activeId={active?.note.id ?? null} onNoteIn={onNoteIn} onNoteOut={onNoteOut} />
+            <ScoreView data={data} layout={layout} faded={faded} activeId={active?.note.id ?? null} onNoteIn={onNoteIn} onNoteOut={onNoteOut} shapes={shapes} />
             <Animated.View
               pointerEvents="none"
               style={[styles.playhead, { left: -1, transform: [{ translateX: playX }], opacity: tapMode && !playing ? 0.3 : 1 }]}
@@ -283,6 +297,10 @@ function Player({ data, title, keyName, embedded }: { data: PracticeData; title:
         <Pressable onPress={() => setTapMode((m) => !m)} style={[styles.tapChip, tapMode && styles.tapChipOn]}>
           <Hand size={14} color={tapMode ? '#04131B' : Palette.text} />
           <ThemedText style={[styles.chipText, tapMode && { color: '#04131B' }]}>{t('practice.tapNote')}</ThemedText>
+        </Pressable>
+        <Pressable onPress={() => setShapes(!shapes)} accessibilityRole="switch" accessibilityState={{ checked: shapes }} style={[styles.tapChip, shapes && styles.tapChipOn]}>
+          <Shapes size={14} color={shapes ? '#04131B' : Palette.text} />
+          <ThemedText style={[styles.chipText, shapes && { color: '#04131B' }]}>{t('practice.shapeNotes')}</ThemedText>
         </Pressable>
       </View>
     </ScrollView>

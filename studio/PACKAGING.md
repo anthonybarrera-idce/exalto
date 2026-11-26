@@ -41,9 +41,46 @@ environment variables on the build computer; never put them in the repo.
 **Mac** (Apple Developer Program, Developer ID Application certificate):
 - Signing: the certificate in your login keychain is found automatically, or set `CSC_LINK`
   (path or base64 of the `.p12`) and `CSC_KEY_PASSWORD`.
-- Notarizing (`dist:mac:signed`): `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`.
+- Notarizing (`dist:mac:signed`): `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`, or
+  `APPLE_KEYCHAIN_PROFILE` for a profile saved with `xcrun notarytool store-credentials`.
 - `build/entitlements.mac.plist` allows Electron's JIT and lets the bundled converter load its own
   libraries under the hardened runtime.
+
+### Notarizing and stapling (Mac)
+
+`dist:mac:signed` turns off electron-builder's own notarizing and uses two hooks instead:
+`scripts/notarize.cjs` notarizes the signed `.app` before the `.dmg` and `.zip` are made, and
+`scripts/notarize-dmg.cjs` notarizes the finished `.dmg`. Each then **staples** the ticket to the
+file, so Gatekeeper can check it without going online. The build stops at once if no notarizing
+credentials are set.
+
+Easiest: save the credentials in your keychain once (it asks for the app-specific password), then
+name the profile when you build:
+
+```bash
+xcrun notarytool store-credentials hymn-studio --apple-id "<your Apple ID>" --team-id 25UVZGH7FC
+APPLE_KEYCHAIN_PROFILE=hymn-studio npm run dist:mac:signed
+```
+
+- **Stapling needs a direct connection to Apple** (`api.apple-cloudkit.com`). Networks that inspect
+  TLS, such as a work laptop's web filter, break it with `Error 68` or "Missing required
+  extension". Notarizing itself usually still works there.
+- If stapling fails, the build **keeps going** and prints the commands to run later. A failed
+  notarization still stops the build.
+- **Notarized but not stapled is fine for online users.** Gatekeeper asks Apple on first launch and
+  the app opens normally. Only a Mac that's offline on first launch would be blocked.
+- **To staple later**, on a home or other direct network (no new upload or password needed):
+
+  ```bash
+  xcrun stapler staple "release/mac-arm64/Exalto Hymn Studio.app"
+  xcrun stapler staple "release/Exalto Hymn Studio-0.1.0-arm64.dmg"
+  ```
+
+  The `.zip` was made from the unstapled app; rebuild it (or the whole build) on that network if
+  you ship the `.zip`.
+- **To check:** `xcrun stapler validate "<file>"` says whether a ticket is stapled, and
+  `spctl -a -vvv -t exec "<app>"` shows `source=Notarized Developer ID` once Apple has notarized it.
+  `xcrun notarytool history --keychain-profile <profile>` lists past submissions.
 
 **Windows** (optional code-signing certificate): set `WIN_CSC_LINK` and `WIN_CSC_KEY_PASSWORD`.
 

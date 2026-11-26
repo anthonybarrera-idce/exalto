@@ -33,11 +33,17 @@ const api = {
   saveEdits: (slug: string, pages: unknown[], respellFrom: number | null) => ipcRenderer.invoke("hymns:saveEdits", slug, pages, respellFrom),
   /** Asks to confirm, then moves the import to the Trash; false if the user cancelled. */
   deleteHymn: (slug: string): Promise<boolean> => ipcRenderer.invoke("hymns:delete", slug),
+  /** Asks to confirm, then reads the hymn again from its saved slides with Claude or Gemini (a background job like a conversion); false if cancelled. */
+  reprocessHymn: (slug: string, engine: "claude" | "gemini", correct: boolean): Promise<boolean> =>
+    ipcRenderer.invoke("hymns:reprocess", slug, engine, correct),
   /** Whether a Claude / Gemini key is saved (last 4 characters only; the key never comes back). */
   keyStatus: (): Promise<{ secure: boolean; anthropic: { last4: string } | null; gemini: { last4: string } | null }> =>
     ipcRenderer.invoke("keys:status"),
   setKey: (provider: "anthropic" | "gemini", value: string): Promise<boolean> => ipcRenderer.invoke("keys:set", provider, value),
   clearKey: (provider: "anthropic" | "gemini"): Promise<boolean> => ipcRenderer.invoke("keys:clear", provider),
+  /** Ask the saved AI key's provider for spelling fixes to these lyric lines (main process makes the call). */
+  aiSpellcheck: (lines: string[], lyricsLang: "es" | "en"): Promise<import("../main/spellcheck").SpellResult> =>
+    ipcRenderer.invoke("lyrics:aiSpellcheck", lines, lyricsLang),
   /** Ask the hymn assistant (Gemini, else Claude; main process makes the call). Edits come back as proposals only. */
   aiChat: (turns: { role: "user" | "assistant"; text: string }[], context: string): Promise<import("../main/ai-chat").ChatResult> =>
     ipcRenderer.invoke("ai:chat", turns, context),
