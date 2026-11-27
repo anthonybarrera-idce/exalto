@@ -1,5 +1,6 @@
 import { BookOpen, House, ListMusic, type LucideIcon } from 'lucide-react-native';
 import { Tabs, TabList, TabTrigger, TabSlot, type TabTriggerSlotProps, type TabListProps } from 'expo-router/ui';
+import type { ComponentRef, Ref } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Palette, Spacing } from '@/constants/theme';
@@ -28,9 +29,10 @@ export default function AppTabs() {
   );
 }
 
-function IconTabButton({ Icon, label, isFocused, ...props }: TabTriggerSlotProps & { Icon: LucideIcon; label: string }) {
+function IconTabButton({ Icon, label, isFocused, ref, ...props }: TabTriggerSlotProps & { Icon: LucideIcon; label: string }) {
+  // expo-router still types this ref as the View component, not the instance RN 0.88's strict types expect.
   return (
-    <Pressable {...props} accessibilityLabel={label} style={({ pressed }) => [styles.tabButton, pressed && styles.pressed]}>
+    <Pressable {...props} ref={ref as unknown as Ref<ComponentRef<typeof Pressable>>} accessibilityLabel={label} style={({ pressed }) => [styles.tabButton, pressed && styles.pressed]}>
       <Icon size={24} color={isFocused ? Palette.cyan : Palette.amber} strokeWidth={1.8} />
     </Pressable>
   );

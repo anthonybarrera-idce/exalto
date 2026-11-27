@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AudioWaveform, Check, ChevronDown, ChevronLeft, Hand, Mic, Music, Pause, Piano, Play, Shapes } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, Easing, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Animated, Easing, Modal, Pressable, ScrollView, StyleSheet, View, type ScrollViewInstance } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -77,7 +77,7 @@ function Player({ data, title, keyName, embedded }: { data: PracticeData; title:
   const { t } = useLocale();
   const player = useMemo(() => new PracticePlayer(data), [data]);
   const layout = useMemo(() => scoreLayout(data), [data]);
-  const scroll = useRef<ScrollView>(null);
+  const scroll = useRef<ScrollViewInstance>(null);
   const viewW = useRef(0);
   const scrollX = useRef(0);
   // The playhead moves every frame without re-rendering the score (smooth, no flicker).
