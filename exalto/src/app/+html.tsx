@@ -1,4 +1,4 @@
-import { ScrollViewStyleReset } from 'expo-router/html';
+import { ScrollViewStyleReset, useServerDocumentContext } from 'expo-router/html';
 import type { PropsWithChildren } from 'react';
 
 /**
@@ -12,8 +12,10 @@ const URL = 'https://web.exalto.app/';
 const BG = '#1A120A';
 
 export default function Root({ children }: PropsWithChildren) {
+  // SDK 58: the router passes its <head>/<body> additions (scripts, styles, metadata) through this context.
+  const { htmlAttributes, bodyAttributes, headNodes, bodyNodes } = useServerDocumentContext();
   return (
-    <html lang="es">
+    <html {...htmlAttributes} lang="es">
       <head>
         <meta charSet="utf-8" />
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
@@ -45,8 +47,12 @@ export default function Root({ children }: PropsWithChildren) {
         {/* Disables body scrolling so ScrollViews behave like on native. */}
         <ScrollViewStyleReset />
         <style dangerouslySetInnerHTML={{ __html: css }} />
+        {headNodes}
       </head>
-      <body>{children}</body>
+      <body {...bodyAttributes}>
+        {children}
+        {bodyNodes}
+      </body>
     </html>
   );
 }

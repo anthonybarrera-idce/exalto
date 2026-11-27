@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AudioWaveform, Check, ChevronDown, ChevronLeft, Hand, Mic, MoveHorizontal, Music, Pause, Piano, Play, Shapes } from 'lucide-react-native';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentRef } from 'react';
 import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Reanimated, {
@@ -318,7 +318,7 @@ function Player({ data, title, keyName, embedded }: { data: PracticeData; title:
     [contentW], // eslint-disable-line react-hooks/exhaustive-deps
   );
   // Web: a trackpad or shift + mouse wheel scrolls the score sideways, as the ScrollView did.
-  const clip = useRef<View>(null);
+  const clip = useRef<ComponentRef<typeof View>>(null);
   useEffect(() => {
     if (Platform.OS !== 'web') return;
     const node = clip.current as unknown as HTMLElement | null;
