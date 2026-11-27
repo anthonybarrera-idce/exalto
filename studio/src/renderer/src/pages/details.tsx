@@ -87,6 +87,7 @@ export function DetailsPage({ go }: { go: (p: PageId) => void }) {
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="hymnal">{t("details.hymnal")}</Label>
             <select id="hymnal" value={form.hymnalId} onChange={(e) => set("hymnalId", e.target.value)} className="h-9 rounded-md border bg-background px-3 text-sm">
+              {!HYMNALS.some((h) => h.id === form.hymnalId) && <option value={form.hymnalId} disabled>{t("details.pickHymnal")}</option>}
               {HYMNALS.map((h) => <option key={h.id} value={h.id}>{hymnalLabel(h.id)}</option>)}
             </select>
           </div>

@@ -13,6 +13,7 @@ import { useStudio } from "@/hooks/use-studio"
 import { studio, type HymnDetail } from "@/lib/studio"
 import { useAuth } from "@/hooks/use-auth"
 import { firebaseConfigured, usingEmulators } from "@/lib/firebase"
+import { useHymnals } from "@/lib/hymnals"
 import { existingHymn, numberTakenBy, uploadHymn, type UploadStep } from "@/lib/upload"
 import { Progress } from "@/components/ui/progress"
 import { AttachDialog } from "@/components/attach-dialog"
@@ -58,7 +59,9 @@ export function ExportPage({ go }: { go: (p: PageId) => void }) {
   const [picked, setPicked] = useState<Set<string>>(new Set())
   useEffect(() => {
     if (!detail) return
-    setPicked(new Set(detail.files.filter((f) => !/\.(wav|m4a|mp3)$|transcription|review\.json/.test(f.name)).map((f) => f.name)))
+    // Ticked by default: what goes to Exalto (score, practice notes, compressed piano audio) and the readable files.
+    // Not: .wav copies of the audio, plain-tone tracks, and the converter's working files.
+    setPicked(new Set(detail.files.filter((f) => !/\.wav$|\.mp3$|-tone[.-]|transcription|review\.json/.test(f.name)).map((f) => f.name)))
   }, [detail?.slug])
   if (!detail) return <Empty>{t("common.convertFirst")}</Empty>
   const files = detail.files.filter((f) => f.name.includes("."))
@@ -90,14 +93,15 @@ export function ExportPage({ go }: { go: (p: PageId) => void }) {
             <Button variant="outline" disabled={!picked.size} onClick={save}>{t("export.saveTo")}</Button>
           </div>
         </Card>
-        <UploadCard detail={detail} go={go} />
+        <UploadCard detail={detail} picked={picked} go={go} />
       </div>
     </>
   )
 }
 
-function UploadCard({ detail, go }: { detail: HymnDetail; go: (p: PageId) => void }) {
-  const { user, canUpload, signIn, refreshRole } = useAuth()
+function UploadCard({ detail, picked, go }: { detail: HymnDetail; picked: Set<string>; go: (p: PageId) => void }) {
+  const { user, canUpload, composer, signIn, refreshRole } = useAuth()
+  const mine = useHymnals()
   const { t, rich, hymnal, status, voiceName } = useLocale()
   const stepLabel = (label: string) => {
     const voice = /^Piano · (\w+)$/.exec(label)?.[1]
@@ -127,7 +131,7 @@ function UploadCard({ detail, go }: { detail: HymnDetail; go: (p: PageId) => voi
       if (taken && !confirm(t("upload.numberTaken", { hymnal: hymnal(h.hymnalId), number: h.number ?? "", title: taken }))) return
       const prev = await existingHymn(h.hymnalId, detail.slug)
       if (prev && !confirm(t(lyricsOnly ? "upload.replace" : "upload.replaceAll", { title: prev.title ?? h.title, status: status(prev.status) }))) return
-      const r = await uploadHymn(detail, setSteps)
+      const r = await uploadHymn(detail, setSteps, picked)
       toast.success(r.created ? t("upload.created") : t("upload.updated", { status: status(r.status) }), { description: t("upload.publishHint") })
     } catch (e) {
       toast.error(t("upload.failed"), { description: String(e).slice(0, 300) })
@@ -157,6 +161,14 @@ function UploadCard({ detail, go }: { detail: HymnDetail; go: (p: PageId) => voi
         <Button onClick={() => signIn().catch((e) => toast.error(t("upload.signInFailed"), { description: String(e) }))}>
           <LogIn />{t("upload.signIn")}
         </Button>
+      ) : composer && !mine.some((m) => m.id === h.hymnalId) ? (
+        <div className="flex flex-col gap-2 text-sm">
+          <p className="text-muted-foreground">{t("upload.composerPickHymnal")}</p>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => go("details")}>{t("upload.editDetails")}</Button>
+            <Button variant="outline" onClick={() => go("hymnals")}>{t("upload.goHymnals")}</Button>
+          </div>
+        </div>
       ) : !canUpload ? (
         <div className="flex flex-col gap-2 text-sm">
           <p className="text-muted-foreground">{t("upload.noRole", { email: user.email ?? "" })}</p>

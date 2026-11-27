@@ -16,6 +16,9 @@ export const en = {
   'home.unlike': 'Unlike {title}',
 
   'hymns.title': 'Hymns',
+  'hymns.pickHymnal': 'Choose a hymnal',
+  'hymns.official': 'Hymnals',
+  'hymns.community': 'Community',
   'hymns.search': 'Search for hymn',
   'hymns.searchLabel': 'Search hymns by number or title',
   'hymns.clearSearch': 'Clear search',
@@ -121,6 +124,9 @@ export const es: Record<StringKey, string> = {
   'home.unlike': 'Quitar me gusta de {title}',
 
   'hymns.title': 'Himnos',
+  'hymns.pickHymnal': 'Elegir himnario',
+  'hymns.official': 'Himnarios',
+  'hymns.community': 'Comunidad',
   'hymns.search': 'Buscar himno',
   'hymns.searchLabel': 'Buscar himnos por número o título',
   'hymns.clearSearch': 'Borrar búsqueda',

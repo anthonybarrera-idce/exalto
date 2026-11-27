@@ -147,7 +147,7 @@ function EngineCard() {
 }
 
 function AccountRow({ open }: { open: () => void }) {
-  const { user, role } = useAuth()
+  const { user, role, composer } = useAuth()
   const t = useT()
   const roleLabel = useRoleLabel()
   if (!user) return null
@@ -162,7 +162,7 @@ function AccountRow({ open }: { open: () => void }) {
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[13px] font-medium">{name}</span>
         <span className="block truncate text-xs text-muted-foreground">
-          {roleLabel(role)}
+          {roleLabel(role, composer)}
           {usingEmulators ? t("nav.emulator") : ""}
         </span>
       </span>

@@ -64,8 +64,11 @@ export async function deleteUserAccount(user: AppUser) {
 }
 
 /** Roles that can be given by email invite (must match INVITE_ROLES in admin/functions). */
-export const INVITE_ROLES = ["admin"] as const
+export const INVITE_ROLES = ["composer", "moderator", "editor", "admin"] as const
 export type InviteRole = (typeof INVITE_ROLES)[number]
+/** The Team page invites only admin roles; composers are added from Studio access or Users. */
+export const TEAM_INVITE_ROLES = ["moderator", "editor", "admin"] as const
+export type TeamInviteRole = (typeof TEAM_INVITE_ROLES)[number]
 
 /** Team invites by Google email (`members/{email}`), written by Cloud Functions only. */
 export type Member = { email: string; role: UserRole; status: "invited" | "active"; invitedByName?: string; invitedAt?: Timestamp; acceptedAt?: Timestamp }

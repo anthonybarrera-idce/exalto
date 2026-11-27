@@ -19,6 +19,8 @@ export type Hymnal = {
   /** Cached on the phone so it works offline. */
   offline: boolean;
   order: number;
+  /** Name of the person who created it, shown under the hymnal name (not on the built-in hymnals). */
+  createdByName?: string;
 };
 
 export const DEFAULT_HYMNALS: Hymnal[] = [
@@ -67,6 +69,7 @@ export function watchHymnals() {
             visible: x.visible !== false,
             offline: x.offline === true,
             order: typeof x.order === 'number' ? x.order : (base?.order ?? 99),
+            ...(typeof x.createdByName === 'string' && x.createdByName ? { createdByName: x.createdByName } : {}),
           } satisfies Hymnal;
         }),
       );

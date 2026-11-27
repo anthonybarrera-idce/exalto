@@ -15,7 +15,7 @@ import { canManageTeam, useAuth } from "@/lib/auth"
 import { formatWhen } from "@/lib/format"
 import { isEmail, normalizeEmail } from "@/lib/studio-access"
 import { ADMIN_ROLES, type AdminRole, type AppUser } from "@/lib/types"
-import { INVITE_ROLES, inviteMember, revokeInvite, setUserRole, useMembers, useUsers, type InviteRole } from "@/lib/users"
+import { TEAM_INVITE_ROLES, inviteMember, revokeInvite, setUserRole, useMembers, useUsers, type TeamInviteRole } from "@/lib/users"
 
 const ROLE_INFO: Record<AdminRole, { label: string; desc: string }> = {
   owner: { label: "Owner", desc: "The church account. Always owner; only this account can be." },
@@ -144,7 +144,7 @@ export function TeamPage() {
 
 function InviteDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
   const [email, setEmail] = useState("")
-  const [role, setRole] = useState<InviteRole>("admin")
+  const [role, setRole] = useState<TeamInviteRole>("admin")
   const [busy, setBusy] = useState(false)
   const clean = normalizeEmail(email)
 
@@ -177,13 +177,13 @@ function InviteDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o:
           </label>
           <div className="grid gap-1.5 text-sm">
             <span className="font-medium">Role</span>
-            <Select value={role} onValueChange={(v) => setRole(v as InviteRole)}>
+            <Select value={role} onValueChange={(v) => setRole(v as TeamInviteRole)}>
               <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
               <SelectContent>
-                {INVITE_ROLES.map((r) => <SelectItem key={r} value={r}>{ROLE_INFO[r].label}</SelectItem>)}
+                {TEAM_INVITE_ROLES.map((r) => <SelectItem key={r} value={r}>{ROLE_INFO[r].label}</SelectItem>)}
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground">Admins can do everything except hold the owner role. Only the church account can be owner.</p>
+            <p className="text-xs text-muted-foreground">{ROLE_INFO[role].desc}. Only the church account can be owner.</p>
           </div>
           <DialogFooter>
             <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>

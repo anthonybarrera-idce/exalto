@@ -160,13 +160,14 @@ function HymnalDialog({ hymnal, hymnCount, takenIds, nextOrder, canDelete, onClo
   }
   const save = (e: React.FormEvent) => {
     e.preventDefault()
-    const clean = { ...form, name: form.name.trim(), shortName: form.shortName.trim() || form.name.trim(), order: Math.round(Number(form.order) || 0) }
+    const clean = { ...form, name: form.name.trim(), shortName: form.shortName.trim() || form.name.trim(), order: Math.max(0, Math.round(Number(form.order) || 0)) }
     void run(() => saveHymnal(id, clean, isNew), isNew ? `${clean.name} created` : "Hymnal saved")
   }
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent>
+      {/* (wider than the default 384px: the fields sit side by side) */}
+      <DialogContent className="sm:max-w-lg">
         <form onSubmit={save} className="grid gap-4">
           <DialogHeader>
             <DialogTitle>{isNew ? "New hymnal" : `Edit ${hymnal.name}`}</DialogTitle>
@@ -200,7 +201,7 @@ function HymnalDialog({ hymnal, hymnCount, takenIds, nextOrder, canDelete, onClo
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="hn-order">Order</Label>
-              <Input id="hn-order" type="number" value={form.order} onChange={(e) => set("order", Number(e.target.value))} />
+              <Input id="hn-order" type="number" min={0} step={1} value={form.order} onChange={(e) => set("order", Math.max(0, Number(e.target.value)))} />
             </div>
           </div>
           <div className="flex items-center justify-between gap-3">

@@ -20,7 +20,7 @@ type Env = Awaited<ReturnType<typeof studio.env>>
 /** "Owner" / "Propietario"…, or "Studio access" for someone on the access list without a role. */
 export function useRoleLabel() {
   const t = useT()
-  return (role: Role) => (role ? t(`role.${role}`) : t("role.none"))
+  return (role: Role, composer = false) => (role ? t(`role.${role}`) : composer ? t("role.composer") : t("role.none"))
 }
 
 /** Account, appearance, language, sound and app info. */
@@ -88,7 +88,7 @@ export function Avatar({ photo, name, className = "size-14 text-lg" }: { photo: 
 }
 
 function AccountCard() {
-  const { user, role, canUpload, signOut, refreshRole } = useAuth()
+  const { user, role, canUpload, composer, signOut, refreshRole } = useAuth()
   const t = useT()
   const roleLabel = useRoleLabel()
   const [busy, setBusy] = useState<"refresh" | "out" | null>(null)
@@ -118,12 +118,12 @@ function AccountCard() {
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <div className="truncate text-base font-semibold">{name}</div>
-            <Badge variant={role ? "default" : "secondary"}>{roleLabel(role)}</Badge>
+            <Badge variant={role || composer ? "default" : "secondary"}>{roleLabel(role, composer)}</Badge>
           </div>
           {user.displayName && user.email && <div className="truncate text-sm text-muted-foreground">{user.email}</div>}
           <div className={cn("mt-1 flex items-center gap-1.5 text-xs", canUpload ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground")}>
             {canUpload ? <Check className="size-3.5" /> : <X className="size-3.5" />}
-            {canUpload ? t("settings.canUpload") : t("settings.cannotUpload")}
+            {composer ? t("settings.composerUpload") : canUpload ? t("settings.canUpload") : t("settings.cannotUpload")}
           </div>
         </div>
       </div>

@@ -1,7 +1,7 @@
 import { collection, doc, onSnapshot, serverTimestamp } from "firebase/firestore"
 import { useSyncExternalStore } from "react"
 
-import { db } from "@/lib/firebase"
+import { auth, db } from "@/lib/firebase"
 import { batchWithAudit } from "@/lib/hymns"
 import type { Hymnal } from "@/lib/types"
 
@@ -81,9 +81,12 @@ export type HymnalInput = Omit<Hymnal, "id">
 
 export async function saveHymnal(id: string, input: HymnalInput, isNew: boolean) {
   const { batch, uid } = batchWithAudit(isNew ? "Created hymnal" : "Edited hymnal", input.name)
+  // Who made it: the app shows this name under the hymnal (Google name only, never an email).
+  const name = auth.currentUser?.displayName?.trim().slice(0, 80)
+  const creator = isNew ? { createdBy: uid, ...(name ? { createdByName: name } : {}) } : {}
   batch.set(
     doc(db, "hymnals", id),
-    { ...input, updatedAt: serverTimestamp(), updatedBy: uid, ...(isNew ? { createdAt: serverTimestamp() } : {}) },
+    { ...input, ...creator, updatedAt: serverTimestamp(), updatedBy: uid, ...(isNew ? { createdAt: serverTimestamp() } : {}) },
     { merge: true },
   )
   await batch.commit()

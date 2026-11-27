@@ -18,12 +18,15 @@ const db = getFirestore()
 const ROLES = ["listener", "composer", "moderator", "editor", "admin", "owner"] as const
 type Role = (typeof ROLES)[number]
 const ADMIN_ROLES: Role[] = ["moderator", "editor", "admin", "owner"]
-/** Roles that can be given by email invite. Only Admin for now. */
-const INVITE_ROLES: Role[] = ["admin"]
+/** Roles that can be given by email invite (Team page and Studio access). */
+const INVITE_ROLES: Role[] = ["composer", "moderator", "editor", "admin"]
 
 // The church's main account: the only account that may be owner, and nobody can demote or delete it.
 const OWNER_EMAIL = "anthonybarrera@iglesiadecristoenelgin.com"
 const PROTECTED_EMAILS = [OWNER_EMAIL]
+
+/** Every callable: one region, and at most 5 instances so a flood of rejected calls can't run up a bill. */
+const CALL_OPTIONS = { region: "us-central1", maxInstances: 5 }
 
 const normalizeEmail = (e: string) => e.trim().toLowerCase()
 const isEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)
@@ -74,7 +77,7 @@ async function applyRole(uid: string, role: Role) {
   return (await profile.get()).get("handle") as string | undefined
 }
 
-export const setUserRole = onCall({ region: "us-central1" }, async (req) => {
+export const setUserRole = onCall(CALL_OPTIONS, async (req) => {
   const caller = requireManager(req)
   const { uid, role } = (req.data ?? {}) as { uid?: string; role?: Role }
   if (!uid || !role || !ROLES.includes(role)) throw new HttpsError("invalid-argument", "Expected { uid, role }.")
@@ -88,7 +91,7 @@ export const setUserRole = onCall({ region: "us-central1" }, async (req) => {
   return { ok: true }
 })
 
-export const deleteUser = onCall({ region: "us-central1" }, async (req) => {
+export const deleteUser = onCall(CALL_OPTIONS, async (req) => {
   const caller = requireManager(req)
   const { uid } = (req.data ?? {}) as { uid?: string }
   if (!uid) throw new HttpsError("invalid-argument", "Expected { uid }.")
@@ -110,7 +113,7 @@ export const deleteUser = onCall({ region: "us-central1" }, async (req) => {
  * Invites someone to the Exalto team by Google email (`members/{email}`). If they already have an account the
  * role applies now; otherwise it applies the first time they sign in to the admin or Hymn Studio (acceptInvite).
  */
-export const inviteMember = onCall({ region: "us-central1" }, async (req) => {
+export const inviteMember = onCall(CALL_OPTIONS, async (req) => {
   const caller = requireManager(req)
   const { email: raw, role } = (req.data ?? {}) as { email?: string; role?: Role }
   const email = normalizeEmail(raw ?? "")
@@ -137,7 +140,7 @@ export const inviteMember = onCall({ region: "us-central1" }, async (req) => {
 })
 
 /** Cancels an invite that hasn't been used yet. People already on the team are changed with setUserRole. */
-export const revokeInvite = onCall({ region: "us-central1" }, async (req) => {
+export const revokeInvite = onCall(CALL_OPTIONS, async (req) => {
   const caller = requireManager(req)
   const email = normalizeEmail(((req.data ?? {}) as { email?: string }).email ?? "")
   if (!isEmail(email)) throw new HttpsError("invalid-argument", "Expected { email }.")
@@ -150,7 +153,7 @@ export const revokeInvite = onCall({ region: "us-central1" }, async (req) => {
 })
 
 /** Called by the admin and Studio after sign-in: applies a pending invite for the caller's verified email. */
-export const acceptInvite = onCall({ region: "us-central1" }, async (req) => {
+export const acceptInvite = onCall(CALL_OPTIONS, async (req) => {
   if (!req.auth) throw new HttpsError("unauthenticated", "Sign in first.")
   const email = req.auth.token.email?.toLowerCase()
   if (!email || req.auth.token.email_verified !== true) return { role: null }

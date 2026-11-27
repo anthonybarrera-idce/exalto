@@ -8,20 +8,25 @@ service firebase.storage {
     function canEditContent() {
       return request.auth != null && request.auth.token.role in ['owner', 'admin', 'editor'];
     }
+    // Composers write only the files of hymns they own (Studio creates the hymn doc before uploading).
+    function ownsHymn(hymnId) {
+      return request.auth != null && request.auth.token.get('composer', false) == true
+        && firestore.get(/databases/(default)/documents/hymns/$(hymnId)).data.get('ownerUid', null) == request.auth.uid;
+    }
 
     match /hymns/{hymnId}/{allPaths=**} {
       // The app streams these by download URL; listing and reading by path are open too.
       allow read: if true;
-      allow write: if canEditContent()
+      allow write: if (canEditContent() || ownsHymn(hymnId))
         && request.resource.size < 50 * 1024 * 1024
         && (request.resource.contentType.matches('audio/.*')
             || request.resource.contentType == 'application/vnd.recordare.musicxml+xml');
-      allow delete: if canEditContent();
+      allow delete: if canEditContent() || ownsHymn(hymnId);
     }
 
     // JSON is allowed for this one file only (read is covered by the rule above).
     match /hymns/{hymnId}/practice.json {
-      allow write: if canEditContent()
+      allow write: if (canEditContent() || ownsHymn(hymnId))
         && request.resource.size < 2 * 1024 * 1024
         && request.resource.contentType == 'application/json';
     }

@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { useStudio } from "@/hooks/use-studio"
+import { useHymnals } from "@/lib/hymnals"
 import { studio } from "@/lib/studio"
 import { useLocale } from "@/hooks/use-locale"
 
@@ -31,7 +32,11 @@ export function ImportPage({ go }: { go: (p: PageId) => void }) {
   const [inputs, setInputs] = useState<string[]>([])
   const [link, setLink] = useState("")
   const [engine, setEngine] = useState("local")
-  const [hymnal, setHymnal] = useState("community")
+  // A composer's own hymnals, or every hymnal for everyone else; "community" until a composer creates one.
+  const hymnalIds = useHymnals().map((h) => h.id)
+  const options = hymnalIds.length ? hymnalIds : ["community"]
+  const [picked, setHymnal] = useState("community")
+  const hymnal = options.includes(picked) ? picked : options[0]
   const [tempo, setTempo] = useState("80")
   const [correct, setCorrect] = useState(true)
   const [dragging, setDragging] = useState(false)
@@ -115,7 +120,7 @@ export function ImportPage({ go }: { go: (p: PageId) => void }) {
           <Select value={hymnal} onValueChange={setHymnal}>
             <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
             <SelectContent>
-              {["community", "idc-himnario", "canticos-espirituales"].map((id) => (
+              {options.map((id) => (
                 <SelectItem key={id} value={id}>{hymnalLabel(id)}</SelectItem>
               ))}
             </SelectContent>

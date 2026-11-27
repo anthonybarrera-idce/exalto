@@ -1,7 +1,8 @@
 import { collection, doc, onSnapshot, serverTimestamp } from "firebase/firestore"
 import { useSyncExternalStore } from "react"
-import { db } from "@/lib/firebase"
-import { batchWithAudit } from "@/lib/library"
+import { auth, db } from "@/lib/firebase"
+import { batchWithAudit, getOwnerScope } from "@/lib/library"
+import { useAuth } from "@/hooks/use-auth"
 
 /**
  * Hymnals, shared with the admin and the mobile app (admin/src/lib/hymnals.ts): Firestore `hymnals/{id}` docs
@@ -16,6 +17,8 @@ export type Hymnal = {
   visible: boolean
   offline: boolean
   order: number
+  /** Set on hymnals a composer created; they manage only these (firestore.rules). */
+  ownerUid?: string
 }
 
 export const DEFAULT_HYMNALS: Hymnal[] = [
@@ -55,6 +58,7 @@ function subscribe(listener: () => void) {
               visible: x.visible !== false,
               offline: x.offline === true,
               order: typeof x.order === "number" ? x.order : (base?.order ?? 99),
+              ...(x.ownerUid ? { ownerUid: x.ownerUid as string } : {}),
             } satisfies Hymnal
           }),
         )
@@ -68,8 +72,15 @@ function subscribe(listener: () => void) {
   return () => void listeners.delete(listener)
 }
 
-/** Live list of hymnals in display order (the defaults until Firestore answers). */
-export const useHymnals = () => useSyncExternalStore(subscribe, () => current)
+/** Live list of every hymnal in display order (the defaults until Firestore answers). */
+export const useAllHymnals = () => useSyncExternalStore(subscribe, () => current)
+
+/** The hymnals this person can upload to and manage: all of them for staff, only their own for a composer. */
+export function useHymnals() {
+  const all = useAllHymnals()
+  const { user, composer } = useAuth()
+  return composer ? all.filter((h) => h.ownerUid === user?.uid) : all
+}
 export const hymnalName = (id: string) => current.find((h) => h.id === id)?.name ?? id
 
 /** A url-safe id from a name: "Himnos de Gloria" → "himnos-de-gloria". */
@@ -86,11 +97,18 @@ export type HymnalInput = Omit<Hymnal, "id">
 
 export async function saveHymnal(id: string, input: HymnalInput, isNew: boolean) {
   const { batch, uid } = batchWithAudit(isNew ? "Created hymnal in Hymn Studio" : "Edited hymnal in Hymn Studio", input.name)
-  batch.set(doc(db, "hymnals", id), { ...input, updatedAt: serverTimestamp(), updatedBy: uid, ...(isNew ? { createdAt: serverTimestamp() } : {}) }, { merge: true })
+  // A composer's hymnals are theirs: community, not cached offline on every phone (firestore.rules).
+  const own = getOwnerScope() ? { ownerUid: uid, kind: "community" as const, offline: false } : {}
+  const { ownerUid: _keep, ...fields } = input
+  // Who made it: the app shows this name under the hymnal (Google name only, never an email).
+  const me = auth.currentUser
+  const name = me?.displayName?.trim().slice(0, 80)
+  const creator = isNew ? { createdBy: uid, ...(name ? { createdByName: name } : {}) } : {}
+  batch.set(doc(db, "hymnals", id), { ...fields, ...own, ...creator, updatedAt: serverTimestamp(), updatedBy: uid, ...(isNew ? { createdAt: serverTimestamp() } : {}) }, { merge: true })
   await batch.commit()
 }
 
-/** Only custom hymnals with no hymns; owners and admins only (firestore.rules). */
+/** Only custom hymnals with no hymns; owners and admins, or the composer who owns it (firestore.rules). */
 export async function deleteHymnal(h: Hymnal) {
   const { batch } = batchWithAudit("Deleted hymnal", h.name)
   batch.delete(doc(db, "hymnals", h.id))

@@ -1,12 +1,20 @@
-import { collection, doc, onSnapshot, orderBy, query, serverTimestamp, writeBatch, type DocumentData, type Timestamp } from "firebase/firestore"
+import { collection, doc, onSnapshot, orderBy, query, serverTimestamp, where, writeBatch, type DocumentData, type Timestamp } from "firebase/firestore"
 import { auth, db } from "@/lib/firebase"
 import type { LyricSection } from "@/lib/studio"
 
 /**
  * The Exalto hymn library, edited from Studio the same way the admin does (admin/src/lib/hymns.ts):
  * the same `hymns` docs and fields, and every write goes in a batch with an `auditLog` entry.
- * Firestore rules allow it for owners, admins and editors.
+ * Firestore rules allow it for owners, admins and editors, and composers for their own hymns.
  */
+
+/**
+ * Set by AuthProvider: a composer's uid when they may only see and change their own hymns (`ownerUid`),
+ * or null for owners, admins and editors, who see the whole library.
+ */
+let ownerScope: string | null = null
+export const setOwnerScope = (uid: string | null) => void (ownerScope = uid)
+export const getOwnerScope = () => ownerScope
 export type HymnStatus = "draft" | "review" | "published" | "hidden"
 export const STATUSES: HymnStatus[] = ["draft", "review", "published", "hidden"]
 
@@ -24,6 +32,7 @@ export type LibraryHymn = {
   status: HymnStatus
   hasAudio: boolean
   hasScore: boolean
+  ownerUid?: string
   updatedAt?: Timestamp
 }
 
@@ -42,14 +51,20 @@ function toHymn(id: string, d: DocumentData): LibraryHymn {
     status: STATUSES.includes(d.status) ? d.status : "draft",
     hasAudio: !!d.audioUri,
     hasScore: !!d.scoreUrl,
+    ownerUid: d.ownerUid,
     updatedAt: d.updatedAt,
   }
 }
 
 export function watchLibrary(onData: (hymns: LibraryHymn[]) => void, onError: (e: Error) => void) {
+  // Composers can only query their own hymns (rules); sorted here so no composite index is needed.
+  const q = ownerScope ? query(collection(db, "hymns"), where("ownerUid", "==", ownerScope)) : query(collection(db, "hymns"), orderBy("title"))
   return onSnapshot(
-    query(collection(db, "hymns"), orderBy("title")),
-    (snap) => onData(snap.docs.map((d) => toHymn(d.id, d.data()))),
+    q,
+    (snap) => {
+      const hymns = snap.docs.map((d) => toHymn(d.id, d.data()))
+      onData(ownerScope ? hymns.sort((a, b) => a.title.localeCompare(b.title)) : hymns)
+    },
     onError,
   )
 }

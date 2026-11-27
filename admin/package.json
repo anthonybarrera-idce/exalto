@@ -15,7 +15,8 @@
     "import-hymns": "node scripts/import-hymns.ts",
     "typecheck": "tsc -b",
     "import-rtdb": "node scripts/import-rtdb.ts",
-    "seed-users": "node scripts/seed-users.ts"
+    "seed-users": "node scripts/seed-users.ts",
+    "deploy": "npm run build && firebase deploy --only hosting:admin"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.3.0",
