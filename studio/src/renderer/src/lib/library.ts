@@ -1,6 +1,7 @@
 import { collection, doc, onSnapshot, orderBy, query, serverTimestamp, where, writeBatch, type DocumentData, type Timestamp } from "firebase/firestore"
 import { auth, db } from "@/lib/firebase"
 import type { LyricSection } from "@/lib/studio"
+import { hymnNumberText } from "@/lib/hymn-number"
 
 /**
  * The Exalto hymn library, edited from Studio the same way the admin does (admin/src/lib/hymns.ts):
@@ -69,7 +70,7 @@ export function watchLibrary(onData: (hymns: LibraryHymn[]) => void, onError: (e
   )
 }
 
-const describe = (h: Pick<LibraryHymn, "number" | "label" | "title">) => `${h.number != null ? `Hymn ${h.label ?? h.number} ` : ""}"${h.title}"`
+const describe = (h: Pick<LibraryHymn, "number" | "label" | "title">) => `${hymnNumberText(h) ? `Hymn ${hymnNumberText(h)} ` : ""}"${h.title}"`
 
 export function batchWithAudit(action: string, target: string) {
   const user = auth.currentUser

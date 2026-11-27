@@ -28,6 +28,7 @@ import { studio, type HymnDetail } from "@/lib/studio"
 import type { UploadStep } from "@/lib/upload"
 import { VOICES, type Voice } from "@/lib/notes"
 import { cn } from "@/lib/utils"
+import { hymnNumberText } from "@/lib/hymn-number"
 
 // ---- Shared bits (also used by pages/attach.tsx) ----
 
@@ -82,7 +83,7 @@ export function WhyBadge({ why }: { why: Match["why"] }) {
 export function useWhere() {
   const { t, hymnal } = useLocale()
   return (h: { number: number | null; label?: string | null; hymnalId: string }) =>
-    h.number != null || h.label ? t("attach.target", { number: h.label ?? h.number ?? "", hymnal: hymnal(h.hymnalId) }) : t("attach.targetNoNumber", { hymnal: hymnal(h.hymnalId) })
+    h.number != null || h.label ? t("attach.target", { number: hymnNumberText(h) ?? "", hymnal: hymnal(h.hymnalId) }) : t("attach.targetNoNumber", { hymnal: hymnal(h.hymnalId) })
 }
 
 function Modal({ children, onClose }: { children: ReactNode; onClose: () => void }) {
@@ -117,7 +118,7 @@ export function TargetPicker({ want, hymns, onPick, pickedId }: { want: HymnDeta
       onClick={() => onPick(h)}
       className={cn("flex w-full items-center gap-3 border-b border-muted px-3 py-2 text-left last:border-b-0 hover:bg-accent/60", pickedId === h.id && "bg-sidebar-accent")}
     >
-      <span className="w-10 shrink-0 text-[13px] font-medium text-foreground/80 tabular-nums">{h.label ?? h.number ?? "—"}</span>
+      <span className="w-10 shrink-0 text-[13px] font-medium text-foreground/80 tabular-nums">{hymnNumberText(h) ?? "—"}</span>
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[13px] font-medium">{h.title}</span>
         <span className="block truncate text-xs text-muted-foreground">{where(h)}</span>

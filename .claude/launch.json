@@ -29,6 +29,31 @@
         "8081"
       ],
       "port": 8081
+    },
+    {
+      "name": "webapp-dist",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "/private/tmp/claude-502/-Users-anthonybarrera-Documents-personal-exalto/99571615-fe66-4f76-882a-80b0ef8aa7d5/scratchpad/serve-app.mjs",
+        "admin/webapp-dist",
+        "5050"
+      ],
+      "port": 5050
+    },
+    {
+      "name": "website-dist",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "website",
+        "run",
+        "preview",
+        "--",
+        "--port",
+        "4173",
+        "--strictPort"
+      ],
+      "port": 4173
     }
   ]
 }

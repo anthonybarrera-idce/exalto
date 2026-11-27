@@ -25,13 +25,17 @@ export const Palette = {
 /** Cyan → amber, used on borders, badges and accents. */
 export const BrandGradient = ["#04C1FF", "#EDA145"] as const;
 
+/** On web, fall back to the system UI font (never the browser's serif default) if a face hasn't loaded. */
+const face = (name: string) =>
+  Platform.OS === "web" ? `${name}, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif` : name;
+
 /** Plus Jakarta Sans faces, loaded in app/_layout.tsx. */
 export const FontFamily = {
-  regular: "PlusJakartaSans_400Regular",
-  medium: "PlusJakartaSans_500Medium",
-  semibold: "PlusJakartaSans_600SemiBold",
-  bold: "PlusJakartaSans_700Bold",
-  extrabold: "PlusJakartaSans_800ExtraBold",
+  regular: face("PlusJakartaSans_400Regular"),
+  medium: face("PlusJakartaSans_500Medium"),
+  semibold: face("PlusJakartaSans_600SemiBold"),
+  bold: face("PlusJakartaSans_700Bold"),
+  extrabold: face("PlusJakartaSans_800ExtraBold"),
 } as const;
 
 export function fontForWeight(weight?: string | number) {

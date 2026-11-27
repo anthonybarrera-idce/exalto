@@ -5,6 +5,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { Hymn } from '@/context/audio-context';
 import { useHymnals, watchHymnals, type Hymnal } from '@/data/hymnals';
 import { db, firebaseConfigured } from '@/lib/firebase';
+import { hymnNumberText } from '@/lib/hymn-number';
 
 const CACHE_KEY = 'exalto.hymns.v1';
 
@@ -27,12 +28,13 @@ function toHymn(id: string, d: DocumentData, hymnals: Hymnal[]): Hymn {
     title: d.title ?? '',
     artist: d.author || hymnal?.name || '',
     hymnNumber: typeof d.number === 'number' ? d.number : undefined,
-    label: d.label || (typeof d.number === 'number' ? String(d.number) : undefined),
+    label: hymnNumberText({ number: d.number, label: d.label }) ?? undefined,
     hymnalId: d.hymnalId,
     artworkColor: hymnal?.color,
     audioUri: d.audioUri || undefined,
     acapellaUri: d.acapellaUri || undefined,
     lyrics: d.lyrics ?? [],
+    ownerUid: typeof d.ownerUid === 'string' && d.ownerUid ? d.ownerUid : undefined,
     practice: typeof d.practiceData?.url === 'string' ? { url: d.practiceData.url, version: Number(d.practiceData.version) || 1 } : undefined,
   };
 }

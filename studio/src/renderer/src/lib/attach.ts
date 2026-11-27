@@ -4,6 +4,7 @@ import { batchWithAudit, type LibraryHymn } from "@/lib/library"
 import { cleanLyrics } from "@/lib/lyric-blocks"
 import type { HymnDetail, HymnDoc, HymnSummary, LyricSection } from "@/lib/studio"
 import { hymnFiles, uploadFiles, VOICES, type UploadStep } from "@/lib/upload"
+import { hymnNumberText } from "@/lib/hymn-number"
 
 /**
  * Attach a score converted in Studio to a hymn that already exists in Exalto (e.g. the lyrics-only IDC Himnario
@@ -156,7 +157,7 @@ export function diffLyrics(before: LyricSection[], after: LyricSection[]): Secti
 // ---- Upload ----
 
 const describe = (t: Pick<TargetNow, "title">, h: Pick<LibraryHymn, "number" | "label">) =>
-  `${h.number != null ? `Hymn ${h.label ?? h.number} ` : ""}"${t.title}"`
+  `${hymnNumberText(h) ? `Hymn ${hymnNumberText(h)} ` : ""}"${t.title}"`
 
 /**
  * Uploads this converted hymn's score, piano mix, voice tracks and practice.json to the existing hymn's folder,

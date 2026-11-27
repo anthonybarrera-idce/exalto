@@ -48,8 +48,22 @@ FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 npm run import-legacy -- …/himnos.js
 ## Deploy
 
 ```bash
-npm run build
-firebase deploy --only hosting,firestore:rules --project your-project
+npm run deploy                              # builds and deploys only the admin site (hosting:admin)
+firebase deploy --only firestore:rules      # rules, when they change
+```
+
+Every app's deploy steps (website, web app, rules, functions, mobile, Studio) are in the repo-root `README.md`.
+
+## Storage CORS (web builds)
+
+Browsers can only read Storage files (e.g. a hymn's `practice.json`) from origins listed in the
+bucket's CORS config, kept in `storage-cors.json` (read-only `GET`/`HEAD`). Native iOS/Android and
+SDK uploads from the admin and Studio don't need it. When you add a web origin (a new domain or
+dev port), add it there and apply it with the church gcloud profile:
+
+```bash
+CLOUDSDK_CONFIG=$HOME/.config/gcloud-idce gcloud storage buckets update gs://exalto-fe127.firebasestorage.app --cors-file=storage-cors.json
+CLOUDSDK_CONFIG=$HOME/.config/gcloud-idce gcloud storage buckets describe gs://exalto-fe127.firebasestorage.app --format="default(cors_config)"
 ```
 
 ## Data model (Firestore)

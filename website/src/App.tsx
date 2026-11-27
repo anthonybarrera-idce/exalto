@@ -158,6 +158,9 @@ function Nav({ t, lang, setLang }: { t: Copy; lang: Lang; setLang: (l: Lang) => 
       </nav>
       <div className="flex items-center gap-3 sm:gap-5">
         <LangToggle lang={lang} setLang={setLang} t={t} />
+        <a href={LINKS.signIn} className="text-[15px] font-semibold whitespace-nowrap text-text hover:text-amber">
+          {t.nav.signIn}
+        </a>
         {/* Phones show the language switch instead; the CTA returns once both fit. */}
         <span className="hidden min-[440px]:inline-flex">
           <GradientButton href="/#download">{t.nav.cta}</GradientButton>
@@ -219,7 +222,7 @@ function HeroPhones({ t, lang }: { t: Copy; lang: Lang }) {
 function Hero({ t, lang }: { t: Copy; lang: Lang }) {
   return (
     <section aria-labelledby="hero-title" className="relative overflow-x-clip">
-      <FlowingStaff id="hero" className="staff-in absolute inset-x-0 -bottom-4 h-[150px] w-full lg:-bottom-10 lg:h-[200px]" opacity={0.3} />
+      <FlowingStaff id="hero" wave amp={30} scale={3.2} stretch={1.6} speed={20} className="staff-in absolute inset-x-0 bottom-0 h-[280px] w-full" opacity={0.3} />
       <div className="relative mx-auto flex max-w-[1440px] flex-col gap-12 px-5 pt-6 pb-16 lg:px-10 xl:flex-row xl:items-center xl:gap-10 xl:pt-10 xl:pr-24 xl:pb-[72px] xl:pl-[120px]">
         <div className="flex min-w-0 flex-1 flex-col items-start gap-6">
           <p className="rise bg-brand-gradient inline-flex rounded-full p-px">
@@ -241,6 +244,9 @@ function Hero({ t, lang }: { t: Copy; lang: Lang }) {
           </p>
           <div style={{ '--i': 3 } as CSSProperties} className="rise">
             <StoreButtons t={t} stack />
+            <div className="pt-3">
+              <OutlineButton href={LINKS.webApp}>{t.web.open}</OutlineButton>
+            </div>
           </div>
           <ul style={{ '--i': 4 } as CSSProperties} className="rise flex flex-wrap gap-x-5 gap-y-2">
             {t.hero.notes.map((n) => (
@@ -526,11 +532,83 @@ function Studio({ t }: { t: Copy }) {
   )
 }
 
+function ComposerCard({ t }: { t: Copy }) {
+  const c = t.composers.card
+  return (
+    <div role="img" aria-label={t.composers.graphicLabel} className="relative mx-auto w-full max-w-[440px]">
+      <div
+        aria-hidden="true"
+        className="absolute inset-[6%] rounded-full opacity-25 blur-3xl"
+        style={{ backgroundImage: 'linear-gradient(90deg, #eda145, #04c1ff)' }}
+      />
+      <div aria-hidden="true" className="relative flex flex-col gap-6 rounded-[28px] border border-line bg-surface p-6 shadow-[0_24px_60px_-24px_rgba(0,0,0,0.9)] lg:p-8">
+        <div className="flex items-center gap-4">
+          <span
+            className="flex size-16 shrink-0 items-center justify-center rounded-full"
+            style={{ backgroundImage: 'linear-gradient(135deg, #04c1ff, #eda145)' }}
+          >
+            <img src="/icons/mic.svg" alt="" width={26} height={26} className="brightness-0 invert" />
+          </span>
+          <span className="flex min-w-0 flex-col gap-1">
+            <span className="truncate text-[20px] font-bold text-text">{c.name}</span>
+            <span className="truncate text-[14px] text-muted">{c.handle}</span>
+          </span>
+          <span className="ml-auto rounded-full bg-amber/15 px-3 py-1 text-[12px] font-semibold text-amber">{c.role}</span>
+        </div>
+        <div className="flex gap-3">
+          {[c.hymns, c.hymnals].map((label, i) => (
+            <span key={label} className="flex flex-1 flex-col gap-1 rounded-2xl bg-surface2 px-4 py-3">
+              <span className="text-[22px] font-extrabold text-text">{i === 0 ? 12 : 2}</span>
+              <span className="text-[13px] text-muted">{label}</span>
+            </span>
+          ))}
+        </div>
+        <ul className="flex flex-col gap-3">
+          {['#04c1ff', '#9b7bff', '#eda145'].map((tone) => (
+            <li key={tone} className="flex items-center gap-3 rounded-2xl bg-surface2/60 p-3">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-xl" style={{ background: tone }}>
+                <img src="/icons/file-music.svg" alt="" width={20} height={20} className="brightness-0 invert" />
+              </span>
+              <span className="flex flex-1 flex-col gap-1.5">
+                <span className="h-2 w-2/3 rounded-full bg-white/60" />
+                <span className="h-2 w-1/3 rounded-full bg-white/25" />
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  )
+}
+
+function Composers({ t }: { t: Copy }) {
+  return (
+    <section id="composers" aria-labelledby="composers-title" className="relative overflow-x-clip bg-surface">
+      <div className="mx-auto flex max-w-[1440px] flex-col gap-12 px-5 py-16 lg:flex-row-reverse lg:items-center lg:gap-16 lg:px-10 lg:py-[88px] xl:gap-24 xl:px-[120px]">
+        <div className="reveal relative flex min-w-0 flex-1 flex-col gap-5">
+          <Eyebrow tone="text-amber">{t.composers.eyebrow}</Eyebrow>
+          <h2
+            id="composers-title"
+            className="text-[32px] leading-[38px] font-extrabold tracking-[-0.48px] text-text lg:text-[44px] lg:leading-[52px] lg:tracking-[-0.66px]"
+          >
+            {t.composers.title}
+          </h2>
+          <p className="text-[17px] leading-[27px] text-muted">{t.composers.body}</p>
+          <CheckList items={t.composers.bullets} />
+        </div>
+        <div className="reveal relative flex-1">
+          <ComposerCard t={t} />
+        </div>
+      </div>
+    </section>
+  )
+}
+
 /* ---------- Final CTA + footer ---------- */
 
 function FinalCta({ t }: { t: Copy }) {
   return (
-    <section id="download" aria-labelledby="cta-title" className="relative overflow-x-clip">
+    <section id="download" aria-labelledby="cta-title" className="relative overflow-clip">
       <div className="relative mx-auto flex max-w-[1440px] flex-col items-center gap-6 px-5 pt-16 pb-20 text-center lg:px-10 lg:pt-24 lg:pb-28 xl:px-[120px]">
         <img
           src="/img/cta-glow.svg"
@@ -540,7 +618,7 @@ function FinalCta({ t }: { t: Copy }) {
           height={540}
           className="pointer-events-none absolute top-[-50px] left-1/2 max-w-none -translate-x-1/2"
         />
-        <FlowingStaff id="cta" className="staff-slide absolute inset-x-0 top-[38%] h-[200px] w-full" opacity={0.18} />
+        <FlowingStaff id="cta" wave amp={30} scale={3.2} stretch={1.6} className="absolute inset-x-0 top-1/4 h-1/2 w-full" opacity={0.18} />
         <img src="/img/exalto-mark-cta.svg" alt="" aria-hidden="true" width={55.2} height={64} className="reveal relative" />
         <h2
           id="cta-title"
@@ -552,6 +630,10 @@ function FinalCta({ t }: { t: Copy }) {
         <div className="relative flex justify-center pt-2">
           <StoreButtons t={t} />
         </div>
+        <p className="relative flex flex-col items-center gap-3 pt-1 text-[15px] text-muted sm:flex-row sm:justify-center">
+          {t.web.note}
+          <OutlineButton href={LINKS.webApp}>{t.web.open}</OutlineButton>
+        </p>
       </div>
     </section>
   )
@@ -741,6 +823,7 @@ function Landing({ t, lang }: { t: Copy; lang: Lang }) {
           phoneFirst={false}
           bare
         />
+        <Composers t={t} />
         <Studio t={t} />
         <FinalCta t={t} />
     </>

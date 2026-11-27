@@ -1,19 +1,22 @@
 import {
   Dimensions,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   View,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ArrowDown, ArrowUp, Cast, Download, FileText, Heart, ListMusic, MoreVertical, Pause, Play, Repeat, Repeat1, Share2, Shuffle, SkipBack, SkipForward, ThumbsUp, type LucideIcon } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import { ArrowDown, ArrowUp, Cast, Download, FileText, Heart, ListMusic, ListPlus, MoreVertical, Pause, Play, Repeat, Repeat1, Share2, Shuffle, SkipBack, SkipForward, ThumbsUp, type LucideIcon } from 'lucide-react-native';
+import { useEffect, useMemo, useState } from 'react';
+import Animated, { LayoutAnimationConfig, useAnimatedScrollHandler, type SharedValue } from 'react-native-reanimated';
 import { GestureDetector, type GestureType } from 'react-native-gesture-handler';
 
 import { ThemedText } from '@/components/themed-text';
-import { ModeSwitcher } from '@/components/ModeSwitcher';
+import { MODE_SWITCHER_HEIGHT, ModeSwitcher } from '@/components/ModeSwitcher';
 import { useAudio } from '@/hooks/use-audio';
 import { useFavorites } from '@/context/favorites-context';
+import { usePlaylists } from '@/context/playlists-context';
 import { useLocale, useSectionLabel } from '@/context/locale-context';
 
 /** Like state for the hymn that's open, backed by on-device favorites. */
@@ -21,15 +24,18 @@ function useLike(id: string | undefined) {
   const { isFavorite, toggle } = useFavorites();
   return { isLiked: id ? isFavorite(id) : false, toggleLike: () => id && toggle(id) };
 }
-import { useViewMode } from '@/context/view-mode-context';
+import { hymnModes, useViewMode } from '@/context/view-mode-context';
 import { LyricSection } from '@/context/audio-context';
 import { AccentColor, BrandGradient, Palette, Spacing } from '@/constants/theme';
 import { HymnArt } from '@/components/ui/hymn-art';
 import { PracticePanel } from '@/components/practice/PracticeModal';
 import { SoundStyleToggle } from '@/components/player/SoundStyleToggle';
+import { contentFadeIn } from '@/components/ui/transitions';
+import { PLAYER_ART_MAX, PLAYER_CONTENT_MAX, playerAreaWidth } from '@/hooks/use-desktop';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const ARTWORK_SIZE = SCREEN_WIDTH - 68; // SCREEN_WIDTH - H_INSET*2 - paddingHorizontal*2
+// The screen width on phones; on web, the column the player sits in (desktop / tablet-size windows).
+const SCREEN_WIDTH = playerAreaWidth();
+const ARTWORK_SIZE = Math.min(SCREEN_WIDTH - 68, PLAYER_ART_MAX); // SCREEN_WIDTH - H_INSET*2 - paddingHorizontal*2, capped on wide web windows
 
 function formatTime(secs: number): string {
   if (!secs || isNaN(secs)) return '0:00';
@@ -45,11 +51,13 @@ interface FullPlayerProps {
 interface RootProps extends FullPlayerProps {
   /** Drag-to-dismiss, attached to the handle and top bar so it doesn't fight the lyrics scroll. */
   dragGesture?: GestureType;
+  /** How far the Listen view is scrolled, so the floating artwork (drawn above it) moves with the content. */
+  artScrollY?: SharedValue<number>;
 }
 
 // ─── Audio mode ─────────────────────────────────────────────────────────────
 
-function AudioView({ onClose }: FullPlayerProps) {
+function AudioView({ onClose, artScrollY }: FullPlayerProps & { artScrollY?: SharedValue<number> }) {
   const {
     currentHymn,
     isPlaying,
@@ -64,7 +72,16 @@ function AudioView({ onClose }: FullPlayerProps) {
     skipPrevious,
     setRepeatMode,
     toggleShuffle,
+    openQueue,
   } = useAudio();
+  const onScroll = useAnimatedScrollHandler((e) => {
+    if (artScrollY) artScrollY.value = e.contentOffset.y;
+  });
+  // Leaving the Listen view (or closing) puts the artwork back in place.
+  useEffect(() => () => {
+    if (artScrollY) artScrollY.value = 0;
+  }, [artScrollY]);
+  const { openPicker } = usePlaylists();
   const [trackWidth, setTrackWidth] = useState(0);
   const { isLiked, toggleLike } = useLike(currentHymn?.id);
   const { t } = useLocale();
@@ -82,8 +99,10 @@ function AudioView({ onClose }: FullPlayerProps) {
   const displayTitle = currentHymn.label ? `${currentHymn.label} ${currentHymn.title}` : currentHymn.title;
 
   return (
-    <ScrollView
+    <Animated.ScrollView
       showsVerticalScrollIndicator={false}
+      onScroll={onScroll}
+      scrollEventThrottle={16}
       contentContainerStyle={styles.audioScroll}>
       {/* Transparent placeholder — floating artwork in PlayerModal covers this */}
       <View style={styles.artwork} />
@@ -110,9 +129,10 @@ function AudioView({ onClose }: FullPlayerProps) {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.actionRow}>
         <ActionPill Icon={ThumbsUp} label={t('player.like')} onPress={toggleLike} />
+        <ActionPill Icon={ListPlus} label={t('player.add')} onPress={() => openPicker(currentHymn)} />
+        <ActionPill Icon={ListMusic} label={t('player.queue')} onPress={openQueue} />
         <ActionPill Icon={Share2} label={t('player.share')} />
         <ActionPill Icon={Download} label={t('player.download')} />
-        <ActionPill Icon={ListMusic} label={t('player.queue')} />
       </ScrollView>
 
       {/* Progress */}
@@ -155,7 +175,7 @@ function AudioView({ onClose }: FullPlayerProps) {
           {repeatMode === 'one' ? <Repeat1 size={24} color={Palette.cyan} /> : <Repeat size={24} color={Palette.cyan} opacity={repeatMode === 'off' ? 0.55 : 1} />}
         </Pressable>
       </View>
-    </ScrollView>
+    </Animated.ScrollView>
   );
 }
 
@@ -180,6 +200,7 @@ function ActionPill({
 
 function HymnalView({ onClose }: FullPlayerProps) {
   const { currentHymn } = useAudio();
+  const { openPicker } = usePlaylists();
   const { isLiked, toggleLike } = useLike(currentHymn?.id);
   const { t } = useLocale();
   const [fontSize, setFontSize] = useState(15);
@@ -212,6 +233,9 @@ function HymnalView({ onClose }: FullPlayerProps) {
         <Pressable onPress={toggleLike} hitSlop={8}>
           <Heart size={24} color={Palette.cyan} fill={isLiked ? Palette.cyan : 'transparent'} strokeWidth={1.8} />
         </Pressable>
+        <Pressable onPress={() => openPicker(currentHymn)} hitSlop={8} accessibilityRole="button" accessibilityLabel={t('playlists.addTo')}>
+          <ListPlus size={24} color={Palette.text} strokeWidth={1.6} />
+        </Pressable>
         <Pressable hitSlop={8}>
           <FileText size={24} color={Palette.text} strokeWidth={1.6} />
         </Pressable>
@@ -235,7 +259,7 @@ function HymnalView({ onClose }: FullPlayerProps) {
 
       {/* Bottom mini bar */}
       <View style={styles.hymnalBottom}>
-        <HymnArt seed={currentHymn.id} size={52} radius={10} />
+        <HymnArt seed={currentHymn.id} hymnalId={currentHymn.hymnalId} size={52} radius={10} />
         <View style={styles.hymnalInfo}>
           <ThemedText style={styles.hymnalTitle} numberOfLines={1}>
             {displayTitle}
@@ -283,21 +307,39 @@ function LyricBlock({
 
 // ─── Root FullPlayer ─────────────────────────────────────────────────────────
 
-export function FullPlayer({ onClose, dragGesture }: RootProps) {
+/** Dev-only opt-in: show the bundled sample score for hymns without practice notes. */
+const PRACTICE_SAMPLE = __DEV__ && process.env.EXPO_PUBLIC_PRACTICE_SAMPLE === '1';
+
+export function FullPlayer({ onClose, dragGesture, artScrollY }: RootProps) {
   const { viewMode, setViewMode } = useViewMode();
   const { currentHymn, isPlaying, pause } = useAudio();
-  // Dev builds can try the practice tool with a bundled sample before any hymn has practice notes uploaded.
-  const practiceSource = currentHymn ? (currentHymn.practice ?? (__DEV__ ? ('sample' as const) : null)) : null;
-  const practicing = viewMode === 'practice' && practiceSource != null;
+  const { openMenu } = usePlaylists();
+  const { t } = useLocale();
+  // Practice is offered only for a hymn's own practice notes. The bundled sample (another hymn's
+  // score, labelled "Sample") stands in only in dev builds started with EXPO_PUBLIC_PRACTICE_SAMPLE=1.
+  const practiceSource = currentHymn ? (currentHymn.practice ?? (PRACTICE_SAMPLE ? ('sample' as const) : null)) : null;
+  // Only the modes this hymn has: Read with lyrics, Listen with a recording, Practice with notes.
+  const modes = useMemo(
+    () => (currentHymn ? hymnModes(currentHymn, practiceSource != null) : []),
+    [currentHymn, practiceSource],
+  );
+  // Render the first available mode straight away when the current one isn't offered (e.g. the
+  // next hymn in the queue has no recording), so there's no frame of an empty player.
+  const mode = modes.length && !modes.includes(viewMode) ? modes[0] : viewMode;
+  const practicing = mode === 'practice' && practiceSource != null;
 
   // Opening the practice tool pauses the hymn's recording, so only the practice notes sound.
   useEffect(() => {
     if (practicing && isPlaying) pause();
   }, [practicing]); // eslint-disable-line react-hooks/exhaustive-deps
-  // A hymn without practice notes can't stay on the practice tab.
+  // A hymn without the current mode moves to its first available one.
   useEffect(() => {
-    if (viewMode === 'practice' && !practiceSource) setViewMode('audio');
-  }, [viewMode, practiceSource, setViewMode]);
+    if (mode !== viewMode) setViewMode(mode);
+  }, [mode, viewMode, setViewMode]);
+
+  // Web has no swipe-down to close, so Listen and Practice get the Close button Read already has at the bottom.
+  const webClose = Platform.OS === 'web' && mode !== 'hymnal';
+  const showTopBar = modes.length > 1 || mode === 'audio' || webClose;
 
   const header = (
     <View collapsable={false}>
@@ -306,23 +348,32 @@ export function FullPlayer({ onClose, dragGesture }: RootProps) {
         <View style={styles.dragHandle} />
       </View>
 
-      {/* Top bar: mode switcher + right icons */}
-      <View style={styles.topBar}>
-        <ModeSwitcher variant="inline" practice={practiceSource != null} />
+      {/* Top bar: mode switcher + right icons. Left out when there's nothing to put in it (one
+          mode, not Listen), so the content starts right under the handle. Listen keeps it for its
+          icons and to keep the floating artwork lined up. */}
+      {showTopBar ? (
+        <View style={styles.topBar}>
+          <ModeSwitcher variant="inline" modes={modes} />
 
-        <View style={{ flex: 1 }} />
+          <View style={{ flex: 1 }} />
 
-        {viewMode === 'audio' ? (
-          <>
-            <Pressable hitSlop={8}>
-              <Cast size={22} color={Palette.text} strokeWidth={1.6} />
+          {mode === 'audio' ? (
+            <>
+              <Pressable hitSlop={8}>
+                <Cast size={22} color={Palette.text} strokeWidth={1.6} />
+              </Pressable>
+              <Pressable hitSlop={8} onPress={() => currentHymn && openMenu(currentHymn)} accessibilityRole="button" accessibilityLabel={currentHymn ? t('hymns.more', { title: currentHymn.title }) : undefined}>
+                <MoreVertical size={22} color={Palette.text} />
+              </Pressable>
+            </>
+          ) : null}
+          {webClose ? (
+            <Pressable onPress={onClose} style={styles.closeBtn} accessibilityRole="button">
+              <ThemedText style={styles.closeBtnText}>{t('player.close')}</ThemedText>
             </Pressable>
-            <Pressable hitSlop={8}>
-              <MoreVertical size={22} color={Palette.text} />
-            </Pressable>
-          </>
-        ) : null}
-      </View>
+          ) : null}
+        </View>
+      ) : null}
     </View>
   );
 
@@ -330,14 +381,19 @@ export function FullPlayer({ onClose, dragGesture }: RootProps) {
     <View style={styles.container}>
       {dragGesture ? <GestureDetector gesture={dragGesture}>{header}</GestureDetector> : header}
 
-      {/* Content */}
-      {practicing && currentHymn && practiceSource ? (
-        <PracticePanel key={currentHymn.id} hymnId={currentHymn.id} title={currentHymn.title} source={practiceSource} />
-      ) : viewMode === 'hymnal' ? (
-        <HymnalView onClose={onClose} />
-      ) : (
-        <AudioView onClose={onClose} />
-      )}
+      {/* Content: a short fade when the mode changes (the floating artwork fades with it, in PlayerModal).
+          No fade the first time the sheet shows a mode: the sheet's own slide covers that. */}
+      <LayoutAnimationConfig skipEntering>
+        <Animated.View key={practicing ? 'practice' : mode} entering={contentFadeIn} style={styles.flex}>
+          {practicing && currentHymn && practiceSource ? (
+            <PracticePanel key={currentHymn.id} hymnId={currentHymn.id} title={currentHymn.title} source={practiceSource} />
+          ) : mode === 'hymnal' ? (
+            <HymnalView onClose={onClose} />
+          ) : (
+            <AudioView onClose={onClose} artScrollY={artScrollY} />
+          )}
+        </Animated.View>
+      </LayoutAnimationConfig>
     </View>
   );
 }
@@ -345,6 +401,7 @@ export function FullPlayer({ onClose, dragGesture }: RootProps) {
 // ─── Styles ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
+  flex: { flex: 1 },
   container: {
     flex: 1,
     paddingTop: Spacing.two,
@@ -367,6 +424,8 @@ const styles = StyleSheet.create({
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
+    // Same height with or without the switcher, so the floating artwork stays lined up.
+    minHeight: MODE_SWITCHER_HEIGHT,
     gap: Spacing.three,
     marginBottom: Spacing.three,
   },
@@ -375,6 +434,10 @@ const styles = StyleSheet.create({
   audioScroll: {
     gap: Spacing.three,
     paddingBottom: Spacing.five,
+    // Wide web windows: keep the Listen view a readable column in the middle of the full-width sheet.
+    width: '100%',
+    maxWidth: PLAYER_CONTENT_MAX,
+    alignSelf: 'center',
   },
   artwork: {
     width: ARTWORK_SIZE,
@@ -492,6 +555,10 @@ const styles = StyleSheet.create({
   lyricsContent: {
     gap: Spacing.four,
     paddingBottom: Spacing.five,
+    // Wide web windows: a readable column in the middle of the full-width sheet.
+    width: '100%',
+    maxWidth: PLAYER_CONTENT_MAX,
+    alignSelf: 'center',
   },
   lyricBlock: {
     gap: Spacing.two,
@@ -520,8 +587,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.three,
     paddingVertical: Spacing.three,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'transparent',
+    // Full-width divider between the lyrics and the hymn bar.
+    marginHorizontal: -Spacing.four,
+    paddingHorizontal: Spacing.four,
+    borderTopWidth: 1,
+    borderTopColor: Palette.line,
     marginTop: Spacing.two,
   },
   hymnalArt: {

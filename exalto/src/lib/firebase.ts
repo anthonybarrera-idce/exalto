@@ -1,7 +1,7 @@
 import { getApp, getApps, initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 
-const app = getApps().length
+export const app = getApps().length
   ? getApp()
   : initializeApp({
       apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,

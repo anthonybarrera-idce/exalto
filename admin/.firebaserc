@@ -10,6 +10,9 @@
         ],
         "web": [
           "exalto-fe127"
+        ],
+        "webapp": [
+          "exalto-web-app"
         ]
       }
     }

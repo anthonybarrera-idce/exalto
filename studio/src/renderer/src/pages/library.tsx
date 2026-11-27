@@ -1,4 +1,5 @@
 import { Download, FolderOpen, Loader2, Music, Save, Search, Trash2 } from "lucide-react"
+import { HymnArt } from "@/components/hymn-art"
 import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 import type { PageId } from "@/App"
@@ -17,6 +18,7 @@ import { cleanLyrics } from "@/lib/lyric-blocks"
 import type { LyricSection } from "@/lib/studio"
 import { useHymnals } from "@/lib/hymnals"
 import { cn } from "@/lib/utils"
+import { hymnNumberText } from "@/lib/hymn-number"
 
 const TONE: Record<HymnStatus, string> = {
   draft: "bg-muted text-foreground",
@@ -34,7 +36,7 @@ function StatusBadge({ status }: { status: HymnStatus }) {
 function matches(h: LibraryHymn, q: string) {
   if (!q) return true
   const needle = q.toLowerCase()
-  if (String(h.number ?? "") === needle || h.label?.toLowerCase() === needle) return true
+  if (String(h.number ?? "") === needle || hymnNumberText(h)?.toLowerCase() === needle) return true
   if (h.title.toLowerCase().includes(needle)) return true
   return h.lyrics.some((s) => s.lines.some((l) => l.toLowerCase().includes(needle)))
 }
@@ -121,7 +123,7 @@ export function LibraryPage({ go }: { go: (p: PageId) => void }) {
                 onClick={() => setSelectedId(h.id)}
                 className={cn("grid w-full grid-cols-[44px_1fr_140px_96px_64px] items-center gap-3 border-b border-muted px-5 py-2 text-left last:border-b-0 hover:bg-accent/60", selectedId === h.id && "bg-sidebar-accent")}
               >
-                <span className="text-[13px] font-medium text-foreground/80 tabular-nums">{h.label ?? h.number ?? "—"}</span>
+                <span className="text-[13px] font-medium text-foreground/80 tabular-nums">{hymnNumberText(h) ?? "—"}</span>
                 <span className="flex min-w-0 items-center gap-1.5">
                   <span className="truncate text-[13px] font-medium">{h.title}</span>
                   {hasNotes(h) && <Music aria-label={t("attach.hasNotes")} className="size-3 shrink-0 text-green-600" />}
@@ -213,7 +215,10 @@ function Editor({ hymn, go, onDeleted }: { hymn: LibraryHymn; go: (p: PageId) =>
 
   return (
     <Card className="gap-3 p-5">
-      <div className="text-[11px] font-semibold tracking-wide text-muted-foreground">{t("library.edit")}</div>
+      <div className="flex items-center gap-3">
+        <HymnArt hymnalId={form.hymnalId} className="size-10 rounded-lg" />
+        <div className="text-[11px] font-semibold tracking-wide text-muted-foreground">{t("library.edit")}</div>
+      </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="lib-title">{t("library.f.title")}</Label>
         <Input id="lib-title" value={form.title} onChange={(e) => set("title", e.target.value)} />

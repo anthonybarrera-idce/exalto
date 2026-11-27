@@ -50,7 +50,14 @@ export type PlayEvent = { id: string; voice: Voice; midi: number; start: number;
 
 const cacheKey = (id: string, version: number) => `exalto.practice.v${version}.${id}`;
 
-/** Fetch a hymn's practice data, keeping a copy for offline use. */
+/**
+ * Fetch a hymn's practice data, keeping a copy for offline use. Falls back to that copy when the
+ * fetch fails; with no copy it throws, and the practice panel shows an error with a retry button.
+ *
+ * Web builds: the browser only lets this read the file if the Storage bucket has a CORS config
+ * allowing the page's origin (admin/storage-cors.json, see admin/README.md). Without it the fetch
+ * fails with "Failed to fetch" on web, while iOS and Android are unaffected.
+ */
 export async function loadPractice(hymnId: string, url: string, version = PRACTICE_VERSION): Promise<PracticeData> {
   const key = cacheKey(hymnId, version);
   try {

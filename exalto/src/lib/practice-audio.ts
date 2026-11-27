@@ -4,8 +4,8 @@ import { midiToHz, playEvents, VOICES, type PlayEvent, type PracticeData, type V
 
 /**
  * Plays practice notes on the phone with the native audio engine (react-native-audio-api),
- * instead of streaming the rendered audio tracks: "piano" is a synthesized piano (detuned strings,
- * inharmonic partials, two-stage decay), "tone" ("Solo notas") a steady tone held for the note.
+ * instead of streaming the rendered audio tracks: "piano" is a synthesized piano (three strings,
+ * inharmonic partials, a clean natural decay), "tone" ("Solo notas") a steady tone held for the note.
  */
 /** 'grand' = recorded Salamander grand piano; 'piano' = the synthesized piano; 'choir' = sung voices; 'tone' = plain notes. */
 export type Sound = 'grand' | 'piano' | 'choir' | 'tone';
@@ -89,27 +89,29 @@ function sample(midi: number, sound: Sound) {
   let entry: { buffer: AudioBuffer; loop?: boolean };
   if (sound === 'piano') {
     /*
-     * A fuller synthesized piano:
-     * - 3 slightly detuned strings per note (2 in the bass), which gives the shimmer of a real piano
+     * A clean synthesized piano, close to Hymn Studio's rendered piano but a little fuller:
+     * - 3 very slightly detuned strings per note (2 in the bass), the centre one loudest
      * - up to 12 partials with string inharmonicity (partials run a little sharp, more so in the treble)
-     * - each partial decays in two stages: a quick initial drop, then a long, quiet "aftersound"
-     * - brighter attack that mellows as higher partials die away faster
+     * - the lowest 3 partials keep a short, quiet "aftersound"; higher partials just die away, so the
+     *   tone mellows instead of leaving a bright tail
      * - a short, soft hammer "thump" at the start
+     * Earlier versions had ±1 cent detune and a long aftersound (fast/7) on every partial: the high
+     * partials kept ringing and beating against each other, which sounded like reverb after each note.
      */
     const n = Math.floor(PIANO_SECONDS * rate);
     const data = new Float32Array(n);
     const B = 0.00008 * 2 ** ((midi - 48) / 18); // inharmonicity
-    const strings = midi < 40 ? [-0.6, 0.6] : [-0.9, 0, 1.1]; // detune in cents
+    // [detune in cents, weight]
+    const strings = midi < 40 ? [[-0.25, 0.5], [0.25, 0.5]] : [[-0.3, 0.3], [0, 0.4], [0.35, 0.3]];
     const brightness = 0.55 + Math.min(0.35, Math.max(0, (72 - midi) / 60));
-    for (const cents of strings) {
+    for (const [cents, weight] of strings) {
       const f = f0 * 2 ** (cents / 1200);
       for (let k = 1; k <= 12; k++) {
         const fk = f * k * Math.sqrt(1 + B * k * k);
         if (fk > 12000) break;
-        const amp = (Math.pow(brightness, k - 1) / k ** 0.6) / strings.length;
-        const fast = (1.6 + 0.55 * k) * (0.55 + f0 / 700);
-        const slow = fast / 7;
-        addPartial(data, rate, fk, amp, fast, slow);
+        const amp = (Math.pow(brightness, k - 1) / k ** 0.6) * weight;
+        const fast = (1.4 + 0.8 * k) * (0.6 + f0 / 800);
+        addPartial(data, rate, fk, amp, fast, fast / 3, k <= 3 ? 0.85 : 1);
       }
     }
     // hammer thump: a few ms of soft, low-passed noise
@@ -353,9 +355,11 @@ function voice(out: GainNode, midi: number, when: number, sound: Sound, level = 
       if (released !== false && t >= released) return;
       released = t;
       env.gain.cancelScheduledValues(t);
-      env.gain.setTargetAtTime(0, t, sound === 'tone' ? 0.02 : sound === 'choir' ? 0.07 : 0.06);
+      // The synthesized piano is damped like a real key: about 0.1–0.15 s to silence.
+      const tau = sound === 'tone' ? 0.02 : sound === 'choir' ? 0.07 : sound === 'piano' ? 0.04 : 0.06;
+      env.gain.setTargetAtTime(0, t, tau);
       try {
-        src.stop(t + 0.35);
+        src.stop(t + (sound === 'piano' ? 0.25 : 0.35));
       } catch {}
     },
   };
@@ -385,6 +389,8 @@ export class PracticePlayer {
   private voiceGain = {} as Record<Voice, GainNode>;
   private bus: GainNode;
   private sounding: { end: number; v: Voicing }[] = [];
+  /** The most recent note started in each voice, so the next one can damp it. */
+  private last: Partial<Record<Voice, { start: number; v: Voicing }>> = {};
   private timer: ReturnType<typeof setInterval> | null = null;
   private anchorBeat = 0;
   private anchorTime = 0;
@@ -510,8 +516,14 @@ export class PracticePlayer {
       this.next++;
       if (this.levels[e.voice] <= 0) continue;
       const end = this.timeOf(e.start + e.dur);
-      const v = voice(this.voiceGain[e.voice], e.midi, Math.max(at, ctx.currentTime), this.sound);
+      const when = Math.max(at, ctx.currentTime);
+      // Like a pianist's finger lifting: the voice's previous note is damped when its next one starts,
+      // even if a tempo change or overlapping written notes would have let it ring on underneath.
+      const prev = this.last[e.voice];
+      if (prev && prev.start < when - 0.005) prev.v.release(when);
+      const v = voice(this.voiceGain[e.voice], e.midi, when, this.sound);
       v.release(end - 0.02);
+      this.last[e.voice] = { start: when, v };
       this.sounding.push({ end, v });
     }
     this.sounding = this.sounding.filter((s) => s.end > ctx.currentTime);
@@ -526,5 +538,6 @@ export class PracticePlayer {
     const { ctx } = audio();
     for (const s of this.sounding) s.v.release(ctx.currentTime);
     this.sounding = [];
+    this.last = {};
   }
 }

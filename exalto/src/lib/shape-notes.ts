@@ -17,10 +17,12 @@ export function shapeOf(pitch: string, fifths: number): Shape {
 }
 
 /**
- * SVG path for a shape centred at (x, y), `w` wide and `h` tall; null for sol (draw the usual oval).
+ * SVG path for a shape centred at (x, y), `w` wide and `h` tall.
  * `up`: the stem goes up (fa's upright side sits on the stem's side).
+ * Sol is a level oval, the same size as the other shapes, so it reads as a shape too and not
+ * as the tilted round notehead drawn when shape notes are off.
  */
-export function shapePath(shape: Shape, x: number, y: number, w: number, h: number, up = true): string | null {
+export function shapePath(shape: Shape, x: number, y: number, w: number, h: number, up = true): string {
   const a = w / 2;
   const b = h / 2;
   const f = (n: number) => n.toFixed(2);
@@ -40,7 +42,33 @@ export function shapePath(shape: Shape, x: number, y: number, w: number, h: numb
       return P([-a * 0.85, -b], [a * 0.85, -b], [a * 0.85, b], [-a * 0.85, b]);
     case 'ti':
       return `M ${f(x - a)} ${f(y - b * 0.25)} Q ${f(x)} ${f(y - b * 1.5)} ${f(x + a)} ${f(y - b * 0.25)} L ${f(x)} ${f(y + b)} Z`;
-    default:
-      return null;
+    default: {
+      const rx = a * 0.95;
+      return `M ${f(x - rx)} ${f(y)} A ${f(rx)} ${f(b)} 0 1 0 ${f(x + rx)} ${f(y)} A ${f(rx)} ${f(b)} 0 1 0 ${f(x - rx)} ${f(y)} Z`;
+    }
+  }
+}
+
+/**
+ * Where the stem meets a shape drawn by `shapePath` at (0, 0): the shape's outer edge on the stem's side.
+ * Do's stem starts at the corner of its base, the others at their widest point.
+ */
+export function stemAnchor(shape: Shape, w: number, h: number, up = true): { dx: number; dy: number } {
+  const a = w / 2;
+  const b = h / 2;
+  const side = up ? 1 : -1;
+  switch (shape) {
+    case 'do':
+      return { dx: side * a, dy: b };
+    case 're':
+      return { dx: side * a, dy: -b * 0.45 };
+    case 'la':
+      return { dx: side * a * 0.85, dy: 0 };
+    case 'ti':
+      return { dx: side * a, dy: -b * 0.25 };
+    case 'sol':
+      return { dx: side * a * 0.95, dy: 0 };
+    default: // mi, fa
+      return { dx: side * a, dy: 0 };
   }
 }

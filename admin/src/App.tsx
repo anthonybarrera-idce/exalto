@@ -4,6 +4,7 @@ import { AdminLayout } from "@/components/admin-layout"
 import { RequireAdmin } from "@/components/require-admin"
 import { AuditLogPage } from "@/pages/audit-log"
 import { ComingSoonPage } from "@/pages/coming-soon"
+import { ComposerRequestsPage } from "@/pages/composer-requests"
 import { DashboardPage } from "@/pages/dashboard"
 import { HymnEditorPage } from "@/pages/hymn-editor"
 import { HymnalsPage } from "@/pages/hymnals"
@@ -16,7 +17,6 @@ import { UsersPage } from "@/pages/users"
 const LATER: { path: string; group: string; title: string; description: string }[] = [
   { path: "recordings", group: "Content", title: "Recordings", description: "Audio versions of hymns." },
   { path: "featured", group: "Content", title: "Featured", description: "Hymn of the Day and Discover sections." },
-  { path: "composer-requests", group: "Community", title: "Composer requests", description: "People asking to upload hymns." },
   { path: "reports", group: "Community", title: "Reports", description: "Content flagged by people in the app." },
 ]
 
@@ -38,6 +38,7 @@ export default function App() {
           <Route path="hymns/:id" element={<HymnEditorPage />} />
           <Route path="audit-log" element={<AuditLogPage />} />
           <Route path="users" element={<UsersPage />} />
+          <Route path="composer-requests" element={<ComposerRequestsPage />} />
           <Route path="studio-access" element={<StudioAccessPage />} />
           <Route path="settings" element={<TeamPage />} />
           {LATER.map((p) => (

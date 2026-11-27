@@ -1,6 +1,7 @@
 import { collection, doc, onSnapshot, serverTimestamp } from "firebase/firestore"
+import { deleteObject, ref } from "firebase/storage"
 import { useSyncExternalStore } from "react"
-import { auth, db } from "@/lib/firebase"
+import { auth, db, storage } from "@/lib/firebase"
 import { batchWithAudit, getOwnerScope } from "@/lib/library"
 import { useAuth } from "@/hooks/use-auth"
 
@@ -19,6 +20,8 @@ export type Hymnal = {
   order: number
   /** Set on hymnals a composer created; they manage only these (firestore.rules). */
   ownerUid?: string
+  /** Square image set in the admin's Hymnals page; the app shows it on every hymn in this hymnal. */
+  thumbnailUrl?: string
 }
 
 export const DEFAULT_HYMNALS: Hymnal[] = [
@@ -59,6 +62,7 @@ function subscribe(listener: () => void) {
               offline: x.offline === true,
               order: typeof x.order === "number" ? x.order : (base?.order ?? 99),
               ...(x.ownerUid ? { ownerUid: x.ownerUid as string } : {}),
+              ...(typeof x.thumbnailUrl === "string" && x.thumbnailUrl ? { thumbnailUrl: x.thumbnailUrl } : {}),
             } satisfies Hymnal
           }),
         )
@@ -93,7 +97,8 @@ export const hymnalIdFrom = (name: string) =>
     .replace(/^-|-$/g, "")
     .slice(0, 40)
 
-export type HymnalInput = Omit<Hymnal, "id">
+/** The thumbnail is set in the admin, never by this form (saves merge, so it is kept). */
+export type HymnalInput = Omit<Hymnal, "id" | "thumbnailUrl">
 
 export async function saveHymnal(id: string, input: HymnalInput, isNew: boolean) {
   const { batch, uid } = batchWithAudit(isNew ? "Created hymnal in Hymn Studio" : "Edited hymnal in Hymn Studio", input.name)
@@ -110,6 +115,10 @@ export async function saveHymnal(id: string, input: HymnalInput, isNew: boolean)
 
 /** Only custom hymnals with no hymns; owners and admins, or the composer who owns it (firestore.rules). */
 export async function deleteHymnal(h: Hymnal) {
+  // Its thumbnail file (set in the admin or the app) goes too, before the doc: a composer's permission to
+  // delete it is checked against the hymnal doc (storage.rules). Only the file its URL names.
+  const ext = h.thumbnailUrl && /thumbnail\.(webp|jpg|png)(?:\?|$)/.exec(decodeURIComponent(h.thumbnailUrl))?.[1]
+  if (ext) await deleteObject(ref(storage, `hymnals/${h.id}/thumbnail.${ext}`)).catch(() => {})
   const { batch } = batchWithAudit("Deleted hymnal", h.name)
   batch.delete(doc(db, "hymnals", h.id))
   await batch.commit()

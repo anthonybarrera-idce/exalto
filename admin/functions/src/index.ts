@@ -70,10 +70,14 @@ async function applyRole(uid: string, role: Role) {
   // Only admin roles live in the auth claim; listener/composer are app-level and stored on the profile.
   if (ADMIN_ROLES.includes(role)) claims.role = role
   else delete claims.role
-  claims.composer = role === "composer" || claims.composer === true
+  // Composer access: given with the composer role, kept when someone moves up to a team role (they can still
+  // upload), and removed when they go back to listener.
+  claims.composer = role === "composer" || (role !== "listener" && claims.composer === true)
   await auth.setCustomUserClaims(uid, claims)
   const profile = db.collection("users").doc(uid)
   await profile.set({ role, roleUpdatedAt: FieldValue.serverTimestamp() }, { merge: true })
+  // No longer a composer: take down their public composer page.
+  if (!claims.composer) await db.collection("composers").doc(uid).delete()
   return (await profile.get()).get("handle") as string | undefined
 }
 
@@ -106,6 +110,37 @@ export const deleteUser = onCall(CALL_OPTIONS, async (req) => {
   })
   await profile.delete()
   await audit(caller.uid, actorName(caller), "Deleted account", `@${handle}`)
+  return { ok: true }
+})
+
+/**
+ * Self-service account deletion from the mobile app (required by the App Store and Google Play). Deletes the caller's
+ * profile, releases their @handle and deletes their Firebase Auth user. Team accounts (an admin role in the auth
+ * claim) and the church account are refused: an owner removes those from the admin. Hymns a composer uploaded are
+ * left as they are, as the app tells them; the church removes them on request.
+ */
+export const deleteMyAccount = onCall(CALL_OPTIONS, async (req) => {
+  if (!req.auth) throw new HttpsError("unauthenticated", "Sign in first.")
+  const uid = req.auth.uid
+  await refuseIfProtected(uid, "delete")
+  if (req.auth.token.role) {
+    throw new HttpsError("failed-precondition", "Team accounts are removed by an owner from the Exalto admin.")
+  }
+
+  const profile = db.collection("users").doc(uid)
+  const handle = ((await profile.get()).get("handle") as string | undefined) || ""
+  if (handle) {
+    const claim = db.collection("handles").doc(handle)
+    if ((await claim.get()).get("uid") === uid) await claim.delete()
+  }
+  await db.recursiveDelete(profile.collection("playlists"))
+  await profile.delete()
+  await db.collection("composers").doc(uid).delete()
+  await db.collection("composerRequests").doc(uid).delete()
+  await getAuth().deleteUser(uid).catch((e: { code?: string }) => {
+    if (e.code !== "auth/user-not-found") throw e
+  })
+  await audit(uid, handle ? `@${handle}` : uid, "Deleted own account", `@${handle || uid}`)
   return { ok: true }
 })
 

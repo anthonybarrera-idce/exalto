@@ -1,0 +1,34 @@
+[
+  {
+    "origin": [
+      "http://localhost:8081",
+      "http://localhost:8082",
+      "http://localhost:19006",
+      "https://exalto.app",
+      "https://www.exalto.app",
+      "https://admin.exalto.app",
+      "https://exalto-admin.web.app",
+      "https://exalto-admin.firebaseapp.com",
+      "https://exalto-fe127.web.app",
+      "https://exalto-fe127.firebaseapp.com",
+      "https://web.exalto.app",
+      "https://exalto-web-app.web.app",
+      "https://exalto-web-app.firebaseapp.com"
+    ],
+    "method": [
+      "GET",
+      "HEAD"
+    ],
+    "responseHeader": [
+      "Content-Type",
+      "Content-Length",
+      "Content-Range",
+      "Content-Encoding",
+      "Accept-Ranges",
+      "Cache-Control",
+      "ETag",
+      "Range"
+    ],
+    "maxAgeSeconds": 3600
+  }
+]

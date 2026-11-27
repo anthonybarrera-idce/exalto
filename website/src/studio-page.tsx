@@ -59,9 +59,9 @@ export const STUDIO_COPY: Record<Lang, StudioCopy> = {
         title: 'Revisa la partitura',
         body: 'Hymn Studio lee las notas escaneadas y te muestra lo que encontró: tonalidad, compás, voces y cada compás revisado.',
         bullets: [
-          'Marca las notas que no tiene claras',
-          'Corriges con un clic y sigues',
-          'Comprueba que cada compás sume bien',
+          'Marca con «Por revisar» las notas que no tiene claras',
+          'Corriges con un clic y la marca desaparece',
+          'Un asistente sugiere arreglos que tú aceptas o rechazas',
         ],
         alt: 'Hymn Studio revisando una partitura, con una nota marcada para confirmar.',
       },
@@ -69,7 +69,7 @@ export const STUDIO_COPY: Record<Lang, StudioCopy> = {
         img: '/img/studio-lyrics.webp',
         eyebrow: 'PASO 3',
         title: 'Corrige la letra',
-        body: 'La letra se lee de las diapositivas y se corrige la ortografía y los acentos. Cada cambio queda a la vista para que lo aceptes o lo deshagas.',
+        body: 'La letra se lee de las diapositivas y un revisor con IA corrige la ortografía y los acentos. Cada cambio queda a la vista para que lo aceptes o lo deshagas.',
         bullets: [
           'Ortografía y acentos en español',
           'Cada corrección se puede deshacer',
@@ -114,13 +114,13 @@ export const STUDIO_COPY: Record<Lang, StudioCopy> = {
     info: [
       {
         icon: 'check',
-        title: 'Funciona sin conexión',
-        body: 'La conversión se hace en tu computadora. Solo se envía a Exalto lo que decides subir.',
+        title: 'Convierte sin conexión',
+        body: 'La conversión se hace en tu computadora. El asistente y el revisor de ortografía necesitan internet. Solo se envía a Exalto lo que decides subir.',
       },
       {
         icon: 'users',
-        title: 'Para editores de Exalto',
-        body: 'Inicias sesión con tu cuenta de Google. Para subir himnos necesitas permiso de editor.',
+        title: 'Para editores y compositores',
+        body: 'Inicias sesión con tu cuenta de Google. Los editores suben a los himnarios de la iglesia y los compositores, a sus propios himnarios.',
       },
       {
         icon: 'search',
@@ -129,7 +129,7 @@ export const STUDIO_COPY: Record<Lang, StudioCopy> = {
       },
     ],
     ctaTitle: '¿Eres músico en tu iglesia?',
-    ctaBody: 'Escríbenos para recibir Hymn Studio y tu acceso de editor.',
+    ctaBody: 'Escríbenos para recibir Hymn Studio y tu acceso. Si eres compositor, pide el acceso de compositor desde la app Exalto.',
     ctaButton: 'Contáctanos',
   },
   en: {
@@ -162,9 +162,9 @@ export const STUDIO_COPY: Record<Lang, StudioCopy> = {
         title: 'Check the score',
         body: 'Hymn Studio reads the scanned notes and shows what it found: key, time signature, voices and every measure checked.',
         bullets: [
-          'Flags the notes it isn’t sure about',
-          'Fix them with one click and move on',
-          'Makes sure every measure adds up',
+          'Marks the notes it isn’t sure about with “Needs a look”',
+          'Fix them with one click and the flag clears',
+          'An assistant suggests fixes you accept or reject',
         ],
         alt: 'Hymn Studio reviewing a score, with one note flagged to confirm.',
       },
@@ -172,7 +172,7 @@ export const STUDIO_COPY: Record<Lang, StudioCopy> = {
         img: '/img/studio-lyrics.webp',
         eyebrow: 'STEP 3',
         title: 'Correct the lyrics',
-        body: 'The lyrics are read from the slides and their spelling and accents are corrected. Every change is shown so you can accept or undo it.',
+        body: 'The lyrics are read from the slides and an AI checker fixes their spelling and accents. Every change is shown so you can accept or undo it.',
         bullets: [
           'Spanish spelling and accents',
           'Every correction can be undone',
@@ -213,13 +213,13 @@ export const STUDIO_COPY: Record<Lang, StudioCopy> = {
     info: [
       {
         icon: 'check',
-        title: 'Works offline',
+        title: 'Converts offline',
         body: 'Conversion happens on your computer. Only what you choose to upload is sent to Exalto.',
       },
       {
         icon: 'users',
-        title: 'For Exalto editors',
-        body: 'You sign in with your Google account. Uploading hymns needs editor access.',
+        title: 'For editors and composers',
+        body: 'You sign in with your Google account. Editors upload to the church’s hymnals, and composers to their own.',
       },
       {
         icon: 'search',
@@ -228,7 +228,7 @@ export const STUDIO_COPY: Record<Lang, StudioCopy> = {
       },
     ],
     ctaTitle: 'Are you a music leader in your church?',
-    ctaBody: 'Write to us to get Hymn Studio and your editor access.',
+    ctaBody: 'Write to us to get Hymn Studio and your access. Composers can request composer access in the Exalto app.',
     ctaButton: 'Contact us',
   },
 }
@@ -322,7 +322,7 @@ export function StudioPage({ lang }: { lang: Lang }) {
             </div>
           </div>
         </div>
-        <FlowingStaff id="studio-hero" mono className="staff-slide absolute inset-x-0 bottom-[-40px] h-[160px] w-full" opacity={0.14} />
+        <FlowingStaff id="studio-hero" mono wave className="absolute inset-x-0 bottom-[-40px] h-[180px] w-full lg:h-[240px]" opacity={0.14} />
       </section>
 
       {/* Steps */}
@@ -419,7 +419,7 @@ export function StudioPage({ lang }: { lang: Lang }) {
 
       {/* CTA */}
       <section aria-labelledby="studio-cta" className="relative">
-        <FlowingStaff id="studio-cta" mono className="staff-slide absolute inset-x-0 top-[20%] h-[200px] w-full" opacity={0.12} />
+        <FlowingStaff id="studio-cta" mono wave className="absolute inset-x-0 top-[20%] h-[200px] w-full" opacity={0.12} />
         <div className="reveal relative mx-auto flex max-w-[760px] flex-col items-center gap-5 px-5 pt-8 pb-24 text-center lg:pb-32">
           <h2
             id="studio-cta"

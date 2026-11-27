@@ -1,4 +1,5 @@
-import { BookOpen, ChevronRight, EyeOff, Loader2, Pencil, Plus, Trash2, WifiOff } from "lucide-react"
+import { ChevronRight, EyeOff, Loader2, Pencil, Plus, Trash2, WifiOff } from "lucide-react"
+import { HymnArt } from "@/components/hymn-art"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import type { PageId } from "@/App"
@@ -69,9 +70,7 @@ export function HymnalsPage({ go }: { go: (p: PageId) => void }) {
           return (
             <Card key={hm.id} className="gap-4 p-5">
               <div className="flex items-start gap-3">
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg text-white" style={{ background: hm.color }}>
-                  <BookOpen className="size-5" />
-                </div>
+                <HymnArt hymnalId={hm.id} className="size-10 rounded-lg" />
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-semibold">{hymnal(hm.id)}</div>
                   <div className="text-sm text-muted-foreground">{t(hm.kind === "official" ? "hymnals.official" : "hymnals.community")}</div>
@@ -172,7 +171,10 @@ function HymnalEditor({ hymnal, hymnCount, takenIds, nextOrder, canDelete, compo
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="hn-color">{t("hymnals.f.color")}</Label>
-          <Input id="hn-color" type="color" value={form.color} onChange={(e) => set("color", e.target.value)} className="h-9 p-1" />
+          <div className="flex gap-2">
+            <HymnArt color={form.color} className="size-9 rounded-md" />
+            <Input id="hn-color" type="color" value={form.color} onChange={(e) => set("color", e.target.value)} className="h-9 min-w-0 flex-1 p-1" />
+          </div>
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="hn-order">{t("hymnals.f.order")}</Label>

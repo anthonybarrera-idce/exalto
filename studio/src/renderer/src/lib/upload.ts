@@ -3,6 +3,7 @@ import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage"
 import { auth, db, storage } from "@/lib/firebase"
 import { getOwnerScope } from "@/lib/library"
 import { studio, type HymnDetail } from "@/lib/studio"
+import { hymnNumberText } from "@/lib/hymn-number"
 
 export const VOICES = ["soprano", "alto", "tenor", "bass"] as const
 export type UploadStep = { label: string; done: boolean; progress: number }
@@ -125,7 +126,7 @@ export async function uploadHymn(detail: HymnDetail, onStep: (steps: UploadStep[
     actorUid: user.uid,
     actorName: user.displayName ?? user.email ?? user.uid,
     action: prev ? "Updated hymn from Hymn Studio" : "Uploaded hymn from Hymn Studio",
-    target: `${hymn.number != null ? `Hymn ${hymn.label ?? hymn.number} ` : ""}"${title}"`,
+    target: `${hymnNumberText(hymn) ? `Hymn ${hymnNumberText(hymn)} ` : ""}"${title}"`,
     at: serverTimestamp(),
   })
   batch.set(

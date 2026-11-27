@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Image } from 'expo-image';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { useSyncExternalStore } from 'react';
 
@@ -21,6 +22,10 @@ export type Hymnal = {
   order: number;
   /** Name of the person who created it, shown under the hymnal name (not on the built-in hymnals). */
   createdByName?: string;
+  /** Composer who owns this community hymnal (`users/{uid}`); opens their composer profile. */
+  ownerUid?: string;
+  /** Square image (admin Hymnals page) shown as the artwork of every hymn in this hymnal. */
+  thumbnailUrl?: string;
 };
 
 export const DEFAULT_HYMNALS: Hymnal[] = [
@@ -40,9 +45,17 @@ function merge(docs: Hymnal[]) {
   return [...byId.values()].sort((a, b) => a.order - b.order || a.name.localeCompare(b.name));
 }
 
+const prefetched = new Set<string>();
+
 function publish(next: Hymnal[]) {
   current = next;
   listeners.forEach((l) => l());
+  // Offline hymnals' hymns are kept on the phone (hymns-context), so keep their thumbnails on disk too.
+  const urls = next.filter((h) => h.offline && h.thumbnailUrl && !prefetched.has(h.thumbnailUrl)).map((h) => h.thumbnailUrl!);
+  if (urls.length) {
+    urls.forEach((u) => prefetched.add(u));
+    Image.prefetch(urls, 'memory-disk').catch(() => {});
+  }
 }
 
 /** Starts watching once (called by HymnsProvider); safe to call again. */
@@ -70,6 +83,8 @@ export function watchHymnals() {
             offline: x.offline === true,
             order: typeof x.order === 'number' ? x.order : (base?.order ?? 99),
             ...(typeof x.createdByName === 'string' && x.createdByName ? { createdByName: x.createdByName } : {}),
+            ...(typeof x.ownerUid === 'string' && x.ownerUid ? { ownerUid: x.ownerUid } : {}),
+            ...(typeof x.thumbnailUrl === 'string' && x.thumbnailUrl ? { thumbnailUrl: x.thumbnailUrl } : {}),
           } satisfies Hymnal;
         }),
       );

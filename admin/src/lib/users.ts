@@ -55,7 +55,7 @@ export async function setUserStatus(user: AppUser, status: UserStatus) {
 const functions = getFunctions(app, "us-central1")
 if (usingEmulators) connectFunctionsEmulator(functions, "127.0.0.1", 5001)
 
-export async function setUserRole(user: AppUser, role: UserRole) {
+export async function setUserRole(user: Pick<AppUser, "id">, role: UserRole) {
   await httpsCallable(functions, "setUserRole")({ uid: user.id, role })
 }
 

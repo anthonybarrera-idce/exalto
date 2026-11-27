@@ -33,6 +33,7 @@ import { formatWhen } from "@/lib/format"
 import { hymnalName, isOfficial, useHymnals } from "@/lib/hymnals"
 import { deleteHymn, setHymnStatus, useHymns } from "@/lib/hymns"
 import type { Hymn } from "@/lib/types"
+import { hymnNumberText } from "@/lib/hymn-number"
 
 type Filter = "all" | "draft" | string
 const PAGE_SIZE = 20
@@ -40,7 +41,7 @@ const PAGE_SIZE = 20
 function matches(h: Hymn, q: string) {
   if (!q) return true
   const needle = q.toLowerCase()
-  if (String(h.number ?? "") === needle || h.label?.toLowerCase() === needle) return true
+  if (String(h.number ?? "") === needle || hymnNumberText(h)?.toLowerCase() === needle) return true
   if (h.title.toLowerCase().includes(needle)) return true
   return h.lyrics.some((s) => s.lines.some((l) => l.toLowerCase().includes(needle)))
 }
@@ -166,7 +167,7 @@ export function HymnsPage() {
             )}
             {visible.map((h) => (
               <TableRow key={h.id} className="cursor-pointer" onClick={() => navigate(`/hymns/${h.id}`)}>
-                <TableCell className="font-mono text-sm">{h.label ?? h.number ?? "—"}</TableCell>
+                <TableCell className="font-mono text-sm">{hymnNumberText(h) ?? "—"}</TableCell>
                 <TableCell className="font-medium">{h.title}</TableCell>
                 <TableCell>
                   <Badge variant={isOfficial(h.hymnalId) ? "outline" : "secondary"}>{hymnalName(h.hymnalId)}</Badge>

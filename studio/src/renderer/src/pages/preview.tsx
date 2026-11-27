@@ -1,6 +1,7 @@
 import { ArrowDown, ArrowUp, FileText, Heart } from "lucide-react"
 import { useState } from "react"
 import type { PageId } from "@/App"
+import { HymnArt } from "@/components/hymn-art"
 import { Empty, PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -82,7 +83,7 @@ export function PreviewPage({ go }: { go: (p: PageId) => void }) {
 
             {/* Bottom bar */}
             <div className="flex items-center gap-3 py-4">
-              <div className="size-[52px] shrink-0 rounded-[10px]" style={{ background: `linear-gradient(135deg, ${APP.cyan}, #EDA145)` }} />
+              <HymnArt hymnalId={hymn.hymnalId} className="size-[52px] rounded-[10px]" />
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-semibold">{title}</div>
                 <div className="truncate text-xs" style={{ color: APP.muted }}>{hymn.author}</div>

@@ -1,23 +1,29 @@
-import { BookOpen, Check, ChevronDown, Pause, Play, Search, X } from 'lucide-react-native';
+import { BookOpen, Check, ChevronDown, MoreVertical, Pause, Pencil, Play, Plus, Search, X } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import { FlatList, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ModeSwitcher } from '@/components/ModeSwitcher';
+import { SearchModal } from '@/components/SearchModal';
 import { ThemedText } from '@/components/themed-text';
 import { AppHeader } from '@/components/ui/app-header';
 import { GradientBorder } from '@/components/ui/gradient-border';
-import { BottomTabInset, MiniPlayerHeight, Palette, Spacing } from '@/constants/theme';
-import type { Hymn } from '@/context/audio-context';
+import { useMenuEntering, withTabTransition } from '@/components/ui/transitions';
+import { BottomTabInset, FontFamily, MiniPlayerHeight, Palette, Spacing } from '@/constants/theme';
+import { hasRecording, type Hymn } from '@/context/audio-context';
+import { useAuth } from '@/context/auth-context';
 import { useHymns } from '@/context/hymns-context';
-import { useViewMode } from '@/context/view-mode-context';
 import { useHymnals, type Hymnal } from '@/data/hymnals';
 import { useAudio } from '@/hooks/use-audio';
+import { useCanEdit } from '@/hooks/use-can-edit';
 import { useLocale } from '@/context/locale-context';
+import { usePlaylists } from '@/context/playlists-context';
 
-export default function HymnsScreen() {
+export default withTabTransition(HymnsScreen, 1);
+
+function HymnsScreen() {
   const { loadHymn, expandPlayer, currentHymn, isPlaying, isPlayerVisible } = useAudio();
-  const { viewMode, setViewMode } = useViewMode();
+  const { openMenu } = usePlaylists();
   const { byHymnal, loading, error } = useHymns();
   // Visible hymnals in the order set in the admin / Hymn Studio: official first, then community (incl. composers').
   const hymnals = useHymnals();
@@ -30,7 +36,11 @@ export default function HymnsScreen() {
   const hymnalId = BOOKS.find((b) => b.id === picked)?.id ?? BOOKS[0]?.id ?? '';
   const current = BOOKS.find((b) => b.id === hymnalId);
   const [query, setQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
   const { t } = useLocale();
+  const { openComposer, openEditor } = useAuth();
+  const can = useCanEdit();
+  const editable = can.hymnal(current);
 
   const all = byHymnal(hymnalId);
   const q = query.trim().toLowerCase();
@@ -42,21 +52,23 @@ export default function HymnsScreen() {
   const bottomPad = BottomTabInset + (isPlayerVisible ? MiniPlayerHeight + Spacing.three : 0) + Spacing.three;
 
   function read(hymn: Hymn) {
-    setViewMode('hymnal');
-    loadHymn(hymn, list, list.indexOf(hymn));
+    loadHymn(hymn, list, list.indexOf(hymn), { play: false });
     expandPlayer();
   }
 
   function listen(hymn: Hymn) {
-    if (!hymn.audioUri) return read(hymn);
-    setViewMode('audio');
+    loadHymn(hymn, list, list.indexOf(hymn), { play: true });
+  }
+
+  // Tapping a row follows the "Auto-play recordings" setting; hymns without a recording open their lyrics.
+  function open(hymn: Hymn) {
     loadHymn(hymn, list, list.indexOf(hymn));
   }
 
   return (
     <View style={styles.root}>
       <SafeAreaView style={styles.flex} edges={['top']}>
-        <AppHeader title={t('hymns.title')} />
+        <AppHeader title={t('hymns.title')} onSearch={() => setSearchOpen(true)} />
 
         <View style={styles.books}>
           <Pressable
@@ -69,11 +81,36 @@ export default function HymnsScreen() {
             <ThemedText style={styles.selectText} numberOfLines={1}>{current?.name ?? ''}</ThemedText>
             <ChevronDown size={18} color={Palette.text} />
           </Pressable>
+          {/* A composer's hymnal links to their composer profile. */}
+          {current?.ownerUid && current.createdByName ? (
+            <Pressable onPress={() => openComposer(current.ownerUid!)} hitSlop={8} style={styles.byline} accessibilityRole="link">
+              <ThemedText style={styles.bylineText} numberOfLines={1}>{t('composer.by', { name: current.createdByName })}</ThemedText>
+            </Pressable>
+          ) : null}
+          {/* Staff, and composers on their own hymnals, can edit the hymnal and add hymns from here. */}
+          {editable && current ? (
+            <View style={styles.editTools}>
+              <Pressable onPress={() => openEditor({ kind: 'hymnal', id: current.id })} hitSlop={8} style={styles.toolBtn} accessibilityRole="button" accessibilityLabel={t('hymns.editHymnal')}>
+                <Pencil size={18} color={Palette.text} />
+              </Pressable>
+              <Pressable onPress={() => openEditor({ kind: 'hymn', hymnalId: current.id })} hitSlop={8} style={styles.toolBtn} accessibilityRole="button" accessibilityLabel={t('edit.newHymn')}>
+                <Plus size={20} color={Palette.cyan} />
+              </Pressable>
+            </View>
+          ) : null}
         </View>
         <HymnalMenu
           open={menuOpen}
           hymnals={BOOKS}
           selected={hymnalId}
+          onNew={
+            can.canCreate
+              ? () => {
+                  setMenuOpen(false);
+                  openEditor({ kind: 'hymnal' });
+                }
+              : undefined
+          }
           onPick={(id) => {
             setHymnalId(id);
             setQuery('');
@@ -116,43 +153,62 @@ export default function HymnsScreen() {
               const active = currentHymn?.id === item.id;
               const color = active ? Palette.cyan : Palette.text;
               return (
-                <Pressable style={styles.row} onPress={() => (viewMode === 'hymnal' ? read(item) : listen(item))} accessibilityRole="button" accessibilityLabel={`Hymn ${item.label ?? ''} ${item.title}`}>
-                  <ThemedText style={[styles.num, { color }]}>{item.label ?? '–'}</ThemedText>
-                  <ThemedText style={[styles.title, { color }]} numberOfLines={1}>
-                    {item.title}
-                  </ThemedText>
-                  <Pressable onPress={() => read(item)} hitSlop={8} style={styles.icon} accessibilityLabel={t('hymns.read', { title: item.title })}>
+                // The row's main tap and the read/play icons are siblings, not nested buttons.
+                <View style={styles.row}>
+                  <Pressable
+                    style={styles.rowOpen}
+                    onPress={() => open(item)}
+                    // Editors: long-press a hymn to edit it. Everyone else gets the hymn menu.
+                    onLongPress={can.hymn(item, current) ? () => openEditor({ kind: 'hymn', id: item.id }) : () => openMenu(item)}
+                    accessibilityActions={can.hymn(item, current) ? [{ name: 'edit', label: t('hymns.edit', { title: item.title }) }] : undefined}
+                    onAccessibilityAction={(e) => e.nativeEvent.actionName === 'edit' && openEditor({ kind: 'hymn', id: item.id })}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Hymn ${item.label ?? ''} ${item.title}`}>
+                    <ThemedText style={[styles.num, { color }]}>{item.label ?? '–'}</ThemedText>
+                    <ThemedText style={[styles.title, { color }]} numberOfLines={1}>
+                      {item.title}
+                    </ThemedText>
+                  </Pressable>
+                  <Pressable onPress={() => read(item)} hitSlop={8} style={styles.icon} accessibilityRole="button" accessibilityLabel={t('hymns.read', { title: item.title })}>
                     <BookOpen size={22} strokeWidth={1.6} color={active ? Palette.cyan : Palette.amber} />
                   </Pressable>
-                  <Pressable onPress={() => listen(item)} hitSlop={8} style={styles.icon} accessibilityLabel={t(item.audioUri ? 'hymns.play' : 'hymns.noRecording', { title: item.title })}>
-                    {active && isPlaying ? (
-                      <Pause size={22} strokeWidth={1.8} color={Palette.cyan} />
-                    ) : (
-                      <Play size={22} strokeWidth={1.6} color={item.audioUri ? color : Palette.muted} />
-                    )}
+                  {hasRecording(item) ? (
+                    <Pressable onPress={() => listen(item)} hitSlop={8} style={styles.icon} accessibilityRole="button" accessibilityLabel={t('hymns.play', { title: item.title })}>
+                      {active && isPlaying ? (
+                        <Pause size={22} strokeWidth={1.8} color={Palette.cyan} />
+                      ) : (
+                        <Play size={22} strokeWidth={1.6} color={color} />
+                      )}
+                    </Pressable>
+                  ) : null}
+                  <Pressable onPress={() => openMenu(item)} hitSlop={8} style={styles.icon} accessibilityRole="button" accessibilityLabel={t('hymns.more', { title: item.title })}>
+                    <MoreVertical size={20} strokeWidth={1.8} color={Palette.muted} />
                   </Pressable>
-                </Pressable>
+                </View>
               );
             }}
           />
-          <ModeSwitcher bottom={Spacing.three} />
         </GradientBorder>
       </SafeAreaView>
+      <SearchModal visible={searchOpen} onClose={() => setSearchOpen(false)} />
     </View>
   );
 }
 
 /** The hymnal dropdown: a sheet listing official hymnals, then community ones. */
-function HymnalMenu({ open, hymnals, selected, onPick, onClose }: { open: boolean; hymnals: Hymnal[]; selected: string; onPick: (id: string) => void; onClose: () => void }) {
+function HymnalMenu({ open, hymnals, selected, onPick, onClose, onNew }: { open: boolean; hymnals: Hymnal[]; selected: string; onPick: (id: string) => void; onClose: () => void; onNew?: () => void }) {
   const { t } = useLocale();
+  const menuEntering = useMenuEntering();
   const groups = [
     { title: t('hymns.official'), items: hymnals.filter((h) => h.kind === 'official') },
     { title: t('hymns.community'), items: hymnals.filter((h) => h.kind === 'community') },
   ].filter((g) => g.items.length);
   return (
     <Modal visible={open} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel={t('hymns.pickHymnal')}>
-        <Pressable style={styles.menu} onPress={() => {}}>
+      {/* The backdrop's close target sits behind the menu as a sibling, so menu items aren't nested in it. */}
+      <View style={styles.backdrop}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityRole="button" accessibilityLabel={t('player.close')} />
+        <Animated.View entering={menuEntering} style={styles.menu} accessibilityLabel={t('hymns.pickHymnal')}>
           <ScrollView>
             {groups.map((g) => (
               <View key={g.title}>
@@ -172,9 +228,15 @@ function HymnalMenu({ open, hymnals, selected, onPick, onClose }: { open: boolea
                 })}
               </View>
             ))}
+            {onNew && (
+              <Pressable onPress={onNew} style={styles.menuItem} accessibilityRole="menuitem">
+                <Plus size={16} color={Palette.cyan} />
+                <ThemedText style={[styles.menuText, { color: Palette.cyan }]}>{t('hymnalEdit.new')}</ThemedText>
+              </Pressable>
+            )}
           </ScrollView>
-        </Pressable>
-      </Pressable>
+        </Animated.View>
+      </View>
     </Modal>
   );
 }
@@ -182,7 +244,11 @@ function HymnalMenu({ open, hymnals, selected, onPick, onClose }: { open: boolea
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Palette.bg },
   flex: { flex: 1 },
-  books: { flexDirection: 'row', gap: Spacing.two, paddingHorizontal: Spacing.four, marginBottom: Spacing.three },
+  books: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingHorizontal: Spacing.four, marginBottom: Spacing.three },
+  byline: { flexShrink: 1 },
+  editTools: { flexDirection: 'row', alignItems: 'center', gap: 6, marginLeft: 'auto' },
+  toolBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: Palette.pill },
+  bylineText: { color: Palette.cyan, fontSize: 14, lineHeight: 20, fontWeight: '700' },
   select: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, alignSelf: 'flex-start', maxWidth: '100%', height: 40, paddingHorizontal: 14, borderRadius: 999, backgroundColor: Palette.pill },
   selectText: { flexShrink: 1, color: Palette.text, fontSize: 15, lineHeight: 20, fontWeight: '700' },
   dot: { width: 10, height: 10, borderRadius: 5 },
@@ -206,10 +272,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#0B4E66',
     paddingHorizontal: Spacing.three,
   },
-  searchInput: { flex: 1, color: '#BDEBFA', fontSize: 15, padding: 0, fontFamily: 'PlusJakartaSans_500Medium' },
+  searchInput: { flex: 1, color: '#BDEBFA', fontSize: 15, padding: 0, fontFamily: FontFamily.medium },
   listContent: { paddingHorizontal: Spacing.four, paddingBottom: 72 },
-  row: { flexDirection: 'row', alignItems: 'center', height: 52, gap: Spacing.three },
-  num: { minWidth: 30, fontSize: 16, lineHeight: 22, fontWeight: '800' },
+  row: { flexDirection: 'row', alignItems: 'center', height: 52, gap: Spacing.two },
+  rowOpen: { flex: 1, alignSelf: 'stretch', flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  // Sized for up to three digits (most hymnals) and kept tight so titles get the room.
+  num: { minWidth: 26, fontSize: 15, lineHeight: 22, fontWeight: '800', fontVariant: ['tabular-nums'] },
   title: { flex: 1, fontSize: 16, lineHeight: 22, fontWeight: '800' },
   icon: { padding: 4 },
   sep: { height: 1, backgroundColor: '#33271B' },

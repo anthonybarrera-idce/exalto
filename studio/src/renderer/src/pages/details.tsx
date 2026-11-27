@@ -12,6 +12,7 @@ import { useStudio } from "@/hooks/use-studio"
 import { studio, type HymnDoc } from "@/lib/studio"
 import { useHymnals } from "@/lib/hymnals"
 import { useLocale } from "@/hooks/use-locale"
+import { isDisplayNumber } from "@/lib/hymn-number"
 
 type Form = {
   title: string
@@ -49,12 +50,17 @@ export function DetailsPage({ go }: { go: (p: PageId) => void }) {
   const code = detail.hymn.source?.hymnalCode
 
   const save = async () => {
+    const label = form.label.trim()
+    if (label && !isDisplayNumber(label)) {
+      toast.error(t("details.shownAsInvalid"))
+      return
+    }
     const number = form.number ? Number(form.number) : null
     await studio.saveDetails(detail.slug, {
       title: form.title.trim(),
       hymnalId: form.hymnalId,
       number,
-      label: form.label.trim() && form.label.trim() !== form.number ? form.label.trim().toUpperCase() : null,
+      label: label && label !== form.number ? label.toUpperCase() : null,
       author: form.author.trim(),
       language: form.language,
       tags: form.tags.split(",").map((t) => t.trim()).filter(Boolean),

@@ -11,6 +11,7 @@ node_modules
 dist
 dist-ssr
 web-dist
+webapp-dist
 *.local
 
 # Editor directories and files

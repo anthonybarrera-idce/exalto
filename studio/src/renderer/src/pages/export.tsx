@@ -20,6 +20,7 @@ import { AttachDialog } from "@/components/attach-dialog"
 import { useLocale } from "@/hooks/use-locale"
 import type { StringKey } from "@/lib/i18n"
 import { VOICES, type Voice } from "@/lib/notes"
+import { hymnNumberText } from "@/lib/hymn-number"
 
 /** What each converter file is; `{voice}` is filled from the file name (soprano, alto…). */
 const DESCRIBE: [RegExp, StringKey][] = [
@@ -154,7 +155,7 @@ function UploadCard({ detail, picked, go }: { detail: HymnDetail; picked: Set<st
           <Button variant="ghost" size="sm" onClick={() => go("details")}>{t("upload.editDetails")}</Button>
         </div>
         <div className="text-muted-foreground">
-          {hymnal(h.hymnalId)} · {h.number != null ? t("upload.numberLabel", { number: h.label ?? h.number }) : t("upload.noNumber")} · {h.author || t("upload.noAuthor")}
+          {hymnal(h.hymnalId)} · {h.number != null ? t("upload.numberLabel", { number: hymnNumberText(h) ?? "" }) : t("upload.noNumber")} · {h.author || t("upload.noAuthor")}
         </div>
       </div>
       {!user ? (

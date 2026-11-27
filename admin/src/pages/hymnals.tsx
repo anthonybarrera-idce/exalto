@@ -1,5 +1,5 @@
-import { BookOpen, ChevronRight, EyeOff, Loader2, Pencil, Plus, Trash2, WifiOff } from "lucide-react"
-import { useState } from "react"
+import { ChevronRight, EyeOff, ImagePlus, Loader2, Pencil, Plus, Trash2, WifiOff, X } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
 import { Link } from "react-router"
 import { toast } from "sonner"
 
@@ -14,7 +14,7 @@ import { Switch } from "@/components/ui/switch"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { canEditContent, canManageTeam, useAuth } from "@/lib/auth"
-import { deleteHymnal, hymnalIdFrom, isBuiltIn, saveHymnal, useHymnals, type HymnalInput } from "@/lib/hymnals"
+import { deleteHymnal, hymnalIdFrom, isBuiltIn, removeHymnalThumbnail, saveHymnal, setHymnalThumbnail, useHymnals, type HymnalInput } from "@/lib/hymnals"
 import { useHymns } from "@/lib/hymns"
 import type { Hymnal, HymnStatus } from "@/lib/types"
 
@@ -52,9 +52,7 @@ export function HymnalsPage() {
             <Link key={hymnal.id} to={`/hymns?hymnal=${hymnal.id}`} className="group rounded-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
               <Card className="h-full transition-colors group-hover:border-foreground/30">
                 <CardHeader className="flex flex-row items-start gap-3">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#04C1FF] to-[#EEA246] text-white">
-                    <BookOpen className="size-5" />
-                  </div>
+                  <HymnalThumb url={hymnal.thumbnailUrl} color={hymnal.color} className="size-10 rounded-lg" />
                   <div className="min-w-0 flex-1">
                     <CardTitle className="truncate">{hymnal.name}</CardTitle>
                     <CardDescription>{hymnal.kind === "official" ? "Official hymnal" : "Composer uploads"}</CardDescription>
@@ -142,6 +140,19 @@ function HymnalDialog({ hymnal, hymnCount, takenIds, nextOrder, canDelete, onClo
       : { name: "", shortName: "", color: "#4A2E6B", kind: "official", visible: true, offline: true, order: nextOrder },
   )
   const [busy, setBusy] = useState(false)
+  // Applied on Save: a new image to upload, or "remove".
+  const [thumb, setThumb] = useState<{ file: File; preview: string } | "remove" | null>(null)
+  const fileInput = useRef<HTMLInputElement>(null)
+  const preview = thumb === "remove" ? undefined : (thumb?.preview ?? hymnal?.thumbnailUrl)
+  useEffect(() => () => {
+    if (thumb && thumb !== "remove") URL.revokeObjectURL(thumb.preview)
+  }, [thumb])
+  const pickThumb = (file: File | undefined) => {
+    if (!file) return
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) return void toast.error("Choose a JPG, PNG or WebP image.")
+    if (file.size > 20 * 1024 * 1024) return void toast.error("That image is over 20 MB.")
+    setThumb({ file, preview: URL.createObjectURL(file) })
+  }
   const set = <K extends keyof HymnalInput>(k: K, v: HymnalInput[K]) => setForm((f) => ({ ...f, [k]: v }))
   const id = hymnal?.id ?? hymnalIdFrom(form.name)
   const idTaken = isNew && takenIds.includes(id)
@@ -161,7 +172,11 @@ function HymnalDialog({ hymnal, hymnCount, takenIds, nextOrder, canDelete, onClo
   const save = (e: React.FormEvent) => {
     e.preventDefault()
     const clean = { ...form, name: form.name.trim(), shortName: form.shortName.trim() || form.name.trim(), order: Math.max(0, Math.round(Number(form.order) || 0)) }
-    void run(() => saveHymnal(id, clean, isNew), isNew ? `${clean.name} created` : "Hymnal saved")
+    void run(async () => {
+      await saveHymnal(id, clean, isNew)
+      if (thumb === "remove") await removeHymnalThumbnail(id, clean.name)
+      else if (thumb) await setHymnalThumbnail(id, clean.name, thumb.file)
+    }, isNew ? `${clean.name} created` : "Hymnal saved")
   }
 
   return (
@@ -204,6 +219,26 @@ function HymnalDialog({ hymnal, hymnCount, takenIds, nextOrder, canDelete, onClo
               <Input id="hn-order" type="number" min={0} step={1} value={form.order} onChange={(e) => set("order", Math.max(0, Number(e.target.value)))} />
             </div>
           </div>
+          <div className="flex items-center gap-3">
+            <HymnalThumb url={preview} color={form.color} className="size-16 rounded-xl" />
+            <div className="grid min-w-0 flex-1 gap-1">
+              <Label>Thumbnail</Label>
+              <p className="text-xs text-muted-foreground">
+                {preview ? "Shown on every hymn in this hymnal. Cropped square, 512 px." : "Optional. Without one, the app shows a gradient of the hymnal color."}
+              </p>
+              <div className="flex gap-2">
+                <input ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => { pickThumb(e.target.files?.[0]); e.target.value = "" }} />
+                <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => fileInput.current?.click()}>
+                  <ImagePlus /> {preview ? "Replace" : "Upload image"}
+                </Button>
+                {preview && (
+                  <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={() => setThumb(hymnal?.thumbnailUrl ? "remove" : null)}>
+                    <X /> Remove
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
           <div className="flex items-center justify-between gap-3">
             <Label htmlFor="hn-visible" className="flex-col items-start gap-0.5">Visible in the app<span className="text-xs font-normal text-muted-foreground">Hidden hymnals and their hymns don't show in the app.</span></Label>
             <Switch id="hn-visible" checked={form.visible} onCheckedChange={(v) => set("visible", v)} />
@@ -229,4 +264,32 @@ function HymnalDialog({ hymnal, hymnCount, takenIds, nextOrder, canDelete, onClo
       </DialogContent>
     </Dialog>
   )
+}
+
+/** Same look as the app's hymn art: the hymnal's image, or a gradient of its color with the Exalto mark. */
+function HymnalThumb({ url, color, className }: { url?: string; color: string; className?: string }) {
+  return url ? (
+    <img src={url} alt="" className={`shrink-0 object-cover ${className ?? ""}`} />
+  ) : (
+    <div
+      aria-hidden
+      className={`flex shrink-0 items-center justify-center ${className ?? ""}`}
+      style={{ background: hymnalGradient(color) }}
+    >
+      <img src="/exalto-mark.svg" alt="" className="h-[48%] opacity-70 brightness-0 invert" />
+    </div>
+  )
+}
+
+/** Analogous two-stop gradient, same formula as the app's HymnArt (exalto/src/components/ui/hymn-art.tsx). */
+function hymnalGradient(hex: string) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim())
+  if (!m) return hex
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(m[1].slice(i, i + 2), 16) / 255)
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2, d = max - min
+  const s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1))
+  const h = d === 0 ? 0 : (((max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4) * 60) + 360) % 360
+  const sat = s < 0.08 ? s : Math.max(s, 0.45)
+  const pct = (x: number) => `${Math.round(Math.min(1, Math.max(0, x)) * 100)}%`
+  return `linear-gradient(135deg, hsl(${h - 12} ${pct(sat)} ${pct(Math.max(l + 0.08, 0.32))}), hsl(${h + 40} ${pct(sat * 1.05)} ${pct(Math.min(l - 0.06, 0.4))}))`
 }

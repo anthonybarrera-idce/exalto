@@ -41,6 +41,8 @@ export type Hymnal = {
   offline: boolean
   /** Display order, lowest first. */
   order: number
+  /** Square image (Storage `hymnals/{id}/thumbnail.*`) the app shows on every hymn in this hymnal. */
+  thumbnailUrl?: string
 }
 
 /** Roles that may sign in to the admin. Set as a Firebase Auth custom claim `role`. */

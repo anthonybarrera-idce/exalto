@@ -41,16 +41,26 @@ const PRIVACY: Record<Lang, { title: string; intro: string; sections: Section[] 
       {
         h: 'La app Exalto',
         p: [
-          'Puedes usar la app sin crear una cuenta. No usamos publicidad ni herramientas de análisis o seguimiento.',
-          'La app guarda en tu teléfono tus himnos favoritos, el idioma que elijas y una copia de los himnos que has cargado, para que abran más rápido. Esa información se queda en tu dispositivo y no la recibimos.',
+          'Puedes usar la app como invitado, sin crear una cuenta. No usamos publicidad ni herramientas de análisis o seguimiento.',
+          'Como invitado, la app guarda en tu teléfono tus himnos favoritos, tus listas, el idioma que elijas y una copia de los himnos y himnarios que has cargado o descargado para usar sin conexión. Esa información se queda en tu dispositivo y no la recibimos.',
           'Para mostrar los himnos, la letra, las partituras y el audio, la app los descarga de nuestros servidores en Google Firebase. Como cualquier servicio en internet, Google procesa datos técnicos de esas conexiones (por ejemplo, tu dirección IP) para entregar el contenido.',
+        ],
+      },
+      {
+        h: 'Si creas una cuenta',
+        p: [
+          'La cuenta es opcional. Puedes entrar con Apple (en iPhone), con Google o con tu correo y una contraseña. El inicio de sesión lo maneja Firebase Authentication de Google; nunca vemos tu contraseña.',
+          'Guardamos tu nombre, tu correo, tu foto de perfil si tu proveedor la comparte, el nombre de usuario (@) y la iglesia que elijas, tus himnos favoritos y tus listas, para que te acompañen en todos tus teléfonos.',
+          'Tu nombre, tu nombre de usuario y tu iglesia pueden verlos otras personas en la app. Tu correo no se muestra.',
+          'Si pides ser compositor, guardamos tu solicitud para que un administrador la revise. Los compositores tienen un perfil público con su nombre y sus himnos publicados.',
         ],
       },
       {
         h: 'Exalto Hymn Studio',
         p: [
-          'Hymn Studio es para los músicos y editores de Exalto. Para subir himnos inicias sesión con tu cuenta de Google; usamos tu nombre y correo para identificarte como editor y registrar quién subió o revisó cada himno.',
+          'Hymn Studio es para los músicos, editores y compositores de Exalto. Para subir himnos inicias sesión con tu cuenta de Google; usamos tu nombre y correo para identificarte y registrar quién subió o revisó cada himno.',
           'Las diapositivas y los archivos que conviertes se procesan en tu computadora. Solo se envían a Exalto los himnos que decides subir.',
+          'El asistente de himnos y el revisor de ortografía son opcionales. Cuando los usas, la letra y las notas del himno que estás revisando se envían a Google Gemini o a Anthropic Claude, con la clave que tú guardas en Ajustes, para generar sugerencias. Esos servicios procesan el texto según sus propias políticas.',
         ],
       },
       {
@@ -64,19 +74,20 @@ const PRIVACY: Record<Lang, { title: string; intro: string; sections: Section[] 
       {
         h: 'Con quién compartimos información',
         p: [
-          'No vendemos ni compartimos tu información con terceros para publicidad. Usamos Google (Firebase y Google Workspace) para alojar el contenido y recibir correos.',
+          'No vendemos ni compartimos tu información con terceros para publicidad. Usamos Google (Firebase y Google Workspace) para alojar el contenido, manejar las cuentas y recibir correos, y Apple para iniciar sesión con Apple. En Hymn Studio, el asistente y el revisor de ortografía usan Google Gemini o Anthropic Claude solo cuando tú los usas.',
         ],
       },
       {
         h: 'Niños',
         p: [
-          'La app no pide datos personales para usarse. Hymn Studio está pensado para adultos del equipo de música.',
+          'La app no pide datos personales para usarse como invitado. Si tienes menos de 13 años, pide a tu madre, padre o tutor que te ayude antes de crear una cuenta. Hymn Studio está pensado para adultos del equipo de música.',
         ],
       },
       {
         h: 'Tus opciones',
         p: [
-          'Puedes borrar los datos guardados en tu teléfono desinstalando la app o borrando sus datos. Si eres editor y quieres que eliminemos tu cuenta de Hymn Studio, o tienes cualquier pregunta sobre tu información, escríbenos a ',
+          'Puedes editar tu perfil o eliminar tu cuenta cuando quieras desde la app: toca tu foto de perfil para abrir Cuenta y ajustes y elige «Eliminar cuenta». Eso borra tu perfil, tu nombre de usuario, tus listas y favoritos guardados y tu acceso. Los himnos que hayas subido siguen publicados, salvo que nos pidas quitarlos.',
+          'Puedes borrar los datos guardados en tu teléfono desinstalando la app o borrando sus datos. Si no puedes entrar a la app, quieres que eliminemos tu cuenta de Hymn Studio o tienes cualquier pregunta sobre tu información, escríbenos a ',
         ],
       },
       {
@@ -93,16 +104,26 @@ const PRIVACY: Record<Lang, { title: string; intro: string; sections: Section[] 
       {
         h: 'The Exalto app',
         p: [
-          'You can use the app without creating an account. We don’t use advertising, analytics or tracking tools.',
-          'The app stores your favorite hymns, the language you choose and a copy of the hymns you’ve loaded on your phone, so they open faster. That information stays on your device and isn’t sent to us.',
+          'You can use the app as a guest, without creating an account. We don’t use advertising, analytics or tracking tools.',
+          'As a guest, the app stores your favorite hymns, your playlists, the language you choose and a copy of the hymns and hymnals you’ve loaded or downloaded for offline use on your phone. That information stays on your device and isn’t sent to us.',
           'To show hymns, lyrics, sheet music and audio, the app downloads them from our servers on Google Firebase. Like any internet service, Google processes technical data from those connections (such as your IP address) to deliver the content.',
+        ],
+      },
+      {
+        h: 'If you create an account',
+        p: [
+          'An account is optional. You can sign in with Apple (on iPhone), with Google, or with your email and a password. Sign-in is handled by Google’s Firebase Authentication; we never see your password.',
+          'We store your name, your email, your profile photo if your provider shares it, the username (@) and church you choose, your favorite hymns and your playlists, so they follow you to every phone.',
+          'Other people in the app can see your name, username and church. Your email isn’t shown.',
+          'If you ask to become a composer, we keep your request so an admin can review it. Composers have a public profile with their name and published hymns.',
         ],
       },
       {
         h: 'Exalto Hymn Studio',
         p: [
-          'Hymn Studio is for Exalto’s music leaders and editors. To upload hymns you sign in with your Google account; we use your name and email to identify you as an editor and to record who uploaded or reviewed each hymn.',
+          'Hymn Studio is for Exalto’s music leaders, editors and composers. To upload hymns you sign in with your Google account; we use your name and email to identify you and to record who uploaded or reviewed each hymn.',
           'The slides and files you convert are processed on your computer. Only the hymns you choose to upload are sent to Exalto.',
+          'The hymn assistant and the spelling checker are optional. When you use them, the lyrics and notes of the hymn you’re reviewing are sent to Google Gemini or Anthropic Claude, using the key you save in Settings, to generate suggestions. Those services process the text under their own policies.',
         ],
       },
       {
@@ -116,17 +137,20 @@ const PRIVACY: Record<Lang, { title: string; intro: string; sections: Section[] 
       {
         h: 'Who we share information with',
         p: [
-          'We don’t sell your information or share it with third parties for advertising. We use Google (Firebase and Google Workspace) to host content and receive email.',
+          'We don’t sell your information or share it with third parties for advertising. We use Google (Firebase and Google Workspace) to host content, handle accounts and receive email, and Apple for Sign in with Apple. In Hymn Studio, the assistant and spelling checker use Google Gemini or Anthropic Claude only when you use them.',
         ],
       },
       {
         h: 'Children',
-        p: ['The app doesn’t ask for personal information to be used. Hymn Studio is meant for adults on the music team.'],
+        p: [
+          'The app doesn’t ask for personal information to be used as a guest. If you’re under 13, ask a parent or guardian to help you before creating an account. Hymn Studio is meant for adults on the music team.',
+        ],
       },
       {
         h: 'Your choices',
         p: [
-          'You can erase the data stored on your phone by uninstalling the app or clearing its data. If you’re an editor and want us to delete your Hymn Studio account, or you have any question about your information, write to ',
+          'You can edit your profile or delete your account at any time in the app: tap your profile photo to open Account and settings, then choose “Delete account”. That erases your profile, username, saved playlists and favorites, and your sign-in. Hymns you uploaded stay published unless you ask us to remove them.',
+          'You can erase the data stored on your phone by uninstalling the app or clearing its data. If you can’t get into the app, want us to delete your Hymn Studio account, or have any question about your information, write to ',
         ],
       },
       {
@@ -159,9 +183,16 @@ const TERMS: Record<Lang, { title: string; intro: string; sections: Section[] }>
         ],
       },
       {
-        h: 'Himnos de la comunidad y Hymn Studio',
+        h: 'Tu cuenta',
         p: [
-          'Si subes un himno con Hymn Studio, confirmas que tienes derecho a compartirlo y nos permites mostrarlo en Exalto. Revisamos los himnos antes de publicarlos y podemos editarlos o no publicarlos.',
+          'La cuenta es opcional. Si creas una, mantén tu acceso seguro y elige un nombre de usuario respetuoso. Podemos cambiar un nombre de usuario ofensivo o suspender una cuenta que se use para dañar a otros. Puedes eliminar tu cuenta cuando quieras desde la app.',
+        ],
+      },
+      {
+        h: 'Himnos de la comunidad, compositores y Hymn Studio',
+        p: [
+          'Si subes o escribes un himno, en Hymn Studio o en la app como compositor, confirmas que tienes derecho a compartirlo y nos permites mostrarlo en Exalto con tu nombre. Revisamos los himnos antes de publicarlos y podemos editarlos o no publicarlos.',
+          'El acceso de compositor lo aprueba un administrador de la iglesia y se puede retirar.',
         ],
       },
       {
@@ -201,9 +232,16 @@ const TERMS: Record<Lang, { title: string; intro: string; sections: Section[] }>
         ],
       },
       {
-        h: 'Community hymns and Hymn Studio',
+        h: 'Your account',
         p: [
-          'If you upload a hymn with Hymn Studio, you confirm you have the right to share it and allow us to show it in Exalto. We review hymns before publishing them and may edit them or choose not to publish them.',
+          'An account is optional. If you create one, keep your sign-in secure and choose a respectful username. We may change an offensive username or suspend an account used to harm others. You can delete your account at any time in the app.',
+        ],
+      },
+      {
+        h: 'Community hymns, composers and Hymn Studio',
+        p: [
+          'If you upload or write a hymn, in Hymn Studio or in the app as a composer, you confirm you have the right to share it and allow us to show it in Exalto with your name. We review hymns before publishing them and may edit them or choose not to publish them.',
+          'Composer access is approved by a church admin and can be withdrawn.',
         ],
       },
       {
@@ -236,7 +274,15 @@ const SUPPORT: Record<
     faqs: [
       {
         q: '¿Necesito crear una cuenta?',
-        a: 'No. Abre la app y empieza a cantar. Las cuentas solo son para los editores que suben himnos con Hymn Studio.',
+        a: 'No. Puedes cantar como invitado. Si creas una cuenta con Apple, Google o tu correo, tus favoritos y tus listas te acompañan en todos tus teléfonos.',
+      },
+      {
+        q: '¿Cómo elimino mi cuenta?',
+        a: 'En la app, toca tu foto de perfil para abrir Cuenta y ajustes y elige «Eliminar cuenta». Escribe ELIMINAR para confirmar. Se borran tu perfil, tu nombre de usuario, tus listas y favoritos guardados y tu acceso. Si no puedes entrar a la app, escríbenos desde la página de contacto y la eliminamos por ti.',
+      },
+      {
+        q: '¿Cómo me hago compositor?',
+        a: 'Crea una cuenta y, en Cuenta y ajustes, elige «Hazte compositor». Un administrador de la iglesia revisa tu solicitud. Cuando la aprueba, aparece la sección de creador con tu perfil y tus himnos.',
       },
       {
         q: '¿Cuánto cuesta?',
@@ -244,11 +290,11 @@ const SUPPORT: Record<
       },
       {
         q: '¿Puedo usar la app sin internet?',
-        a: 'La app guarda en tu teléfono los himnos que ya cargaste, así que puedes leer su letra sin conexión. Para escuchar el audio y ver himnos nuevos necesitas internet.',
+        a: 'Sí. Los himnarios marcados para usar sin conexión se descargan en tu teléfono, y los himnos que ya abriste también quedan guardados. Para escuchar el audio y ver himnos nuevos necesitas internet.',
       },
       {
         q: '¿En qué idiomas está?',
-        a: 'En español y en inglés. La app usa el idioma de tu teléfono.',
+        a: 'En español y en inglés. Puedes cambiar el idioma en Cuenta y ajustes.',
       },
       {
         q: '¿Por qué un himno no tiene la opción Practicar?',
@@ -260,7 +306,7 @@ const SUPPORT: Record<
       },
       {
         q: '¿Cómo consigo Hymn Studio?',
-        a: 'Hymn Studio es para los músicos y editores de Exalto, en Mac y Windows. Escríbenos para pedir acceso.',
+        a: 'Hymn Studio es para los músicos, editores y compositores de Exalto, en Mac y Windows. Escríbenos para pedir acceso.',
       },
     ],
     moreTitle: '¿No encontraste tu respuesta?',
@@ -273,16 +319,24 @@ const SUPPORT: Record<
     faqs: [
       {
         q: 'Do I need an account?',
-        a: 'No. Open the app and start singing. Accounts are only for editors who upload hymns with Hymn Studio.',
+        a: 'No. You can sing as a guest. If you create an account with Apple, Google or your email, your favorites and playlists follow you to every phone.',
+      },
+      {
+        q: 'How do I delete my account?',
+        a: 'In the app, tap your profile photo to open Account and settings, then choose “Delete account”. Type DELETE to confirm. Your profile, username, saved playlists and favorites, and your sign-in are erased. If you can’t get into the app, write to us from the contact page and we’ll delete it for you.',
+      },
+      {
+        q: 'How do I become a composer?',
+        a: 'Create an account, then choose “Become a composer” in Account and settings. A church admin reviews your request. Once it’s approved, a Creator section appears with your profile and your hymns.',
       },
       { q: 'How much does it cost?', a: 'Exalto is free on iPhone and Android.' },
       {
         q: 'Can I use the app without internet?',
-        a: 'The app keeps the hymns you’ve already loaded on your phone, so you can read their lyrics offline. You need internet to play audio and see new hymns.',
+        a: 'Yes. Hymnals marked for offline use are downloaded to your phone, and hymns you’ve already opened stay saved too. You need internet to play audio and see new hymns.',
       },
       {
         q: 'What languages is it in?',
-        a: 'Spanish and English. The app uses your phone’s language.',
+        a: 'Spanish and English. You can change the language in Account and settings.',
       },
       {
         q: 'Why doesn’t a hymn have the Practice option?',
@@ -294,7 +348,7 @@ const SUPPORT: Record<
       },
       {
         q: 'How do I get Hymn Studio?',
-        a: 'Hymn Studio is for Exalto’s music leaders and editors, on Mac and Windows. Write to us to ask for access.',
+        a: 'Hymn Studio is for Exalto’s music leaders, editors and composers, on Mac and Windows. Write to us to ask for access.',
       },
     ],
     moreTitle: 'Didn’t find your answer?',

@@ -31,6 +31,23 @@ service firebase.storage {
         && request.resource.contentType == 'application/json';
     }
 
+    // A composer manages the cover of a hymnal they own (`ownerUid`, set when they created it).
+    function ownsHymnal(hymnalId) {
+      return request.auth != null && request.auth.token.get('composer', false) == true
+        && firestore.get(/databases/(default)/documents/hymnals/$(hymnalId)).data.get('ownerUid', null) == request.auth.uid;
+    }
+
+    // Hymnal thumbnail (admin Hymnals page, or the mobile app's hymnal editor): one square image per hymnal, shown
+    // on all its hymns in the app. Both clients shrink it to 512 px before upload (~100 KB), so 1 MB is a hard cap.
+    match /hymnals/{hymnalId}/{file} {
+      allow read: if true;
+      allow write: if (canEditContent() || ownsHymnal(hymnalId))
+        && file.matches('thumbnail[.](jpg|png|webp)')
+        && request.resource.size < 1 * 1024 * 1024
+        && request.resource.contentType.matches('image/(jpeg|png|webp)');
+      allow delete: if canEditContent() || ownsHymnal(hymnalId);
+    }
+
     match /{allPaths=**} {
       allow read, write: if false;
     }

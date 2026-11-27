@@ -4,12 +4,15 @@ import Svg, { Ellipse, G, Line, Path, Rect, Text as SvgText } from 'react-native
 
 import { FontFamily, Palette } from '@/constants/theme';
 import { VOICES, type PracticeData, type PracticeNote, type Voice } from '@/lib/practice';
-import { shapeOf, shapePath } from '@/lib/shape-notes';
+import { shapeOf, shapePath, stemAnchor } from '@/lib/shape-notes';
 
 /** Draws practice.json as one long grand staff that scrolls sideways (no MusicXML renderer). */
-export const PX_PER_BEAT = 34;
+/** Space per beat (drawing units). Adjustable in the practice tool; wider keeps lyric syllables apart. */
+export const SPACING = { min: 28, max: 76, step: 6, default: 40 };
 const GAP = 8; // staff line spacing
 const STEP = GAP / 2;
+const SHAPE_W = 11; // seven-shape notehead size (drawing units)
+const SHAPE_H = 8.6;
 const TREBLE_TOP = 44;
 const BASS_TOP = 156;
 const PAD = 12; // space after each barline
@@ -24,23 +27,23 @@ export const VOICE_COLOR: Record<Voice, string> = { soprano: Palette.cyan, alto:
 const ACC: Record<string, string> = { b: '♭', '#': '♯', n: '♮', bb: '𝄫', '##': '𝄪' };
 const staffBottom = (staff: 0 | 1) => (staff === 0 ? TREBLE_TOP : BASS_TOP) + 4 * GAP;
 
-/** `rx`/`rawWidth`/`measureX` are drawing units; `xOf`/`width` are on-screen points (× ZOOM). */
-export type Layout = { measureX: number[]; rawWidth: number; rx: (beat: number) => number; width: number; xOf: (beat: number) => number };
+/** `rx`/`rawWidth`/`measureX`/`pxPerBeat` are drawing units; `xOf`/`width` are on-screen points (× ZOOM). */
+export type Layout = { measureX: number[]; rawWidth: number; pxPerBeat: number; rx: (beat: number) => number; width: number; xOf: (beat: number) => number };
 
-export function scoreLayout(data: PracticeData): Layout {
+export function scoreLayout(data: PracticeData, pxPerBeat = SPACING.default): Layout {
   const measureX: number[] = [];
   let x = HEAD_X;
   for (const m of data.measures) {
     measureX.push(x);
-    x += PAD + m.beats * PX_PER_BEAT;
+    x += PAD + m.beats * pxPerBeat;
   }
   const rx = (beat: number) => {
     let i = 0;
     while (i + 1 < data.measures.length && data.measures[i + 1].start <= beat) i++;
     const m = data.measures[i];
-    return measureX[i] + PAD + (beat - m.start) * PX_PER_BEAT;
+    return measureX[i] + PAD + (beat - m.start) * pxPerBeat;
   };
-  return { measureX, rawWidth: x + 24, rx, width: (x + 24) * ZOOM, xOf: (beat: number) => rx(beat) * ZOOM };
+  return { measureX, rawWidth: x + 24, pxPerBeat, rx, width: (x + 24) * ZOOM, xOf: (beat: number) => rx(beat) * ZOOM };
 }
 
 /** The point a notehead is drawn at (for callouts). */
@@ -60,9 +63,13 @@ type Props = {
   onNoteOut?: (voice: Voice, n: PracticeNote) => void;
   /** Draw seven-shape noteheads (do triangle, re half-moon…) instead of round ones. */
   shapes?: boolean;
+  /** Notes sounding now (during playback), drawn in their voice colour like a tapped note. */
+  sounding?: Set<string>;
 };
 
-export const ScoreView = memo(function ScoreView({ data, layout, faded, activeId, onNoteIn, onNoteOut, shapes = false }: Props) {
+const NONE = new Set<string>();
+
+export const ScoreView = memo(function ScoreView({ data, layout, faded, activeId, onNoteIn, onNoteOut, shapes = false, sounding = NONE }: Props) {
   const staticParts = useMemo(() => <Staff data={data} layout={layout} />, [data, layout]);
   // Plain views over the noteheads, so press-in / press-out (tap and hold) work on iOS, Android and web.
   const hitAreas = useMemo(
@@ -91,7 +98,7 @@ export const ScoreView = memo(function ScoreView({ data, layout, faded, activeId
         {staticParts}
         {VOICES.map((v) => (
           <G key={v} opacity={faded.has(v) ? 0.18 : 1}>
-            <VoiceNotes data={data} layout={layout} voice={v} activeId={activeId} shapes={shapes} />
+            <VoiceNotes data={data} layout={layout} voice={v} activeId={activeId} shapes={shapes} sounding={sounding} />
           </G>
         ))}
         <Lyrics data={data} layout={layout} />
@@ -128,22 +135,44 @@ function Staff({ data, layout }: { data: PracticeData; layout: Layout }) {
   return <G>{els}</G>;
 }
 
-function VoiceNotes({ data, layout, voice, activeId, shapes }: { data: PracticeData; layout: Layout; voice: Voice; activeId: string | null; shapes: boolean }) {
+function VoiceNotes({
+  data,
+  layout,
+  voice,
+  activeId,
+  shapes,
+  sounding,
+}: {
+  data: PracticeData;
+  layout: Layout;
+  voice: Voice;
+  activeId: string | null;
+  shapes: boolean;
+  sounding: Set<string>;
+}) {
   const { notes, stem, staff } = data.voices[voice];
   const up = stem === 'up';
   const bottom = staffBottom(staff);
   const els = [];
   const pt = (n: PracticeNote) => ({ x: layout.rx(n.start) + 5, y: bottom - (n.y ?? 0) * STEP });
+  const shapeKind = (n: PracticeNote) => (shapes && n.pitch ? shapeOf(n.pitch, data.key.fifths) : null);
+  // A shaped head's stem meets its edge (do: the corner of its base); a round head's meets its side.
+  const anchorOf = (n: PracticeNote) => {
+    const kind = shapeKind(n);
+    return kind ? stemAnchor(kind, SHAPE_W, SHAPE_H, up) : { dx: up ? 4.8 : -4.8, dy: 0 };
+  };
   for (let i = 0; i < notes.length; i++) {
     const n = notes[i];
     if (n.rest) continue;
     const { x, y } = pt(n);
-    const color = n.id === activeId ? VOICE_COLOR[voice] : INK;
+    const color = n.id === activeId || sounding.has(n.id) ? VOICE_COLOR[voice] : INK;
     const hollow = n.type === 'half' || n.type === 'whole';
     // ledger lines above/below the staff
     for (let s = -2; s >= (n.y ?? 0); s -= 2) els.push(<Line key={`${n.id}l${s}`} x1={x - 8} x2={x + 8} y1={bottom - s * STEP} y2={bottom - s * STEP} stroke={INK} strokeWidth={0.9} />);
     for (let s = 10; s <= (n.y ?? 0); s += 2) els.push(<Line key={`${n.id}l${s}`} x1={x - 8} x2={x + 8} y1={bottom - s * STEP} y2={bottom - s * STEP} stroke={INK} strokeWidth={0.9} />);
-    const shape = shapes && n.pitch ? shapePath(shapeOf(n.pitch, data.key.fifths), x, y, 11, 8.6, up) : null;
+    // Every pitched note of every voice gets its shape (the step in the key, whatever the octave or staff).
+    const kind = shapeKind(n);
+    const shape = kind ? shapePath(kind, x, y, SHAPE_W, SHAPE_H, up) : null;
     els.push(
       shape ? (
         <Path key={n.id} d={shape} fill={hollow ? 'none' : color} stroke={color} strokeWidth={hollow ? 1.3 : 0.6} strokeLinejoin="round" />
@@ -161,13 +190,14 @@ function VoiceNotes({ data, layout, voice, activeId, shapes }: { data: PracticeD
       const py = pt(partner).y;
       len += up ? Math.max(0, y - py) : Math.max(0, py - y);
     }
-    const sx = up ? x + 4.8 : x - 4.8;
+    const anchor = anchorOf(n);
+    const sx = x + anchor.dx;
     const sy2 = up ? y - len : y + len;
-    els.push(<Line key={`${n.id}s`} x1={sx} x2={sx} y1={y} y2={sy2} stroke={color} strokeWidth={1.1} />);
+    els.push(<Line key={`${n.id}s`} x1={sx} x2={sx} y1={y + anchor.dy} y2={sy2} stroke={color} strokeWidth={1.1} />);
     if ((n.beam === 'begin' || n.beam === 'continue') && notes[i + 1]) {
       const q = pt(notes[i + 1]);
       const by = up ? Math.min(y, q.y) - 26 : Math.max(y, q.y) + 26;
-      const qx = up ? q.x + 4.8 : q.x - 4.8;
+      const qx = q.x + anchorOf(notes[i + 1]).dx;
       els.push(<Rect key={`${n.id}bm`} x={sx} y={up ? by : by - 3.5} width={qx - sx + 1} height={3.5} fill={INK} />);
     } else if (!n.beam && (n.type === 'eighth' || n.type === '16th')) {
       const d = up ? `M${sx} ${sy2} c1 6 8 8 6 15` : `M${sx} ${sy2} c1 -6 8 -8 6 -15`;

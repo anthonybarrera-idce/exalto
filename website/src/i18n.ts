@@ -16,6 +16,9 @@ export const LINKS = {
   terms: '/terms',
   support: '/support',
   contact: '/contact',
+  // The web version of the app (Firebase Hosting site exalto-web-app). `?signin=1` opens its sign-in screen.
+  webApp: 'https://web.exalto.app/',
+  signIn: 'https://web.exalto.app/?signin=1',
 }
 
 type Feature = { icon: string; title: string; body: string }
@@ -25,7 +28,8 @@ type Shot = { img: string; title: string; body: string; alt: string }
 export type Copy = {
   meta: { title: string; description: string }
   skip: string
-  nav: { features: string; hymnals: string; leaders: string; help: string; cta: string; label: string }
+  nav: { features: string; hymnals: string; leaders: string; help: string; cta: string; signIn: string; label: string }
+  web: { open: string; note: string }
   langSwitch: { label: string; other: string }
   store: { appleTop: string; googleTop: string; appleLabel: string; googleLabel: string }
   hero: {
@@ -40,6 +44,14 @@ export type Copy = {
   features: { eyebrow: string; title: string; body: string; items: Feature[] }
   listen: { eyebrow: string; title: string; body: string; bullets: string[]; alt: string }
   practice: { eyebrow: string; title: string; body: string; bullets: string[]; alt: string }
+  composers: {
+    eyebrow: string
+    title: string
+    body: string
+    bullets: string[]
+    graphicLabel: string
+    card: { name: string; handle: string; role: string; hymns: string; hymnals: string }
+  }
   studio: {
     eyebrow: string
     title: string
@@ -77,9 +89,11 @@ export const COPY: Record<Lang, Copy> = {
       leaders: 'Para músicos',
       help: 'Ayuda',
       cta: 'Descargar la app',
+      signIn: 'Iniciar sesión',
       label: 'Principal',
     },
     langSwitch: { label: 'Idioma', other: 'English' },
+    web: { open: 'Abrir en el navegador', note: 'O úsalo en el navegador, sin descargar nada.' },
     store: {
       appleTop: 'Descárgalo en el',
       googleTop: 'Disponible en',
@@ -100,10 +114,11 @@ export const COPY: Record<Lang, Copy> = {
     hymnals: {
       eyebrow: 'HIMNARIOS',
       title: 'Los himnarios de tu iglesia, en una sola app.',
-      body: 'Cambia de himnario con un toque y encuentra cualquier himno por su número, su título o una línea que recuerdes de la letra.',
+      body: 'Cambia de himnario con un toque y encuentra cualquier himno por su número, su título o una línea que recuerdes de la letra. En Explorar descubres himnos para ensayar, con grabación y de compositores de la comunidad.',
       bullets: [
         'Todos los himnarios de tu iglesia en un solo lugar',
-        'Busca por número, título o letra',
+        'Busca por número, título, letra o compositor',
+        'Descarga himnarios para usarlos sin conexión',
         'Himnos nuevos de compositores de la iglesia',
       ],
       search: 'Buscar por número, título o letra',
@@ -118,14 +133,23 @@ export const COPY: Record<Lang, Copy> = {
           'Letra fácil de leer',
           'Estrofas y coro bien marcados. Cambia el tamaño y el espaciado del texto para leer desde la última banca.',
         ],
-        ['Escucha y aprende', 'Reproduce el himno con piano y sigue la letra mientras suena.'],
+        [
+          'Piano o a cappella',
+          'Escucha el himno con piano o, si tiene grabación, a cappella, y sigue la letra mientras suena.',
+        ],
         [
           'Ensaya tu voz',
           'Pistas de práctica para soprano, contralto, tenor y bajo, para que cada voz aprenda su parte.',
         ],
         ['Partitura', 'Abre la partitura, haz zoom con dos dedos y desliza para cambiar de página.'],
-        ['Encuéntralo rápido', 'Busca por número, por título o por cualquier frase de la letra.'],
-        ['Favoritos y listas', 'Guarda los himnos que más cantas y arma una lista para el culto del domingo.'],
+        [
+          'Encuéntralo rápido',
+          'Busca por número, título, letra o compositor, y filtra por himnario o por los que tienen grabación o notas de práctica.',
+        ],
+        [
+          'Favoritos y listas',
+          'Guarda los himnos que más cantas y arma listas para el culto. Con una cuenta, te acompañan en todos tus teléfonos.',
+        ],
       ]),
     },
     listen: {
@@ -147,8 +171,22 @@ export const COPY: Record<Lang, Copy> = {
         'Soprano, contralto, tenor y bajo: escucha una voz o todas',
         'Ajusta el tempo más lento o más rápido',
         'Mantén presionada una nota para escucharla sostenida',
+        'Notas de figuras para leer la melodía más fácil',
       ],
       alt: 'La pantalla Practicar de Exalto con la partitura, el tempo y las cuatro voces.',
+    },
+    composers: {
+      eyebrow: 'PARA COMPOSITORES',
+      title: 'Comparte tus himnos con la iglesia.',
+      body: 'Si escribes himnos, pide acceso de compositor desde la app. Un administrador de la iglesia revisa tu solicitud y, cuando la aprueba, tienes tu propio perfil y tus propios himnarios.',
+      bullets: [
+        'Un perfil de compositor que todos pueden visitar',
+        'Crea tus himnarios y escribe la letra desde la app',
+        'Sube la partitura y las voces con Hymn Studio',
+        'Cada himno aparece con tu nombre',
+      ],
+      graphicLabel: 'Ilustración de un perfil de compositor en Exalto',
+      card: { name: 'Tu nombre', handle: '@tunombre', role: 'Compositor', hymns: 'Himnos', hymnals: 'Himnarios' },
     },
     studio: {
       eyebrow: 'PARA MÚSICOS',
@@ -187,7 +225,7 @@ export const COPY: Record<Lang, Copy> = {
     },
     cta: {
       title: 'Canta con tu iglesia, donde estés.',
-      body: 'Gratis en iPhone y Android. Ábrela y empieza a cantar, sin crear una cuenta.',
+      body: 'Gratis en iPhone y Android. Empieza a cantar como invitado, o crea una cuenta para guardar tus listas y favoritos.',
     },
     footer: {
       privacy: 'Privacidad',
@@ -210,9 +248,11 @@ export const COPY: Record<Lang, Copy> = {
       leaders: 'For music leaders',
       help: 'Help',
       cta: 'Get the app',
+      signIn: 'Sign in',
       label: 'Main',
     },
     langSwitch: { label: 'Language', other: 'Español' },
+    web: { open: 'Open the web app', note: 'Or use it in your browser, nothing to download.' },
     store: {
       appleTop: 'Download on the',
       googleTop: 'Get it on',
@@ -233,10 +273,11 @@ export const COPY: Record<Lang, Copy> = {
     hymnals: {
       eyebrow: 'HYMNALS',
       title: 'Your church’s hymnals, all in one app.',
-      body: 'Switch hymnals with one tap and find any hymn by its number, its title or a line you remember from the lyrics.',
+      body: 'Switch hymnals with one tap and find any hymn by its number, its title or a line you remember from the lyrics. Discover shows hymns to practice, hymns with recordings and new songs from composers in the community.',
       bullets: [
         'All of your church’s hymnals in one place',
-        'Search by number, title or lyrics',
+        'Search by number, title, lyrics or composer',
+        'Download hymnals to use offline',
         'New hymns from composers in the church',
       ],
       search: 'Search by number, title or lyrics',
@@ -251,11 +292,20 @@ export const COPY: Record<Lang, Copy> = {
           'Lyrics you can read',
           'Verses and chorus clearly marked. Change the text size and spacing so you can read from the back row.',
         ],
-        ['Listen and learn', 'Play the hymn with piano and follow the words while it sings.'],
+        [
+          'Piano or a cappella',
+          'Listen with piano or, when there’s a recording, a cappella, and follow the words as it sings.',
+        ],
         ['Practice your part', 'Practice tracks for soprano, alto, tenor and bass, so every voice learns its line.'],
         ['Sheet music', 'Open the score, pinch to zoom and swipe between pages.'],
-        ['Find it fast', 'Search by number, by title or by any phrase from the lyrics.'],
-        ['Favorites and playlists', 'Save the hymns you sing most and build a list for Sunday’s service.'],
+        [
+          'Find it fast',
+          'Search by number, title, lyrics or composer, and filter by hymnal or by hymns with recordings or practice notes.',
+        ],
+        [
+          'Favorites and playlists',
+          'Save the hymns you sing most and build playlists for the service. With an account, they follow you to every phone.',
+        ],
       ]),
     },
     listen: {
@@ -277,8 +327,22 @@ export const COPY: Record<Lang, Copy> = {
         'Soprano, alto, tenor and bass: hear one voice or all four',
         'Make the tempo slower or faster',
         'Press and hold a note to hear it sustained',
+        'Shape notes make the melody easier to read',
       ],
       alt: 'The Exalto Practice screen with the score, tempo and four voice parts.',
+    },
+    composers: {
+      eyebrow: 'FOR COMPOSERS',
+      title: 'Share your hymns with the church.',
+      body: 'If you write hymns, request composer access from the app. A church admin reviews your request, and once it’s approved you get your own profile and your own hymnals.',
+      bullets: [
+        'A composer profile anyone can visit',
+        'Create your hymnals and write the lyrics in the app',
+        'Upload the score and voice parts with Hymn Studio',
+        'Every hymn carries your name',
+      ],
+      graphicLabel: 'Illustration of a composer profile in Exalto',
+      card: { name: 'Your name', handle: '@yourname', role: 'Composer', hymns: 'Hymns', hymnals: 'Hymnals' },
     },
     studio: {
       eyebrow: 'FOR MUSIC LEADERS',
@@ -317,7 +381,7 @@ export const COPY: Record<Lang, Copy> = {
     },
     cta: {
       title: 'Sing with your church, wherever you are.',
-      body: 'Free on iPhone and Android. Open it and start singing, no account needed.',
+      body: 'Free on iPhone and Android. Start singing as a guest, or create an account to keep your playlists and favorites.',
     },
     footer: {
       privacy: 'Privacy',

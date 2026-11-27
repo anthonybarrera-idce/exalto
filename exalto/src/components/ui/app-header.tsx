@@ -1,33 +1,40 @@
-import { Search } from 'lucide-react-native';
-import { useState } from 'react';
+import { Search, UserRound } from 'lucide-react-native';
 import { Image, Pressable, StyleSheet, View } from 'react-native';
 
-import { SettingsSheet } from '@/components/SettingsSheet';
+import { Avatar } from '@/components/account/ui';
+import { useAuth } from '@/context/auth-context';
 import { useLocale } from '@/context/locale-context';
+import { useIsDesktop } from '@/hooks/use-desktop';
 
 import { ThemedText } from '@/components/themed-text';
 import { BrandGradient, Palette, Spacing } from '@/constants/theme';
 import { LinearGradient } from 'expo-linear-gradient';
 
-/** Top bar from the Figma screens: logo, optional page title, search and avatar. */
-export function AppHeader({ title, onSearch, initials = 'A' }: { title?: string; onSearch?: () => void; initials?: string }) {
+/** Top bar from the Figma screens: logo, optional page title, search and avatar (opens account and settings). */
+export function AppHeader({ title, onSearch }: { title?: string; onSearch?: () => void }) {
   const { t } = useLocale();
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const { user, profile, openAccount } = useAuth();
+  const name = profile?.displayName || user?.displayName || user?.email || '';
+  const desktop = useIsDesktop();
   return (
     <View style={styles.row}>
-      <Image source={require('@/assets/images/Exalto-Logo.png')} style={styles.logo} resizeMode="contain" accessibilityLabel="Exalto" />
+      {/* The desktop web sidebar already shows the logo. */}
+      {!desktop && <Image source={require('@/assets/images/Exalto-Logo.png')} style={styles.logo} resizeMode="contain" accessibilityLabel="Exalto" />}
       {title ? <ThemedText style={styles.title}>{title}</ThemedText> : <View style={styles.flex} />}
       {onSearch && (
         <Pressable onPress={onSearch} hitSlop={10} accessibilityRole="button" accessibilityLabel={t('header.search')}>
           <Search size={24} color={Palette.text} strokeWidth={1.8} />
         </Pressable>
       )}
-      <Pressable onPress={() => setSettingsOpen(true)} hitSlop={6} accessibilityRole="button" accessibilityLabel={t('header.settings')}>
-        <LinearGradient colors={[BrandGradient[1], '#C0563A']} style={styles.avatar}>
-          <ThemedText style={styles.avatarText}>{initials}</ThemedText>
-        </LinearGradient>
+      <Pressable onPress={() => openAccount()} hitSlop={6} accessibilityRole="button" accessibilityLabel={t('account.avatar')}>
+        {user ? (
+          <Avatar name={name} photoURL={profile?.photoURL ?? user.photoURL} size={40} />
+        ) : (
+          <LinearGradient colors={['#7FDCFF', Palette.cyan, '#0F6F95']} start={{ x: 0.2, y: 0.1 }} end={{ x: 0.9, y: 1 }} style={styles.avatar}>
+            <UserRound size={20} color={Palette.bg} strokeWidth={2.2} />
+          </LinearGradient>
+        )}
       </Pressable>
-      <SettingsSheet visible={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </View>
   );
 }
